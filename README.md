@@ -107,7 +107,19 @@ Cursor / Windsurf / OpenCode / OpenClaw / any MCP client — add to your MCP con
 ```bash
 # Build from source
 git clone https://github.com/sentrux/sentrux.git
-cd sentrux && cargo build --release
+cd sentrux
+
+# Bootstrap the tree-sitter grammar binaries required for tests and analysis.
+# This creates ~/.sentrux/plugins and downloads the grammar bundle.
+cargo run -- plugin add-standard
+
+# Or download a pre-built grammar bundle manually:
+# PLATFORM=$(uname -s | grep -qi darwin && echo darwin-arm64 || echo linux-x86_64)
+# mkdir -p ~/.sentrux/plugins
+# curl -fsSL https://github.com/sentrux/sentrux/releases/latest/download/grammars-${PLATFORM}.tar.gz \
+#   | tar xz -C ~/.sentrux/plugins
+
+cargo build --release
 
 # Upgrade
 brew update && brew upgrade sentrux
