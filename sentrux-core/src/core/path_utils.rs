@@ -60,12 +60,19 @@ fn module_of_deep(path: &str, _first_slash: usize, depth2_end: usize) -> &str {
 }
 
 /// Source dirs aggregated from all plugins. Cached at first access.
+/// Falls back to embedded plugin manifests so tests are deterministic even when
+/// runtime grammar binaries are not installed.
 static SOURCE_DIRS: std::sync::LazyLock<std::collections::HashSet<String>> =
     std::sync::LazyLock::new(|| {
-        crate::analysis::lang_registry::all_source_dirs()
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect()
+        let mut dirs: std::collections::HashSet<String> =
+            crate::analysis::lang_registry::all_source_dirs()
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect();
+        for d in crate::analysis::plugin::all_embedded_source_dirs() {
+            dirs.insert(d);
+        }
+        dirs
     });
 
 /// Directories that are "dominant" — flat files underneath get per-file modules.
