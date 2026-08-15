@@ -104,27 +104,28 @@ fn try_suffix_resolve_inner(
     file_dir_str: &str,
     file_dir: &Path,
 ) -> Option<String> {
-    let stripped = specifier.rfind('.').map(|i| &specifier[..i]);
-    let specs: &[&str] = if let Some(s) = stripped {
+    let dot = specifier.rfind('.');
+    let stripped = dot.map(|i| &specifier[..i]);
+    let specs: Vec<&str> = if let Some(s) = stripped {
         if specifier
             .rfind('/')
-            .is_none_or(|slash| specifier.rfind('.').unwrap() > slash)
+            .is_none_or(|slash| dot.is_some_and(|d| d > slash))
         {
-            &[specifier, s]
+            vec![specifier, s]
         } else {
-            &[specifier]
+            vec![specifier]
         }
     } else {
-        &[specifier]
+        vec![specifier]
     };
 
-    for &spec in specs {
+    for &spec in &specs {
         let mut remainder = spec;
-        while remainder.contains('/') {
+        while let Some(slash) = remainder.find('/') {
             if let Some(candidates) = env.suffix_index.index.get(remainder) {
                 return Some(pick_closest(candidates, file_dir_str).to_string());
             }
-            remainder = &remainder[remainder.find('/').unwrap() + 1..];
+            remainder = &remainder[slash + 1..];
         }
         if let Some(candidates) = env.suffix_index.index.get(remainder) {
             if candidates.len() == 1 {

@@ -122,7 +122,10 @@ fn parse_version(s: &str) -> Result<(u64, u64, u64, &str), String> {
     let minor = parse_version_component(nums.next().unwrap_or("0"))?;
     let patch = parse_version_component(nums.next().unwrap_or("0"))?;
     if nums.next().is_some() {
-        return Err(format!("invalid version '{}': too many numeric components", s));
+        return Err(format!(
+            "invalid version '{}': too many numeric components",
+            s
+        ));
     }
     Ok((major, minor, patch, pre))
 }
@@ -322,7 +325,10 @@ fn verify_checksum(
         .map_err(|e| format!("Failed to read grammar for checksum: {}", e))?;
 
     let hash = sha2::Sha256::digest(&bytes);
-    let actual = hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let actual = hash
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
     if actual.eq_ignore_ascii_case(expected) {
         Ok(())
     } else {
@@ -339,35 +345,55 @@ fn verify_checksum(
 ///
 /// The library must export a function named `tree_sitter_<name>` that returns
 /// a `*const TSLanguage` pointer. This is the standard tree-sitter convention.
+///
+/// # Safety
+///
+/// This function performs `dlopen`/equivalent and calls a C ABI symbol exported
+/// by the plugin grammar. The caller must ensure:
+///
+/// 1. The library file is from a trusted source. Plugins are user-installed, so
+///    `verify_checksum` should be used before loading to detect tampering.
+/// 2. The exported symbol is named `tree_sitter_<lang_name>` and has the
+///    tree-sitter C ABI: `extern "C" fn() -> *const TSLanguage` (returned as
+///    `tree_sitter::Language` by the `tree_sitter` crate).
+/// 3. The returned `Language` must not outlive the loaded library. We leak the
+///    `Library` with `std::mem::forget` so it stays mapped for the process
+///    lifetime; this is the same approach taken by Helix, Zed, and
+///    nvim-treesitter.
 fn load_grammar_dynamic(path: &Path, lang_name: &str) -> Result<Language, String> {
-    // Safety: we're loading a tree-sitter grammar .so/.dylib which exports
-    // a single `tree_sitter_<name>()` function returning *const TSLanguage.
-    // This is the same mechanism nvim-treesitter, helix, and zed use.
-    unsafe {
-        let lib = libloading::Library::new(path)
-            .map_err(|e| format!("Failed to load {}: {}", path.display(), e))?;
+    // SAFETY: `Library::new` is unsafe because loading arbitrary shared
+    // libraries can execute initializer code. We only load plugin grammar
+    // libraries that have passed `verify_checksum` and are expected to export
+    // the tree-sitter ABI.
+    let lib = unsafe { libloading::Library::new(path) }
+        .map_err(|e| format!("Failed to load {}: {}", path.display(), e))?;
 
-        // tree-sitter convention: exported function is `tree_sitter_<name>`
-        let func_name = format!("tree_sitter_{}", lang_name);
-        let func: libloading::Symbol<unsafe extern "C" fn() -> Language> =
-            lib.get(func_name.as_bytes()).map_err(|e| {
-                format!(
-                    "Symbol '{}' not found in {}: {}. The grammar must export tree_sitter_{}().",
-                    func_name,
-                    path.display(),
-                    e,
-                    lang_name
-                )
-            })?;
+    // tree-sitter convention: exported function is `tree_sitter_<lang_name>`.
+    // SAFETY: `Library::get` is unsafe because the symbol name/type is not
+    // validated by the loader. The type below matches the tree-sitter ABI.
+    let func_name = format!("tree_sitter_{}", lang_name);
+    let func: libloading::Symbol<unsafe extern "C" fn() -> Language> = unsafe {
+        lib.get(func_name.as_bytes()).map_err(|e| {
+            format!(
+                "Symbol '{}' not found in {}: {}. The grammar must export tree_sitter_{}().",
+                func_name,
+                path.display(),
+                e,
+                lang_name
+            )
+        })?
+    };
 
-        let language = func();
+    // SAFETY: Calling the symbol is unsafe because the grammar library is
+    // responsible for returning a valid TSLanguage pointer. We trust the plugin
+    // after checksum verification and the tree-sitter ABI contract.
+    let language = unsafe { func() };
 
-        // Leak the library to keep it alive for the lifetime of the process.
-        // tree-sitter Language holds pointers into the library's memory.
-        std::mem::forget(lib);
+    // Leak the library to keep it alive for the lifetime of the process.
+    // tree-sitter Language holds pointers into the library's memory.
+    std::mem::forget(lib);
 
-        Ok(language)
-    }
+    Ok(language)
 }
 
 /// Copy grammar .dylib files from bundled distribution to user plugins dir.

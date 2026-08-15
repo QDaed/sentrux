@@ -383,12 +383,13 @@ fn count_params_in_list(
 ) -> u32 {
     let mut count = 0u32;
     for j in 0..param_list.named_child_count() {
-        let param = param_list.named_child(j).unwrap();
-        if is_self_or_this(param, content, sem) {
-            continue;
-        }
-        if is_parameter_kind(param.kind(), sem) {
-            count += 1;
+        if let Some(param) = param_list.named_child(j) {
+            if is_self_or_this(param, content, sem) {
+                continue;
+            }
+            if is_parameter_kind(param.kind(), sem) {
+                count += 1;
+            }
         }
     }
     count
@@ -400,14 +401,15 @@ pub(crate) fn count_parameters(node: tree_sitter::Node, content: &[u8], lang: &s
     let profile = crate::analysis::lang_registry::profile(lang);
     let sem = &profile.semantics;
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
-        let is_param_list = if !sem.param_list_kinds.is_empty() {
-            sem.param_list_kinds.iter().any(|k| k == child.kind())
-        } else {
-            DEFAULT_PARAM_LIST_KINDS.contains(&child.kind())
-        };
-        if is_param_list {
-            return count_params_in_list(child, content, sem);
+        if let Some(child) = node.child(i) {
+            let is_param_list = if !sem.param_list_kinds.is_empty() {
+                sem.param_list_kinds.iter().any(|k| k == child.kind())
+            } else {
+                DEFAULT_PARAM_LIST_KINDS.contains(&child.kind())
+            };
+            if is_param_list {
+                return count_params_in_list(child, content, sem);
+            }
         }
     }
     0

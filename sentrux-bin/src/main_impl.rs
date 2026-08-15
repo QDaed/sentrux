@@ -212,8 +212,13 @@ pub fn run() -> eframe::Result<()> {
             app::mcp_server::run_mcp_server(None);
             Ok(())
         }
-        Some(Command::Plugin { action }) => run_plugin(action)
-            .map_err(|e| eframe::Error::AppCreation(e.into())),
+        Some(Command::Plugin { action }) => match run_plugin(action) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        },
         Some(Command::Analytics { action }) => {
             run_analytics(action);
             Ok(())
@@ -241,7 +246,7 @@ pub fn run() -> eframe::Result<()> {
 
 fn analytics_opt_out_path() -> Option<std::path::PathBuf> {
     sentrux_core::analysis::plugin::plugins_dir()
-        .map(|d| d.parent().unwrap().join("telemetry_opt_out"))
+        .and_then(|d| d.parent().map(|p| p.join("telemetry_opt_out")))
 }
 
 fn run_login() {
@@ -421,7 +426,9 @@ fn run_analytics(action: Option<AnalyticsAction>) {
         }
         Some(AnalyticsAction::Off) => {
             if let Some(p) = &path {
-                let _ = std::fs::create_dir_all(p.parent().unwrap());
+                if let Some(parent) = p.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
                 let _ = std::fs::write(p, "1");
             }
             println!("Analytics are disabled.");
@@ -629,12 +636,18 @@ fn gate_compare(
 
 fn run_plugin(action: PluginAction) -> Result<(), String> {
     match action {
-        PluginAction::List => { plugin_list(); Ok(()) }
+        PluginAction::List => {
+            plugin_list();
+            Ok(())
+        }
         PluginAction::Init { name } => plugin_init(&name),
-        PluginAction::Validate { dir } => { plugin_validate(&dir); Ok(()) }
-        PluginAction::AddStandard => { plugin_add_standard(); Ok(()) }
-        PluginAction::Add { name } => { plugin_add(&name); Ok(()) }
-        PluginAction::Remove { name } => { plugin_remove(&name); Ok(()) }
+        PluginAction::Validate { dir } => plugin_validate(&dir),
+        PluginAction::AddStandard => {
+            plugin_add_standard();
+            Ok(())
+        }
+        PluginAction::Add { name } => plugin_add(&name),
+        PluginAction::Remove { name } => plugin_remove(&name),
     }
 }
 
@@ -670,7 +683,10 @@ fn plugin_init(name: &str) -> Result<(), String> {
         .ok_or_else(|| "Cannot determine home directory".to_string())?;
     let plugin_dir = dir.join(name);
     if plugin_dir.exists() {
-        return Err(format!("Plugin directory already exists: {}", plugin_dir.display()));
+        return Err(format!(
+            "Plugin directory already exists: {}",
+            plugin_dir.display()
+        ));
     }
     std::fs::create_dir_all(plugin_dir.join("grammars"))
         .map_err(|e| format!("Failed to create grammars directory: {}", e))?;
@@ -725,40 +741,38 @@ capabilities = ["functions", "classes", "imports"]
     Ok(())
 }
 
-fn plugin_validate(dir: &str) {
+fn plugin_validate(dir: &str) -> Result<(), String> {
     let plugin_dir = std::path::Path::new(dir);
     print!("Validating {}... ", plugin_dir.display());
-    match sentrux_core::analysis::plugin::manifest::PluginManifest::load(plugin_dir) {
-        Ok(manifest) => {
-            println!("plugin.toml OK");
-            println!("  name: {}", manifest.plugin.name);
-            println!("  version: {}", manifest.plugin.version);
-            println!("  extensions: [{}]", manifest.plugin.extensions.join(", "));
-            println!(
-                "  capabilities: [{}]",
-                manifest.queries.capabilities.join(", ")
-            );
-            let query_path = plugin_dir.join("queries").join("tags.scm");
-            match std::fs::read_to_string(&query_path) {
-                Ok(qs) => match manifest.validate_query_captures(&qs) {
-                    Ok(()) => println!("  queries/tags.scm: OK (captures valid)"),
-                    Err(e) => println!("  queries/tags.scm: FAIL — {}", e),
-                },
-                Err(e) => println!("  queries/tags.scm: MISSING — {}", e),
-            }
-            let gf = sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename();
-            let gp = plugin_dir.join("grammars").join(gf);
-            if gp.exists() {
-                println!("  grammars/{}: OK", gf);
-            } else {
-                println!("  grammars/{}: MISSING — build the grammar first", gf);
-            }
-        }
-        Err(e) => {
+    let manifest = sentrux_core::analysis::plugin::manifest::PluginManifest::load(plugin_dir)
+        .map_err(|e| {
             println!("FAIL — {}", e);
-            std::process::exit(1);
-        }
+            e
+        })?;
+    println!("plugin.toml OK");
+    println!("  name: {}", manifest.plugin.name);
+    println!("  version: {}", manifest.plugin.version);
+    println!("  extensions: [{}]", manifest.plugin.extensions.join(", "));
+    println!(
+        "  capabilities: [{}]",
+        manifest.queries.capabilities.join(", ")
+    );
+    let query_path = plugin_dir.join("queries").join("tags.scm");
+    match std::fs::read_to_string(&query_path) {
+        Ok(qs) => match manifest.validate_query_captures(&qs) {
+            Ok(()) => println!("  queries/tags.scm: OK (captures valid)"),
+            Err(e) => println!("  queries/tags.scm: FAIL — {}", e),
+        },
+        Err(e) => println!("  queries/tags.scm: MISSING — {}", e),
     }
+    let gf = sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename();
+    let gp = plugin_dir.join("grammars").join(gf);
+    if gp.exists() {
+        println!("  grammars/{}: OK", gf);
+    } else {
+        println!("  grammars/{}: MISSING — build the grammar first", gf);
+    }
+    Ok(())
 }
 
 fn plugin_add_standard() {
@@ -767,51 +781,46 @@ fn plugin_add_standard() {
     println!("Done. All plugins synced from embedded data.");
 }
 
-fn plugin_add(name: &str) {
-    let dir = sentrux_core::analysis::plugin::plugins_dir().unwrap_or_else(|| {
-        eprintln!("Cannot determine home directory");
-        std::process::exit(1);
-    });
+fn plugin_add(name: &str) -> Result<(), String> {
+    let dir = sentrux_core::analysis::plugin::plugins_dir()
+        .ok_or_else(|| "Cannot determine home directory".to_string())?;
     let plugin_dir = dir.join(name);
     if plugin_dir.exists() {
-        eprintln!(
-            "Plugin '{}' already installed at {}",
+        return Err(format!(
+            "Plugin '{}' already installed at {}. Remove it first: sentrux plugin remove {}",
             name,
-            plugin_dir.display()
-        );
-        eprintln!("Remove it first: sentrux plugin remove {}", name);
-        std::process::exit(1);
+            plugin_dir.display(),
+            name
+        ));
     }
 
     let platform = sentrux_core::analysis::plugin::manifest::PluginManifest::grammar_filename();
     let platform_key = platform.rsplit_once('.').map_or(platform, |(k, _)| k);
 
-    let version = match sentrux_core::analysis::plugin::embedded::EMBEDDED_PLUGINS
+    let version = sentrux_core::analysis::plugin::embedded::EMBEDDED_PLUGINS
         .iter()
         .find(|&&(n, _, _)| n == name)
         .and_then(|&(_, toml, _)| {
             toml.lines()
                 .find(|l| l.starts_with("version"))
                 .and_then(|l| l.split('"').nth(1))
-        }) {
-        Some(v) => v,
-        None => {
-            eprintln!(
+        })
+        .ok_or_else(|| {
+            format!(
                 "Plugin '{}' not found in embedded data. Is it a valid plugin name?",
                 name
-            );
-            std::process::exit(1);
-        }
-    };
+            )
+        })?;
     let url = format!(
         "https://github.com/sentrux/plugins/releases/download/{name}-v{version}/{name}-{platform_key}.tar.gz"
     );
     println!("Downloading {name} plugin for {platform_key}...");
     println!("  {url}");
 
-    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create plugin directory: {}", e))?;
     let tarball = dir.join(format!("{name}.tar.gz"));
-    download_and_extract_plugin(&dir, name, &tarball, &url, &plugin_dir);
+    download_and_extract_plugin(&dir, name, &tarball, &url, &plugin_dir)
 }
 
 fn download_and_extract_plugin(
@@ -820,7 +829,7 @@ fn download_and_extract_plugin(
     tarball: &std::path::Path,
     url: &str,
     plugin_dir: &std::path::Path,
-) {
+) -> Result<(), String> {
     let output = std::process::Command::new("curl")
         .args(["-fsSL", url, "-o"])
         .arg(tarball)
@@ -836,34 +845,37 @@ fn download_and_extract_plugin(
             match extract {
                 Ok(s) if s.success() => {
                     println!("Installed {} to {}", name, plugin_dir.display());
+                    Ok(())
                 }
-                _ => {
-                    eprintln!("Failed to extract plugin archive");
-                    std::process::exit(1);
-                }
+                Ok(_) => Err("Failed to extract plugin archive".to_string()),
+                Err(e) => Err(format!("Failed to run tar: {}", e)),
             }
         }
-        _ => {
+        Ok(_) => {
             let _ = std::fs::remove_file(tarball);
-            eprintln!("Failed to download plugin '{}'.", name);
-            eprintln!("Check available plugins: https://github.com/sentrux/plugins/releases");
-            std::process::exit(1);
+            Err(format!(
+                "Failed to download plugin '{}'. Check available plugins: https://github.com/sentrux/plugins/releases",
+                name
+            ))
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(tarball);
+            Err(format!("Failed to run curl: {}", e))
         }
     }
 }
 
-fn plugin_remove(name: &str) {
-    let dir = sentrux_core::analysis::plugin::plugins_dir().unwrap_or_else(|| {
-        eprintln!("Cannot determine home directory");
-        std::process::exit(1);
-    });
+fn plugin_remove(name: &str) -> Result<(), String> {
+    let dir = sentrux_core::analysis::plugin::plugins_dir()
+        .ok_or_else(|| "Cannot determine home directory".to_string())?;
     let plugin_dir = dir.join(name);
     if !plugin_dir.exists() {
-        eprintln!("Plugin '{}' not installed.", name);
-        std::process::exit(1);
+        return Err(format!("Plugin '{}' not installed.", name));
     }
-    std::fs::remove_dir_all(&plugin_dir).unwrap();
+    std::fs::remove_dir_all(&plugin_dir)
+        .map_err(|e| format!("Failed to remove plugin '{}': {}", name, e))?;
     println!("Removed plugin '{}'", name);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
