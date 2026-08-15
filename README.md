@@ -114,9 +114,19 @@ cd sentrux
 cargo run -- plugin add-standard
 
 # Or download a pre-built grammar bundle manually:
-# PLATFORM=$(uname -s | grep -qi darwin && echo darwin-arm64 || echo linux-x86_64)
 # mkdir -p ~/.sentrux/plugins
-# curl -fsSL https://github.com/sentrux/sentrux/releases/latest/download/grammars-${PLATFORM}.tar.gz \
+# case "$(uname -s)-$(uname -m)" in
+#   Linux-x86_64)  PLATFORM=linux-x86_64 ;;
+#   Linux-aarch64) PLATFORM=linux-aarch64 ;;
+#   Darwin-arm64)  PLATFORM=darwin-arm64 ;;
+#   Darwin-x86_64)
+#     echo "Pre-built Intel macOS grammar bundle is not published; build from source or use cargo run -- plugin add-standard."
+#     exit 1
+#     ;;
+#   MINGW64_NT-x86_64|Windows_NT-x86_64) PLATFORM=windows-x86_64 ;;
+#   *) echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
+# esac
+# curl -fsSL "https://github.com/sentrux/sentrux/releases/latest/download/grammars-${PLATFORM}.tar.gz" \
 #   | tar xz -C ~/.sentrux/plugins
 
 cargo build --release
