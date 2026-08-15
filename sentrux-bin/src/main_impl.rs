@@ -212,9 +212,13 @@ pub fn run() -> eframe::Result<()> {
             app::mcp_server::run_mcp_server(None);
             Ok(())
         }
-        Some(Command::Plugin { action }) => {
-            run_plugin(action).map_err(|e| eframe::Error::AppCreation(e.into()))
-        }
+        Some(Command::Plugin { action }) => match run_plugin(action) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        },
         Some(Command::Analytics { action }) => {
             run_analytics(action);
             Ok(())
