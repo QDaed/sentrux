@@ -70,7 +70,7 @@ fn build_gitignore(root: &Path) -> ignore::gitignore::Gitignore {
             );
             ignore::gitignore::GitignoreBuilder::new(root)
                 .build()
-                .unwrap()
+                .expect("empty gitignore should always build")
         }
     }
 }

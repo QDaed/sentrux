@@ -66,6 +66,7 @@ fn main() {
         entries.len()
     ));
     code.push_str("/// (name, plugin_toml_content, tags_scm_content)\n");
+    code.push_str("#[rustfmt::skip]\n");
     code.push_str("pub const EMBEDDED_PLUGINS: &[(&str, &str, &str)] = &[\n");
 
     for (name, toml, scm) in &entries {

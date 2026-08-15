@@ -191,7 +191,10 @@ pub(crate) fn draw_whatif_section(
 
     ensure_cache(selected_path, snapshot, cache);
 
-    let r = &cache.as_ref().unwrap().remove_result;
+    let Some(c) = cache.as_ref() else {
+        return;
+    };
+    let r = &c.remove_result;
     draw_file_name_row(ui, selected_path, row_h, &font, tc);
     draw_verdict_row(ui, r, row_h, &font, tc);
     draw_comparison_rows(ui, r, row_h, tc);

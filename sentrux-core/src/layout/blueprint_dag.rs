@@ -65,8 +65,10 @@ fn add_folder_edge(
     to_file: &str,
 ) {
     if let (Some(ff), Some(tf)) = (file_to_folder.get(from_file), file_to_folder.get(to_file)) {
-        if ff != tf && out_edges.contains_key(ff.as_str()) && out_edges.contains_key(tf.as_str()) {
-            out_edges.get_mut(ff.as_str()).unwrap().insert(tf.clone());
+        if ff != tf {
+            if let Some(set) = out_edges.get_mut(ff.as_str()) {
+                set.insert(tf.clone());
+            }
         }
     }
 }
@@ -105,10 +107,14 @@ fn break_cycles(
             for v in sorted {
                 let c = color.get(v.as_str()).copied().unwrap_or(WHITE);
                 if c == WHITE {
-                    dag_out.get_mut(u).unwrap().push(v.clone());
+                    if let Some(out) = dag_out.get_mut(u) {
+                        out.push(v.clone());
+                    }
                     dfs(v, out_edges, color, dag_out);
                 } else if c == BLACK {
-                    dag_out.get_mut(u).unwrap().push(v.clone());
+                    if let Some(out) = dag_out.get_mut(u) {
+                        out.push(v.clone());
+                    }
                 }
                 // GRAY -> back-edge, skip
             }

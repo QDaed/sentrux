@@ -123,7 +123,7 @@ fn handle_health(_args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Va
     ];
     let bottleneck = scores_arr
         .iter()
-        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .min_by(|a, b| a.1.total_cmp(&b.1))
         .map(|(name, _)| *name)
         .unwrap_or("none");
 
