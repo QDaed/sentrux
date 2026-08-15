@@ -10,6 +10,7 @@
 
 use super::manifest::PluginManifest;
 use super::profile::LanguageProfile;
+use sha2::Digest;
 use std::path::{Path, PathBuf};
 use tree_sitter::Language;
 
@@ -105,10 +106,53 @@ pub fn load_all_plugins() -> (Vec<LoadedPlugin>, Vec<PluginLoadError>) {
     (loaded, errors)
 }
 
+/// Parse a dotted version string (e.g. "0.5.7" or "1.0.0-rc1").
+fn parse_version(s: &str) -> (u64, u64, u64, &str) {
+    let (core, pre) = s.split_once('-').unwrap_or((s, ""));
+    let mut nums = core.split('.').map(|n| n.parse::<u64>().unwrap_or(0));
+    (
+        nums.next().unwrap_or(0),
+        nums.next().unwrap_or(0),
+        nums.next().unwrap_or(0),
+        pre,
+    )
+}
+
+/// Compare two dotted version strings. Pre-release segments are only used to
+/// break ties on an otherwise equal core (a release is newer than any pre-release
+/// of the same core; otherwise pre-releases are compared lexicographically).
+fn version_at_least(current: &str, min: &str) -> bool {
+    let (c_maj, c_min, c_pat, c_pre) = parse_version(current);
+    let (m_maj, m_min, m_pat, m_pre) = parse_version(min);
+    match (c_maj, c_min, c_pat).cmp(&(m_maj, m_min, m_pat)) {
+        std::cmp::Ordering::Greater => true,
+        std::cmp::Ordering::Less => false,
+        std::cmp::Ordering::Equal => {
+            if m_pre.is_empty() {
+                c_pre.is_empty()
+            } else {
+                c_pre.is_empty() || c_pre >= m_pre
+            }
+        }
+    }
+}
+
 /// Load a single plugin from a directory.
 fn load_single_plugin(plugin_dir: &Path) -> Result<LoadedPlugin, String> {
     // 1. Parse manifest
     let manifest = PluginManifest::load(plugin_dir)?;
+
+    // 1a. Validate minimum sentrux version (using sentrux-core's package version,
+    // which is kept in lock-step with the sentrux binary).
+    if let Some(min) = &manifest.plugin.min_sentrux_version {
+        let current = env!("CARGO_PKG_VERSION");
+        if !version_at_least(current, min) {
+            return Err(format!(
+                "Plugin '{}' requires sentrux >= {}, but this build is {}",
+                manifest.plugin.name, min, current
+            ));
+        }
+    }
 
     // 2. Load query source
     let query_path = plugin_dir.join("queries").join("tags.scm");
@@ -192,10 +236,18 @@ fn verify_checksum(
     let bytes = std::fs::read(grammar_path)
         .map_err(|e| format!("Failed to read grammar for checksum: {}", e))?;
 
-    // Simple SHA256 via manual computation is heavy — for now, skip if no sha2 crate.
-    // TODO: Add sha2 dependency and verify properly.
-    let _ = (expected, bytes);
-    Ok(())
+    let hash = sha2::Sha256::digest(&bytes);
+    let actual = hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    if actual.eq_ignore_ascii_case(expected) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Checksum mismatch for {}: expected {}, got {}",
+            grammar_path.display(),
+            expected,
+            actual
+        ))
+    }
 }
 
 /// Load a tree-sitter Language from a dynamic library (.so/.dylib).

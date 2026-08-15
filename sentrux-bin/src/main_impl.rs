@@ -212,10 +212,8 @@ pub fn run() -> eframe::Result<()> {
             app::mcp_server::run_mcp_server(None);
             Ok(())
         }
-        Some(Command::Plugin { action }) => {
-            run_plugin(action);
-            Ok(())
-        }
+        Some(Command::Plugin { action }) => run_plugin(action)
+            .map_err(|e| eframe::Error::AppCreation(e.into())),
         Some(Command::Analytics { action }) => {
             run_analytics(action);
             Ok(())
@@ -629,14 +627,14 @@ fn gate_compare(
 // Plugin
 // ---------------------------------------------------------------------------
 
-fn run_plugin(action: PluginAction) {
+fn run_plugin(action: PluginAction) -> Result<(), String> {
     match action {
-        PluginAction::List => plugin_list(),
+        PluginAction::List => { plugin_list(); Ok(()) }
         PluginAction::Init { name } => plugin_init(&name),
-        PluginAction::Validate { dir } => plugin_validate(&dir),
-        PluginAction::AddStandard => plugin_add_standard(),
-        PluginAction::Add { name } => plugin_add(&name),
-        PluginAction::Remove { name } => plugin_remove(&name),
+        PluginAction::Validate { dir } => { plugin_validate(&dir); Ok(()) }
+        PluginAction::AddStandard => { plugin_add_standard(); Ok(()) }
+        PluginAction::Add { name } => { plugin_add(&name); Ok(()) }
+        PluginAction::Remove { name } => { plugin_remove(&name); Ok(()) }
     }
 }
 
@@ -667,19 +665,19 @@ fn plugin_list() {
     }
 }
 
-fn plugin_init(name: &str) {
-    let dir = sentrux_core::analysis::plugin::plugins_dir().unwrap_or_else(|| {
-        eprintln!("Cannot determine home directory");
-        std::process::exit(1);
-    });
+fn plugin_init(name: &str) -> Result<(), String> {
+    let dir = sentrux_core::analysis::plugin::plugins_dir()
+        .ok_or_else(|| "Cannot determine home directory".to_string())?;
     let plugin_dir = dir.join(name);
     if plugin_dir.exists() {
-        eprintln!("Plugin directory already exists: {}", plugin_dir.display());
-        std::process::exit(1);
+        return Err(format!("Plugin directory already exists: {}", plugin_dir.display()));
     }
-    std::fs::create_dir_all(plugin_dir.join("grammars")).unwrap();
-    std::fs::create_dir_all(plugin_dir.join("queries")).unwrap();
-    std::fs::create_dir_all(plugin_dir.join("tests")).unwrap();
+    std::fs::create_dir_all(plugin_dir.join("grammars"))
+        .map_err(|e| format!("Failed to create grammars directory: {}", e))?;
+    std::fs::create_dir_all(plugin_dir.join("queries"))
+        .map_err(|e| format!("Failed to create queries directory: {}", e))?;
+    std::fs::create_dir_all(plugin_dir.join("tests"))
+        .map_err(|e| format!("Failed to create tests directory: {}", e))?;
     std::fs::write(
         plugin_dir.join("plugin.toml"),
         format!(
@@ -706,10 +704,12 @@ capabilities = ["functions", "classes", "imports"]
 "#
         ),
     )
-    .unwrap();
-    std::fs::write(plugin_dir.join("queries").join("tags.scm"),
-        ";; TODO: Write tree-sitter queries for this language\n;;\n;; Required captures:\n;;   @func.def / @func.name — function definitions\n;;   @class.def / @class.name — class definitions\n;;   @import.path — import statements\n;;   @call.name — function calls (optional)\n"
-    ).unwrap();
+    .map_err(|e| format!("Failed to write plugin.toml: {}", e))?;
+    std::fs::write(
+        plugin_dir.join("queries").join("tags.scm"),
+        ";; TODO: Write tree-sitter queries for this language\n;;\n;; Required captures:\n;;   @func.def / @func.name — function definitions\n;;   @class.def / @class.name — class definitions\n;;   @import.path — import statements\n;;   @call.name — function calls (optional)\n",
+    )
+    .map_err(|e| format!("Failed to write tags.scm: {}", e))?;
     println!("Created plugin template at {}", plugin_dir.display());
     println!("\nNext steps:");
     println!("  1. Edit plugin.toml — set extensions, grammar source");
@@ -722,6 +722,7 @@ capabilities = ["functions", "classes", "imports"]
         "  4. Test: sentrux plugin validate {}",
         plugin_dir.display()
     );
+    Ok(())
 }
 
 fn plugin_validate(dir: &str) {

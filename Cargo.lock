@@ -3505,6 +3505,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2",
  "streaming-iterator",
  "thiserror 2.0.18",
  "toml",

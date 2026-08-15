@@ -20,6 +20,20 @@ pub use profile::{
     ResolverConfig, DEFAULT_PROFILE,
 };
 
+/// All `source_dirs` declared by embedded plugin manifests.
+/// Used as a fallback for module boundary detection when runtime plugins are not installed.
+pub fn all_embedded_source_dirs() -> std::collections::HashSet<String> {
+    let mut dirs = std::collections::HashSet::new();
+    for &(_name, toml_content, _scm) in embedded::EMBEDDED_PLUGINS {
+        if let Ok(manifest) = toml::from_str::<PluginManifest>(toml_content) {
+            for d in &manifest.semantics.project.source_dirs {
+                dirs.insert(d.clone());
+            }
+        }
+    }
+    dirs
+}
+
 /// Silently sync embedded plugin configs to ~/.sentrux/plugins/ at startup.
 /// Overwrites plugin.toml and tags.scm if the binary version is newer.
 /// Preserves grammar .dylib files (expensive, platform-specific).
