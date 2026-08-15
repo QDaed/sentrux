@@ -65,7 +65,7 @@ fn add_folder_edge(
     to_file: &str,
 ) {
     if let (Some(ff), Some(tf)) = (file_to_folder.get(from_file), file_to_folder.get(to_file)) {
-        if ff != tf {
+        if ff != tf && out_edges.contains_key(ff.as_str()) && out_edges.contains_key(tf.as_str()) {
             if let Some(set) = out_edges.get_mut(ff.as_str()) {
                 set.insert(tf.clone());
             }
