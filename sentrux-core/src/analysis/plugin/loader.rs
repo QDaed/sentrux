@@ -106,16 +106,25 @@ pub fn load_all_plugins() -> (Vec<LoadedPlugin>, Vec<PluginLoadError>) {
     (loaded, errors)
 }
 
+fn parse_version_component(s: &str) -> Result<u64, String> {
+    s.parse::<u64>()
+        .map_err(|_| format!("invalid version component '{}'", s))
+}
+
 /// Parse a dotted version string (e.g. "0.5.7" or "1.0.0-rc1").
-fn parse_version(s: &str) -> (u64, u64, u64, &str) {
+/// Build metadata (`+linux`) is stripped and malformed core components are
+/// rejected instead of silently coerced to zero.
+fn parse_version(s: &str) -> Result<(u64, u64, u64, &str), String> {
+    let s = s.split_once('+').map(|(v, _)| v).unwrap_or(s);
     let (core, pre) = s.split_once('-').unwrap_or((s, ""));
-    let mut nums = core.split('.').map(|n| n.parse::<u64>().unwrap_or(0));
-    (
-        nums.next().unwrap_or(0),
-        nums.next().unwrap_or(0),
-        nums.next().unwrap_or(0),
-        pre,
-    )
+    let mut nums = core.split('.');
+    let major = parse_version_component(nums.next().unwrap_or("0"))?;
+    let minor = parse_version_component(nums.next().unwrap_or("0"))?;
+    let patch = parse_version_component(nums.next().unwrap_or("0"))?;
+    if nums.next().is_some() {
+        return Err(format!("invalid version '{}': too many numeric components", s));
+    }
+    Ok((major, minor, patch, pre))
 }
 
 /// Pre-release identifier, either numeric or alphanumeric.
@@ -181,10 +190,11 @@ fn cmp_pre(current: &str, min: &str) -> std::cmp::Ordering {
 /// same core; pre-releases are compared identifier by identifier, with numeric
 /// identifiers sorting before alphanumeric ones and shorter prefixes sorting
 /// before longer ones (`alpha` < `alpha.1`).
-fn version_at_least(current: &str, min: &str) -> bool {
-    let (c_maj, c_min, c_pat, c_pre) = parse_version(current);
-    let (m_maj, m_min, m_pat, m_pre) = parse_version(min);
-    match (c_maj, c_min, c_pat).cmp(&(m_maj, m_min, m_pat)) {
+fn version_at_least(current: &str, min: &str) -> Result<bool, String> {
+    let (c_maj, c_min, c_pat, c_pre) = parse_version(current)?;
+    let (m_maj, m_min, m_pat, m_pre) = parse_version(min)?;
+    let ordering = (c_maj, c_min, c_pat).cmp(&(m_maj, m_min, m_pat));
+    let result = match ordering {
         std::cmp::Ordering::Greater => true,
         std::cmp::Ordering::Less => false,
         std::cmp::Ordering::Equal => {
@@ -193,10 +203,14 @@ fn version_at_least(current: &str, min: &str) -> bool {
             } else if c_pre.is_empty() {
                 true
             } else {
-                matches!(cmp_pre(c_pre, m_pre), std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
+                matches!(
+                    cmp_pre(c_pre, m_pre),
+                    std::cmp::Ordering::Greater | std::cmp::Ordering::Equal
+                )
             }
         }
-    }
+    };
+    Ok(result)
 }
 
 /// Load a single plugin from a directory.
@@ -208,11 +222,20 @@ fn load_single_plugin(plugin_dir: &Path) -> Result<LoadedPlugin, String> {
     // which is kept in lock-step with the sentrux binary).
     if let Some(min) = &manifest.plugin.min_sentrux_version {
         let current = env!("CARGO_PKG_VERSION");
-        if !version_at_least(current, min) {
-            return Err(format!(
-                "Plugin '{}' requires sentrux >= {}, but this build is {}",
-                manifest.plugin.name, min, current
-            ));
+        match version_at_least(current, min) {
+            Ok(true) => {}
+            Ok(false) => {
+                return Err(format!(
+                    "Plugin '{}' requires sentrux >= {}, but this build is {}",
+                    manifest.plugin.name, min, current
+                ));
+            }
+            Err(e) => {
+                return Err(format!(
+                    "Plugin '{}' has invalid min_sentrux_version '{}': {}",
+                    manifest.plugin.name, min, e
+                ));
+            }
         }
     }
 
@@ -447,18 +470,23 @@ mod tests {
 
     #[test]
     fn test_version_at_least_release_and_prerelease() {
-        assert!(version_at_least("0.5.7", "0.5.6"));
-        assert!(version_at_least("0.5.7", "0.5.7"));
-        assert!(!version_at_least("0.5.6", "0.5.7"));
+        assert!(version_at_least("0.5.7", "0.5.6").unwrap());
+        assert!(version_at_least("0.5.7", "0.5.7").unwrap());
+        assert!(!version_at_least("0.5.6", "0.5.7").unwrap());
         // Release newer than pre-release of same core.
-        assert!(version_at_least("0.5.7", "0.5.7-rc1"));
-        assert!(!version_at_least("0.5.7-rc1", "0.5.7"));
+        assert!(version_at_least("0.5.7", "0.5.7-rc1").unwrap());
+        assert!(!version_at_least("0.5.7-rc1", "0.5.7").unwrap());
         // Numeric pre-release ordering.
-        assert!(version_at_least("0.5.7-rc10", "0.5.7-rc2"));
-        assert!(!version_at_least("0.5.7-rc2", "0.5.7-rc10"));
+        assert!(version_at_least("0.5.7-rc10", "0.5.7-rc2").unwrap());
+        assert!(!version_at_least("0.5.7-rc2", "0.5.7-rc10").unwrap());
         // Dotted pre-release ordering.
-        assert!(version_at_least("1.0.0-alpha.2", "1.0.0-alpha.1"));
-        assert!(version_at_least("1.0.0-alpha.1", "1.0.0-alpha"));
-        assert!(!version_at_least("1.0.0-alpha", "1.0.0-alpha.1"));
+        assert!(version_at_least("1.0.0-alpha.2", "1.0.0-alpha.1").unwrap());
+        assert!(version_at_least("1.0.0-alpha.1", "1.0.0-alpha").unwrap());
+        assert!(!version_at_least("1.0.0-alpha", "1.0.0-alpha.1").unwrap());
+        // Build metadata ignored in comparison, core parsed correctly.
+        assert!(!version_at_least("0.5.7", "0.5.8+linux").unwrap());
+        assert!(version_at_least("0.5.8+linux", "0.5.7").unwrap());
+        // Malformed numeric core components are rejected.
+        assert!(version_at_least("0.5.7", "0.5.x").is_err());
     }
 }
