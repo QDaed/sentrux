@@ -115,15 +115,30 @@ cargo run -- plugin add-standard
 
 # Or download a pre-built grammar bundle manually:
 # mkdir -p ~/.sentrux/plugins
-# case "$(uname -s)-$(uname -m)" in
-#   Linux-x86_64)  PLATFORM=linux-x86_64 ;;
-#   Linux-aarch64) PLATFORM=linux-aarch64 ;;
-#   Darwin-arm64)  PLATFORM=darwin-arm64 ;;
-#   Darwin-x86_64)
-#     echo "Pre-built Intel macOS grammar bundle is not published; build from source or use cargo run -- plugin add-standard."
-#     exit 1
+# case "$(uname -s)" in
+#   Linux)
+#     case "$(uname -m)" in
+#       x86_64|amd64) PLATFORM=linux-x86_64 ;;
+#       aarch64|arm64) PLATFORM=linux-aarch64 ;;
+#       *) echo "Unsupported Linux architecture: $(uname -m)"; exit 1 ;;
+#     esac
 #     ;;
-#   MINGW64_NT-x86_64|Windows_NT-x86_64) PLATFORM=windows-x86_64 ;;
+#   Darwin)
+#     case "$(uname -m)" in
+#       arm64|aarch64) PLATFORM=darwin-arm64 ;;
+#       x86_64|amd64)
+#         echo "Pre-built Intel macOS grammar bundle is not published; build from source or use cargo run -- plugin add-standard."
+#         exit 1
+#         ;;
+#       *) echo "Unsupported macOS architecture: $(uname -m)"; exit 1 ;;
+#     esac
+#     ;;
+#   MINGW64_NT*|MSYS_NT*|CYGWIN_NT*|Windows_NT*)
+#     case "$(uname -m)" in
+#       x86_64|amd64|AMD64) PLATFORM=windows-x86_64 ;;
+#       *) echo "Unsupported Windows architecture: $(uname -m)"; exit 1 ;;
+#     esac
+#     ;;
 #   *) echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
 # esac
 # curl -fsSL "https://github.com/sentrux/sentrux/releases/latest/download/grammars-${PLATFORM}.tar.gz" \
