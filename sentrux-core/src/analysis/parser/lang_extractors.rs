@@ -33,7 +33,7 @@ fn pascal_to_snake(s: &str) -> String {
                     result.push('_');
                 }
             }
-            result.push(c.to_lowercase().next().unwrap());
+            result.push(c.to_lowercase().next().unwrap_or(c));
         } else {
             result.push(c);
         }
@@ -53,9 +53,10 @@ pub(super) fn extract_bases_by_kinds(
     sem: &crate::analysis::plugin::profile::LanguageSemantics,
 ) {
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
-        if kinds.contains(&child.kind()) {
-            collect_type_identifiers(child, content, bases, sem);
+        if let Some(child) = node.child(i) {
+            if kinds.contains(&child.kind()) {
+                collect_type_identifiers(child, content, bases, sem);
+            }
         }
     }
 }
@@ -68,14 +69,15 @@ pub(super) fn extract_bases_generic(
     sem: &crate::analysis::plugin::profile::LanguageSemantics,
 ) {
     for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
-        let k = child.kind();
-        if k.contains("superclass")
-            || k.contains("extends")
-            || k.contains("base_class")
-            || k.contains("heritage")
-        {
-            collect_type_identifiers(child, content, bases, sem);
+        if let Some(child) = node.child(i) {
+            let k = child.kind();
+            if k.contains("superclass")
+                || k.contains("extends")
+                || k.contains("base_class")
+                || k.contains("heritage")
+            {
+                collect_type_identifiers(child, content, bases, sem);
+            }
         }
     }
 }
@@ -152,6 +154,8 @@ fn collect_type_identifiers_inner(
         }
     }
     for i in 0..node.child_count() {
-        collect_type_identifiers_inner(node.child(i).unwrap(), content, out, sem, depth + 1);
+        if let Some(child) = node.child(i) {
+            collect_type_identifiers_inner(child, content, out, sem, depth + 1);
+        }
     }
 }

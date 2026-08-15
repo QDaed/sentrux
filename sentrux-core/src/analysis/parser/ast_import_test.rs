@@ -113,9 +113,10 @@ require_relative '../utils/parser'
         // Recurse into children, preserving field names
         let child_count = node.child_count();
         for i in 0..child_count {
-            let child = node.child(i).unwrap();
-            let child_field = node.field_name_for_child(i as u32);
-            print_tree(child, source, _lang, depth + 1, child_field);
+            if let Some(child) = node.child(i) {
+                let child_field = node.field_name_for_child(i as u32);
+                print_tree(child, source, _lang, depth + 1, child_field);
+            }
         }
     }
 
