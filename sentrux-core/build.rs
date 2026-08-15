@@ -21,17 +21,18 @@ fn main() {
         .expect("OUT_DIR not set");
     let out_path = out_dir.join("embedded_plugins.rs");
 
-    if !plugins_dir.exists() || !plugins_dir.is_dir() {
-        println!("cargo:warning=plugins/ not found, generating empty embedded_plugins.rs");
-    }
-
     let mut entries: Vec<(String, String, String)> = Vec::new();
 
-    let mut dirs: Vec<_> = fs::read_dir(plugins_dir)
-        .expect("failed to read plugins/")
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_dir())
-        .collect();
+    let mut dirs: Vec<_> = if plugins_dir.exists() && plugins_dir.is_dir() {
+        fs::read_dir(plugins_dir)
+            .expect("failed to read plugins/")
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_dir())
+            .collect()
+    } else {
+        println!("cargo:warning=plugins/ not found, generating empty embedded_plugins.rs");
+        Vec::new()
+    };
     dirs.sort_by_key(|e| e.file_name());
 
     for entry in &dirs {
