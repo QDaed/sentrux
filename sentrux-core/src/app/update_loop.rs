@@ -5,14 +5,14 @@
 //! per-frame rendering pipeline.
 
 use super::channels::{LayoutMsg, LayoutRequest, ScanCommand, ScanMsg};
-use crate::renderer;
 use super::state::AppState;
 use crate::core::snapshot::FileEvent;
+use crate::renderer;
 use crossbeam_channel::bounded;
 use std::time::{Duration, Instant};
 
-use super::SentruxApp;
 use super::draw_panels;
+use super::SentruxApp;
 
 impl SentruxApp {
     pub fn new(cc: &eframe::CreationContext<'_>, initial_path: Option<String>) -> Self {
@@ -30,8 +30,7 @@ impl SentruxApp {
 
         // Load fonts after prefs so load_cjk_fonts setting is respected.
         // Also check SENTRUX_NO_CJK env var as an override.
-        let load_cjk = state.settings.load_cjk_fonts
-            && std::env::var("SENTRUX_NO_CJK").is_err();
+        let load_cjk = state.settings.load_cjk_fonts && std::env::var("SENTRUX_NO_CJK").is_err();
         setup_fonts(ctx, load_cjk);
         setup_style(ctx, state.settings.ui_scale, &state.theme_config);
 
@@ -140,9 +139,10 @@ impl SentruxApp {
         if self.state.root_path == self.last_scanned_root || self.state.root_path.is_none() {
             return;
         }
-        let should_retry = self.state.scan_retry_at.is_none_or(|t| {
-            t.elapsed() >= Duration::from_millis(500)
-        });
+        let should_retry = self
+            .state
+            .scan_retry_at
+            .is_none_or(|t| t.elapsed() >= Duration::from_millis(500));
         if !should_retry {
             return;
         }
@@ -187,8 +187,7 @@ impl SentruxApp {
             .spawn(move || {
                 let result = rfd::FileDialog::new().pick_folder();
                 let _ = tx.send(result.map(|p| p.to_string_lossy().to_string()));
-            })
-        {
+            }) {
             Ok(_) => {
                 self.folder_picker_rx = Some(rx);
             }
@@ -201,7 +200,10 @@ impl SentruxApp {
 
     /// Check whether render data is absent or empty.
     fn should_show_placeholder(&self) -> (bool, bool) {
-        let is_empty = self.state.render_data.as_ref()
+        let is_empty = self
+            .state
+            .render_data
+            .as_ref()
             .is_some_and(|rd| rd.rects.is_empty());
         let no_data = self.state.render_data.is_none();
         (no_data || is_empty, is_empty)
@@ -248,14 +250,20 @@ impl SentruxApp {
         if self.state.scanning {
             draw_panels::draw_progress(ui, &self.state, false);
         } else if is_empty_render && self.state.root_path.is_some() {
-            let folder_name = self.state.root_path.as_ref()
+            let folder_name = self
+                .state
+                .root_path
+                .as_ref()
                 .and_then(|p| p.rsplit('/').next())
                 .unwrap_or("folder");
             ui.centered_and_justified(|ui| {
                 ui.label(
-                    egui::RichText::new(format!("'{}' is empty — no source files found", folder_name))
-                        .size(18.0)
-                        .color(self.state.theme_config.text_secondary),
+                    egui::RichText::new(format!(
+                        "'{}' is empty — no source files found",
+                        folder_name
+                    ))
+                    .size(18.0)
+                    .color(self.state.theme_config.text_secondary),
                 );
             });
         } else {
@@ -319,12 +327,16 @@ fn setup_fonts(ctx: &egui::Context, load_cjk: bool) {
     );
 
     // Terminus as PRIMARY monospace font (before egui defaults)
-    fonts.families.entry(egui::FontFamily::Monospace)
+    fonts
+        .families
+        .entry(egui::FontFamily::Monospace)
         .or_default()
         .insert(0, "terminus".to_string());
 
     // Also use for proportional (everything should be monospace in our app)
-    fonts.families.entry(egui::FontFamily::Proportional)
+    fonts
+        .families
+        .entry(egui::FontFamily::Proportional)
         .or_default()
         .insert(0, "terminus".to_string());
 
@@ -346,10 +358,14 @@ fn setup_fonts(ctx: &egui::Context, load_cjk: bool) {
                     "cjk_fallback".to_string(),
                     egui::FontData::from_owned(data).into(),
                 );
-                fonts.families.entry(egui::FontFamily::Monospace)
+                fonts
+                    .families
+                    .entry(egui::FontFamily::Monospace)
                     .or_default()
                     .push("cjk_fallback".to_string());
-                fonts.families.entry(egui::FontFamily::Proportional)
+                fonts
+                    .families
+                    .entry(egui::FontFamily::Proportional)
                     .or_default()
                     .push("cjk_fallback".to_string());
                 cjk_loaded = true;
@@ -357,7 +373,9 @@ fn setup_fonts(ctx: &egui::Context, load_cjk: bool) {
             }
         }
         if !cjk_loaded {
-            crate::debug_log!("[app] WARNING: no CJK font found — CJK characters will render as missing glyphs");
+            crate::debug_log!(
+                "[app] WARNING: no CJK font found — CJK characters will render as missing glyphs"
+            );
         }
     } else {
         crate::debug_log!("[app] CJK font loading disabled — saving 10-30MB memory");
@@ -373,10 +391,22 @@ fn setup_style(ctx: &egui::Context, ui_scale: f32, tc: &crate::core::settings::T
     ctx.set_pixels_per_point(base_ppp * ui_scale);
 
     let mut style = (*ctx.style()).clone();
-    style.text_styles.insert(egui::TextStyle::Body, egui::FontId::new(13.0, egui::FontFamily::Monospace));
-    style.text_styles.insert(egui::TextStyle::Button, egui::FontId::new(12.0, egui::FontFamily::Monospace));
-    style.text_styles.insert(egui::TextStyle::Small, egui::FontId::new(11.0, egui::FontFamily::Monospace));
-    style.text_styles.insert(egui::TextStyle::Heading, egui::FontId::new(15.0, egui::FontFamily::Monospace));
+    style.text_styles.insert(
+        egui::TextStyle::Body,
+        egui::FontId::new(13.0, egui::FontFamily::Monospace),
+    );
+    style.text_styles.insert(
+        egui::TextStyle::Button,
+        egui::FontId::new(12.0, egui::FontFamily::Monospace),
+    );
+    style.text_styles.insert(
+        egui::TextStyle::Small,
+        egui::FontId::new(11.0, egui::FontFamily::Monospace),
+    );
+    style.text_styles.insert(
+        egui::TextStyle::Heading,
+        egui::FontId::new(15.0, egui::FontFamily::Monospace),
+    );
     style.visuals.window_corner_radius = egui::CornerRadius::ZERO;
     style.visuals.menu_corner_radius = egui::CornerRadius::ZERO;
     style.visuals.widgets.noninteractive.corner_radius = egui::CornerRadius::ZERO;
@@ -386,6 +416,6 @@ fn setup_style(ctx: &egui::Context, ui_scale: f32, tc: &crate::core::settings::T
     style.visuals.widgets.open.corner_radius = egui::CornerRadius::ZERO;
     style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
     style.visuals.window_shadow = egui::epaint::Shadow::NONE;
-    style.visuals.window_stroke = egui::Stroke::new(1.0, tc.section_border);
+    style.visuals.window_stroke = egui::Stroke::new(1.0_f32, tc.section_border);
     ctx.set_style(style);
 }

@@ -7,8 +7,8 @@
 //!
 //! Test detection is path-based, matching common conventions across languages.
 
-use crate::core::types::ImportEdge;
 use crate::core::snapshot::Snapshot;
+use crate::core::types::ImportEdge;
 use std::collections::{HashMap, HashSet};
 
 // ── Named constants ──
@@ -25,11 +25,7 @@ use std::collections::{HashMap, HashSet};
 /// - Cached analysis results can be returned directly
 pub trait TestGapAnalyzer {
     /// Compute test gap analysis from a snapshot and complexity map.
-    fn analyze(
-        &self,
-        snapshot: &Snapshot,
-        complexity_map: &HashMap<String, u32>,
-    ) -> TestGapReport;
+    fn analyze(&self, snapshot: &Snapshot, complexity_map: &HashMap<String, u32>) -> TestGapReport;
 
     /// Check if a file path matches test file naming conventions.
     fn is_test(&self, path: &str) -> bool;
@@ -39,11 +35,7 @@ pub trait TestGapAnalyzer {
 pub struct DefaultTestGapAnalyzer;
 
 impl TestGapAnalyzer for DefaultTestGapAnalyzer {
-    fn analyze(
-        &self,
-        snapshot: &Snapshot,
-        complexity_map: &HashMap<String, u32>,
-    ) -> TestGapReport {
+    fn analyze(&self, snapshot: &Snapshot, complexity_map: &HashMap<String, u32>) -> TestGapReport {
         compute_test_gaps(snapshot, complexity_map)
     }
 
@@ -203,7 +195,7 @@ fn build_risk_gaps(
         })
         .collect();
 
-    gaps.sort_by(|a, b| b.risk_score.cmp(&a.risk_score));
+    gaps.sort_by_key(|b| std::cmp::Reverse(b.risk_score));
     gaps.truncate(50);
     gaps
 }
@@ -238,26 +230,36 @@ pub fn is_test_file(path: &str) -> bool {
 
 /// Universal test directory prefixes (cross-language conventions).
 const UNIVERSAL_TEST_DIR_PREFIXES: &[&str] = &[
-    "test/", "tests/", "__tests__/", "spec/", "specs/",
-    "fixtures/", "testdata/",
+    "test/",
+    "tests/",
+    "__tests__/",
+    "spec/",
+    "specs/",
+    "fixtures/",
+    "testdata/",
 ];
 
 /// Universal test directory infixes (cross-language conventions).
 const UNIVERSAL_TEST_DIR_INFIXES: &[&str] = &[
-    "/test/", "/tests/", "/__tests__/", "/spec/", "/specs/",
-    "/fixtures/", "/testdata/",
+    "/test/",
+    "/tests/",
+    "/__tests__/",
+    "/spec/",
+    "/specs/",
+    "/fixtures/",
+    "/testdata/",
 ];
 
 /// Check if the file lives in a known test/spec/fixture directory.
 fn is_test_directory(lower: &str) -> bool {
-    UNIVERSAL_TEST_DIR_PREFIXES.iter().any(|p| lower.starts_with(p))
+    UNIVERSAL_TEST_DIR_PREFIXES
+        .iter()
+        .any(|p| lower.starts_with(p))
         || UNIVERSAL_TEST_DIR_INFIXES.iter().any(|p| lower.contains(p))
 }
 
 /// Universal stem suffixes for test detection (language-agnostic fallback).
-const UNIVERSAL_STEM_SUFFIXES: &[&str] = &[
-    "_test", "_tests", "_spec", ".test", ".spec",
-];
+const UNIVERSAL_STEM_SUFFIXES: &[&str] = &["_test", "_tests", "_spec", ".test", ".spec"];
 
 /// Universal filename fallbacks — PascalCase patterns and stem matching.
 /// These catch tests in languages without specific profile patterns.
@@ -277,12 +279,18 @@ fn is_test_filename_universal(path: &str, lower: &str) -> bool {
     if matches!(name_no_ext, "test" | "tests" | "spec") {
         return true;
     }
-    if UNIVERSAL_STEM_SUFFIXES.iter().any(|s| name_no_ext.ends_with(s)) {
+    if UNIVERSAL_STEM_SUFFIXES
+        .iter()
+        .any(|s| name_no_ext.ends_with(s))
+    {
         return true;
     }
 
     // PascalCase test patterns (Java, C#, Kotlin)
-    if orig_no_ext.ends_with("Test") || orig_no_ext.ends_with("Tests") || orig_no_ext.ends_with("Spec") {
+    if orig_no_ext.ends_with("Test")
+        || orig_no_ext.ends_with("Tests")
+        || orig_no_ext.ends_with("Spec")
+    {
         return true;
     }
 
@@ -380,7 +388,7 @@ fn build_test_coverage(
         })
         .collect();
 
-    result.sort_by(|a, b| b.covers.len().cmp(&a.covers.len()));
+    result.sort_by_key(|b| std::cmp::Reverse(b.covers.len()));
     result
 }
 

@@ -64,8 +64,13 @@ fn build_gitignore(root: &Path) -> ignore::gitignore::Gitignore {
     match builder.build() {
         Ok(gi) => gi,
         Err(e) => {
-            crate::debug_log!("[watcher] gitignore build error: {}, using empty matcher", e);
-            ignore::gitignore::GitignoreBuilder::new(root).build().unwrap()
+            crate::debug_log!(
+                "[watcher] gitignore build error: {}, using empty matcher",
+                e
+            );
+            ignore::gitignore::GitignoreBuilder::new(root)
+                .build()
+                .unwrap()
         }
     }
 }
@@ -197,8 +202,7 @@ pub fn start_watcher(
 
     // Pending events keyed by relative path, value = (last event time, is_dir, event kind)
     type PendingMap = HashMap<String, (Instant, bool, &'static str)>;
-    let pending: Arc<Mutex<PendingMap>> =
-        Arc::new(Mutex::new(HashMap::new()));
+    let pending: Arc<Mutex<PendingMap>> = Arc::new(Mutex::new(HashMap::new()));
     let shutdown = Arc::new(AtomicBool::new(false));
 
     let pending_w = Arc::clone(&pending);
@@ -227,14 +231,20 @@ pub fn start_watcher(
                     // access events on dirs are noise from inotify watch setup
                     // and metadata changes (especially on CoW filesystems like
                     // btrfs). We get separate events for actual file changes.
-                    if is_dir && !matches!(event.kind,
-                        notify::EventKind::Create(_) | notify::EventKind::Remove(_))
+                    if is_dir
+                        && !matches!(
+                            event.kind,
+                            notify::EventKind::Create(_) | notify::EventKind::Remove(_)
+                        )
                     {
                         continue;
                     }
                     // Check .gitignore — matched_path_or_any_parents also covers
                     // files inside gitignored directories (e.g. .gradle-home/*)
-                    if gitignore.matched_path_or_any_parents(&rel_str, is_dir).is_ignore() {
+                    if gitignore
+                        .matched_path_or_any_parents(&rel_str, is_dir)
+                        .is_ignore()
+                    {
                         continue;
                     }
                     insert_pending(&pending_w, rel_str, is_dir, kind_str);
@@ -269,7 +279,13 @@ pub fn start_watcher(
                 }
             }
         })
-        .map_err(|e| notify::Error::generic(&format!("failed to spawn watcher-drain thread: {}", e)))?;
+        .map_err(|e| {
+            notify::Error::generic(&format!("failed to spawn watcher-drain thread: {}", e))
+        })?;
 
-    Ok(WatcherHandle { _watcher: watcher, shutdown, drain_thread: Some(drain_handle) })
+    Ok(WatcherHandle {
+        _watcher: watcher,
+        shutdown,
+        drain_thread: Some(drain_handle),
+    })
 }

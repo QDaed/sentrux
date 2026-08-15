@@ -20,16 +20,16 @@ mod scanning_tests;
 pub mod settings_panel;
 pub mod state;
 pub mod status_bar;
-pub mod update_check;
 pub mod toolbar;
+pub mod update_check;
 pub mod update_loop;
 pub mod watcher;
 
-use channels::{LayoutMsg, LayoutRequest, ScanCommand, ScanMsg};
-use state::AppState;
 use crate::core::snapshot::FileEvent;
-use watcher::WatcherHandle;
+use channels::{LayoutMsg, LayoutRequest, ScanCommand, ScanMsg};
 use crossbeam_channel::{Receiver, Sender};
+use state::AppState;
+use watcher::WatcherHandle;
 
 /// Main application — implements eframe::App.
 /// Owns all mutable state and thread communication channels.

@@ -3,8 +3,8 @@
 //! Supports viewport culling, edge-type filtering, spotlight mode (show only
 //! edges for hovered/selected file), and animated dash offset for selected edges.
 
-use super::{EdgePath, RenderData, ViewportTransform, Settings, RenderContext};
 use super::edge_routing::draw_dashed_polyline;
+use super::{EdgePath, RenderContext, RenderData, Settings, ViewportTransform};
 use egui::{Color32, Stroke};
 
 /// Returns true if the edge's world-space AABB intersects the viewport.
@@ -14,10 +14,18 @@ fn edge_visible(ep: &EdgePath, vp: &ViewportTransform) -> bool {
     let mut max_x = f64::NEG_INFINITY;
     let mut max_y = f64::NEG_INFINITY;
     for p in &ep.pts {
-        if p.x < min_x { min_x = p.x; }
-        if p.y < min_y { min_y = p.y; }
-        if p.x > max_x { max_x = p.x; }
-        if p.y > max_y { max_y = p.y; }
+        if p.x < min_x {
+            min_x = p.x;
+        }
+        if p.y < min_y {
+            min_y = p.y;
+        }
+        if p.x > max_x {
+            max_x = p.x;
+        }
+        if p.y > max_y {
+            max_y = p.y;
+        }
     }
     vp.is_visible(min_x, min_y, max_x - min_x, max_y - min_y)
 }
@@ -28,8 +36,7 @@ fn passes_spotlight(ep: &EdgePath, ctx: &RenderContext) -> bool {
     if ctx.show_all_edges {
         return true;
     }
-    let active_file = ctx.selected_path
-        .or(ctx.hovered_path);
+    let active_file = ctx.selected_path.or(ctx.hovered_path);
     match active_file {
         Some(f) if ep.from_file == f || ep.to_file == f => true,
         Some(_) => false,
@@ -87,7 +94,8 @@ fn draw_edge_endpoints(
     };
     painter.rect_filled(
         egui::Rect::from_center_size(start, egui::vec2(bar_w, bar_h)),
-        egui::CornerRadius::ZERO, color,
+        egui::CornerRadius::ZERO,
+        color,
     );
 
     // Target stick: parallel to line direction entering block.
@@ -101,7 +109,8 @@ fn draw_edge_endpoints(
     };
     painter.rect_filled(
         egui::Rect::from_center_size(end, egui::vec2(tw, th)),
-        egui::CornerRadius::ZERO, color,
+        egui::CornerRadius::ZERO,
+        color,
     );
 }
 
@@ -123,10 +132,18 @@ pub fn draw_edges(
     };
 
     for ep in &rd.edge_paths {
-        if ep.pts.len() < 2 { continue; }
-        if !ctx.edge_filter.accepts(&ep.edge_type) { continue; }
-        if !edge_visible(ep, vp) { continue; }
-        if !passes_spotlight(ep, ctx) { continue; }
+        if ep.pts.len() < 2 {
+            continue;
+        }
+        if !ctx.edge_filter.accepts(&ep.edge_type) {
+            continue;
+        }
+        if !edge_visible(ep, vp) {
+            continue;
+        }
+        if !passes_spotlight(ep, ctx) {
+            continue;
+        }
 
         let draw_alpha = ep.alpha.clamp(0.0, 1.0);
         let a = (draw_alpha * 255.0) as u8;
@@ -135,11 +152,10 @@ pub fn draw_edges(
         let color = Color32::from_rgba_unmultiplied(ep.r, ep.g, ep.b, a);
         let stroke = Stroke::new(ep.line_w as f32, color);
 
-        let screen_pts: Vec<egui::Pos2> = ep.pts.iter()
-            .map(|p| egui::pos2(
-                canvas_origin.x + vp.wx(p.x),
-                canvas_origin.y + vp.wy(p.y),
-            ))
+        let screen_pts: Vec<egui::Pos2> = ep
+            .pts
+            .iter()
+            .map(|p| egui::pos2(canvas_origin.x + vp.wx(p.x), canvas_origin.y + vp.wy(p.y)))
             .collect();
 
         draw_edge_line(&edp, &screen_pts, stroke, &ep.edge_type);

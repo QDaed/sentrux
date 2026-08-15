@@ -18,11 +18,7 @@ pub(crate) struct WhatIfCache {
 }
 
 /// Ensure the what-if cache is up-to-date for the selected path and snapshot.
-fn ensure_cache(
-    selected_path: &str,
-    snapshot: &Arc<Snapshot>,
-    cache: &mut Option<WhatIfCache>,
-) {
+fn ensure_cache(selected_path: &str, snapshot: &Arc<Snapshot>, cache: &mut Option<WhatIfCache>) {
     // Use edge count + entry point count + total files + total lines as fingerprint
     // to detect snapshot changes. More robust than Arc pointer identity (allocator reuse)
     // and catches incremental rescans that change edge targets without changing counts. [H8 fix]
@@ -30,11 +26,13 @@ fn ensure_cache(
         + snapshot.entry_points.len() as u64
         + snapshot.total_files as u64 * 7
         + snapshot.total_lines as u64;
-    let needs_compute = cache.as_ref().is_none_or(|c| {
-        c.path != selected_path || c.snap_fingerprint != snap_fingerprint
-    });
+    let needs_compute = cache
+        .as_ref()
+        .is_none_or(|c| c.path != selected_path || c.snap_fingerprint != snap_fingerprint);
     if needs_compute {
-        let action = WhatIfAction::RemoveFile { path: selected_path.to_string() };
+        let action = WhatIfAction::RemoveFile {
+            path: selected_path.to_string(),
+        };
         let result = whatif::simulate(&snapshot.import_graph, &snapshot.entry_points, &action);
         *cache = Some(WhatIfCache {
             path: selected_path.to_string(),
@@ -45,9 +43,18 @@ fn ensure_cache(
 }
 
 /// Draw the file name row with hover tooltip.
-fn draw_file_name_row(ui: &mut egui::Ui, selected_path: &str, row_h: f32, font: &egui::FontId, tc: &ThemeConfig) {
+fn draw_file_name_row(
+    ui: &mut egui::Ui,
+    selected_path: &str,
+    row_h: f32,
+    font: &egui::FontId,
+    tc: &ThemeConfig,
+) {
     let name = selected_path.rsplit('/').next().unwrap_or(selected_path);
-    let (rect, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+    let (rect, resp) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), row_h),
+        egui::Sense::hover(),
+    );
     ui.painter().text(
         egui::pos2(rect.left() + 4.0, rect.center().y),
         egui::Align2::LEFT_CENTER,
@@ -61,13 +68,22 @@ fn draw_file_name_row(ui: &mut egui::Ui, selected_path: &str, row_h: f32, font: 
 }
 
 /// Draw the verdict row (improved / no improvement).
-fn draw_verdict_row(ui: &mut egui::Ui, r: &WhatIfResult, row_h: f32, font: &egui::FontId, tc: &ThemeConfig) {
+fn draw_verdict_row(
+    ui: &mut egui::Ui,
+    r: &WhatIfResult,
+    row_h: f32,
+    font: &egui::FontId,
+    tc: &ThemeConfig,
+) {
     let (verdict, verdict_color) = if r.improved {
         ("improves architecture", tc.status_success)
     } else {
         ("no improvement", tc.status_warning)
     };
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), row_h),
+        egui::Sense::hover(),
+    );
     ui.painter().text(
         egui::pos2(rect.left() + 4.0, rect.center().y),
         egui::Align2::LEFT_CENTER,
@@ -80,14 +96,35 @@ fn draw_verdict_row(ui: &mut egui::Ui, r: &WhatIfResult, row_h: f32, font: &egui
 /// Draw before/after comparison rows for changed metrics.
 fn draw_comparison_rows(ui: &mut egui::Ui, r: &WhatIfResult, row_h: f32, tc: &ThemeConfig) {
     let comparisons: Vec<(&str, String, String)> = vec![
-        ("score", format!("{}", (r.score_before * 10000.0).round() as u32), format!("{}", (r.score_after * 10000.0).round() as u32)),
-        ("violations", format!("{}", r.upward_violations_before), format!("{}", r.upward_violations_after)),
-        ("max blast", format!("{}", r.max_blast_before), format!("{}", r.max_blast_after)),
-        ("max level", format!("{}", r.max_level_before), format!("{}", r.max_level_after)),
+        (
+            "score",
+            format!("{}", (r.score_before * 10000.0).round() as u32),
+            format!("{}", (r.score_after * 10000.0).round() as u32),
+        ),
+        (
+            "violations",
+            format!("{}", r.upward_violations_before),
+            format!("{}", r.upward_violations_after),
+        ),
+        (
+            "max blast",
+            format!("{}", r.max_blast_before),
+            format!("{}", r.max_blast_after),
+        ),
+        (
+            "max level",
+            format!("{}", r.max_level_before),
+            format!("{}", r.max_level_after),
+        ),
     ];
     for (label, before, after) in &comparisons {
-        if before == after { continue; }
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        if before == after {
+            continue;
+        }
+        let (rect, _) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
             egui::Align2::LEFT_CENTER,
@@ -100,20 +137,35 @@ fn draw_comparison_rows(ui: &mut egui::Ui, r: &WhatIfResult, row_h: f32, tc: &Th
 
 /// Draw level change rows (top 3 files affected).
 fn draw_level_changes(ui: &mut egui::Ui, r: &WhatIfResult, row_h: f32, tc: &ThemeConfig) {
-    if r.level_changes.is_empty() { return; }
+    if r.level_changes.is_empty() {
+        return;
+    }
     let color = tc.accent_coupling;
     for lc in r.level_changes.iter().take(3) {
         let name = lc.file.rsplit('/').next().unwrap_or(&lc.file);
-        let arrow = if lc.level_after < lc.level_before { "↓" } else { "↑" };
-        let text = format!("  {} L{} {} L{}", name, lc.level_before, arrow, lc.level_after);
-        let (rect, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let arrow = if lc.level_after < lc.level_before {
+            "↓"
+        } else {
+            "↑"
+        };
+        let text = format!(
+            "  {} L{} {} L{}",
+            name, lc.level_before, arrow, lc.level_after
+        );
+        let (rect, resp) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         if resp.hovered() {
             resp.on_hover_text(egui::RichText::new(&lc.file).monospace().size(10.0));
         }
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
-            egui::Align2::LEFT_CENTER, &text,
-            egui::FontId::monospace(8.0), color);
+            egui::Align2::LEFT_CENTER,
+            &text,
+            egui::FontId::monospace(8.0),
+            color,
+        );
     }
 }
 

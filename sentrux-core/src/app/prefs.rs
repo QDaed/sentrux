@@ -6,10 +6,10 @@
 //! restored on launch so the UI remembers its last configuration.
 //! Key type: `UserPrefs` (serializable subset of `AppState`).
 
-use crate::layout::types::{LayoutMode, ScaleMode, SizeMode};
-use crate::layout::types::ColorMode;
 use crate::core::settings::Theme;
+use crate::layout::types::ColorMode;
 use crate::layout::types::EdgeFilter;
+use crate::layout::types::{LayoutMode, ScaleMode, SizeMode};
 use serde::{Deserialize, Serialize};
 
 const PREFS_KEY: &str = "sentrux_user_prefs";

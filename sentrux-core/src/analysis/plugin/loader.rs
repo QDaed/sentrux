@@ -47,7 +47,8 @@ pub fn plugins_dir() -> Option<PathBuf> {
 /// Get the bundled plugins directory (next to the executable).
 /// Used for distribution archives where grammars ship alongside the binary.
 pub fn bundled_plugins_dir() -> Option<PathBuf> {
-    std::env::current_exe().ok()
+    std::env::current_exe()
+        .ok()
         .and_then(|p| p.parent().map(|d| d.join("plugins")))
         .filter(|d| d.is_dir())
 }
@@ -134,7 +135,10 @@ fn load_single_plugin(plugin_dir: &Path) -> Result<LoadedPlugin, String> {
     verify_checksum(&manifest, &grammar_path, grammar_file)?;
 
     // 6. Load the grammar via dynamic library
-    let symbol_name = manifest.grammar.symbol_name.as_deref()
+    let symbol_name = manifest
+        .grammar
+        .symbol_name
+        .as_deref()
         .unwrap_or(&manifest.plugin.name);
     let grammar = load_grammar_dynamic(&grammar_path, symbol_name)?;
 
@@ -171,9 +175,15 @@ fn load_single_plugin(plugin_dir: &Path) -> Result<LoadedPlugin, String> {
 }
 
 /// Verify SHA256 checksum of grammar binary against manifest.
-fn verify_checksum(manifest: &PluginManifest, grammar_path: &Path, platform_key: &str) -> Result<(), String> {
+fn verify_checksum(
+    manifest: &PluginManifest,
+    grammar_path: &Path,
+    platform_key: &str,
+) -> Result<(), String> {
     // Strip extension to get platform key (e.g., "darwin-arm64.dylib" → "darwin-arm64")
-    let key = platform_key.rsplit_once('.').map_or(platform_key, |(k, _)| k);
+    let key = platform_key
+        .rsplit_once('.')
+        .map_or(platform_key, |(k, _)| k);
     let expected = match manifest.checksums.get(key) {
         Some(hash) => hash,
         None => return Ok(()), // No checksum in manifest = skip verification
@@ -202,12 +212,16 @@ fn load_grammar_dynamic(path: &Path, lang_name: &str) -> Result<Language, String
 
         // tree-sitter convention: exported function is `tree_sitter_<name>`
         let func_name = format!("tree_sitter_{}", lang_name);
-        let func: libloading::Symbol<unsafe extern "C" fn() -> Language> = lib
-            .get(func_name.as_bytes())
-            .map_err(|e| format!(
-                "Symbol '{}' not found in {}: {}. The grammar must export tree_sitter_{}().",
-                func_name, path.display(), e, lang_name
-            ))?;
+        let func: libloading::Symbol<unsafe extern "C" fn() -> Language> =
+            lib.get(func_name.as_bytes()).map_err(|e| {
+                format!(
+                    "Symbol '{}' not found in {}: {}. The grammar must export tree_sitter_{}().",
+                    func_name,
+                    path.display(),
+                    e,
+                    lang_name
+                )
+            })?;
 
         let language = func();
 
@@ -230,8 +244,14 @@ fn copy_bundled_grammars(bundled_dir: &Path, user_dir: &Path) {
     };
     for entry in entries.flatten() {
         let path = entry.path();
-        if !path.is_dir() { continue; }
-        let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+        if !path.is_dir() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         let bundled_grammar = path.join("grammars").join(grammar_file);
         let user_grammar = user_dir.join(&name).join("grammars").join(grammar_file);
         if bundled_grammar.exists() && !user_grammar.exists() {
@@ -285,7 +305,12 @@ mod tests {
             };
             match load_grammar_dynamic(&grammar_path, &symbol) {
                 Ok(lang) => {
-                    println!("\n=== {} ({} node types, symbol: tree_sitter_{}) ===", name, lang.node_kind_count(), symbol);
+                    println!(
+                        "\n=== {} ({} node types, symbol: tree_sitter_{}) ===",
+                        name,
+                        lang.node_kind_count(),
+                        symbol
+                    );
                     for id in 0..lang.node_kind_count() as u16 {
                         if lang.node_kind_is_named(id) {
                             let kind = lang.node_kind_for_id(id).unwrap_or("?");

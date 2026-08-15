@@ -47,15 +47,15 @@ impl ColorMode {
     ];
 
     /// Color modes available in the free tier.
-    pub const FREE: &'static [ColorMode] = &[
-        ColorMode::Monochrome,
-        ColorMode::Language,
-        ColorMode::Heat,
-    ];
+    pub const FREE: &'static [ColorMode] =
+        &[ColorMode::Monochrome, ColorMode::Language, ColorMode::Heat];
 
     /// Whether this mode requires Pro tier.
     pub fn is_pro(self) -> bool {
-        !matches!(self, ColorMode::Monochrome | ColorMode::Language | ColorMode::Heat)
+        !matches!(
+            self,
+            ColorMode::Monochrome | ColorMode::Language | ColorMode::Heat
+        )
     }
 
     /// Human-readable display label for this color mode.
@@ -127,12 +127,10 @@ impl FocusMode {
             FocusMode::Language(l) => lang == l.as_str(),
             FocusMode::EntryPoints => is_entry,
             FocusMode::ImpactRadius(center) => {
-                path == center.as_str()
-                    || impact_files.is_some_and(|s| s.contains(path))
+                path == center.as_str() || impact_files.is_some_and(|s| s.contains(path))
             }
         }
     }
-
 }
 
 /// Which edge types to display

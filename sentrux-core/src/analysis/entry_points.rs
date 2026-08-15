@@ -26,8 +26,7 @@ pub(crate) fn compute_exec_depth(
     };
 
     let entry_files: BTreeSet<String> = entry_points.iter().map(|e| e.file.clone()).collect();
-    let mut queue: VecDeque<(String, u32)> =
-        entry_files.iter().map(|f| (f.clone(), 0)).collect();
+    let mut queue: VecDeque<(String, u32)> = entry_files.iter().map(|f| (f.clone(), 0)).collect();
 
     for f in &entry_files {
         exec_depth.insert(f.clone(), 0);
@@ -81,19 +80,27 @@ pub(crate) fn detect_entry_points(file: &FileNode) -> Vec<EntryPoint> {
 fn is_non_production_path(path: &str) -> bool {
     let p = path.to_lowercase();
     const PREFIXES: &[&str] = &[
-        "test/", "tests/", "test_",
-        "example/", "examples/",
-        "bench/", "benches/",
-        "fixtures/", "vendor/",
+        "test/",
+        "tests/",
+        "test_",
+        "example/",
+        "examples/",
+        "bench/",
+        "benches/",
+        "fixtures/",
+        "vendor/",
     ];
     const INFIXES: &[&str] = &[
-        "/test/", "/tests/",
-        "/example/", "/examples/",
-        "/bench/", "/benches/",
-        "/fixtures/", "/vendor/",
+        "/test/",
+        "/tests/",
+        "/example/",
+        "/examples/",
+        "/bench/",
+        "/benches/",
+        "/fixtures/",
+        "/vendor/",
     ];
-    PREFIXES.iter().any(|pfx| p.starts_with(pfx))
-        || INFIXES.iter().any(|inf| p.contains(inf))
+    PREFIXES.iter().any(|pfx| p.starts_with(pfx)) || INFIXES.iter().any(|inf| p.contains(inf))
 }
 
 /// Check if the file name matches a known main/app/server entry point pattern.
@@ -125,14 +132,20 @@ fn is_main_entry_by_name(file: &FileNode) -> bool {
     let profile = lang_registry::profile(&file.lang);
     if !profile.semantics.main_filenames.is_empty() {
         return path_depth <= 2
-            && profile.semantics.main_filenames.iter().any(|mf| name_lower == mf.to_lowercase());
+            && profile
+                .semantics
+                .main_filenames
+                .iter()
+                .any(|mf| name_lower == mf.to_lowercase());
     }
     false
 }
 
 /// Check if an entry point with the given func name already exists for this file.
 fn has_entry(entries: &[EntryPoint], file_path: &str, func: &str) -> bool {
-    entries.iter().any(|e| e.file == file_path && e.func == func)
+    entries
+        .iter()
+        .any(|e| e.file == file_path && e.func == func)
 }
 
 /// Add entry point if not already present.

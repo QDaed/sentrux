@@ -1,12 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::metrics::*;
+
+    use crate::core::types::{FileNode, FuncInfo, StructuralAnalysis};
     use crate::metrics::stability::module_of;
-    use crate::core::types::ImportEdge;
-    use crate::core::snapshot::Snapshot;
-    use crate::core::types::{FileNode, StructuralAnalysis, FuncInfo};
-    use std::collections::HashMap;
-    use std::sync::Arc;
+    use crate::metrics::*;
 
     use crate::metrics::test_helpers::{edge, file, snap_with_edges};
 
@@ -18,21 +15,27 @@ mod tests {
         // 3 modules (depth-2), each with internal edges only — 0% coupling
         // Files at depth-2 share module: a/sub/x.rs and a/sub/y.rs → module "a/sub"
         let edges = vec![
-            edge("a/sub/x.rs", "a/sub/y.rs"),  // intra a/sub
-            edge("b/sub/x.rs", "b/sub/y.rs"),  // intra b/sub
-            edge("c/sub/x.rs", "c/sub/y.rs"),  // intra c/sub
+            edge("a/sub/x.rs", "a/sub/y.rs"), // intra a/sub
+            edge("b/sub/x.rs", "b/sub/y.rs"), // intra b/sub
+            edge("c/sub/x.rs", "c/sub/y.rs"), // intra c/sub
         ];
         let snap = snap_with_edges(
             edges,
             vec![
-                file("a/sub/x.rs"), file("a/sub/y.rs"),
-                file("b/sub/x.rs"), file("b/sub/y.rs"),
-                file("c/sub/x.rs"), file("c/sub/y.rs"),
+                file("a/sub/x.rs"),
+                file("a/sub/y.rs"),
+                file("b/sub/x.rs"),
+                file("b/sub/y.rs"),
+                file("c/sub/x.rs"),
+                file("c/sub/y.rs"),
             ],
         );
         let report = compute_health(&snap);
         assert_eq!(report.coupling_score, 0.0, "all edges intra-module");
-        assert_eq!(report.entropy, 0.0, "intra-module edges must not inflate entropy");
+        assert_eq!(
+            report.entropy, 0.0,
+            "intra-module edges must not inflate entropy"
+        );
     }
 
     // ── Shannon entropy: uniform distribution = max entropy ──
@@ -44,10 +47,7 @@ mod tests {
             edge("b/y.rs", "c/z.rs"),
             edge("c/z.rs", "a/x.rs"),
         ];
-        let snap = snap_with_edges(
-            edges,
-            vec![file("a/x.rs"), file("b/y.rs"), file("c/z.rs")],
-        );
+        let snap = snap_with_edges(edges, vec![file("a/x.rs"), file("b/y.rs"), file("c/z.rs")]);
         let report = compute_health(&snap);
         // 3 pairs, each with 1/3 probability -> H = log2(3) -> normalized = 1.0
         assert!((report.entropy - 1.0).abs() < 0.01);
@@ -62,10 +62,7 @@ mod tests {
             edge("src/mod1/a.rs", "src/mod1/b.rs"),
             edge("src/mod1/b.rs", "src/mod1/a.rs"),
         ];
-        let snap = snap_with_edges(
-            edges,
-            vec![file("src/mod1/a.rs"), file("src/mod1/b.rs")],
-        );
+        let snap = snap_with_edges(edges, vec![file("src/mod1/a.rs"), file("src/mod1/b.rs")]);
         let report = compute_health(&snap);
         assert!((report.avg_cohesion.unwrap() - 1.0).abs() < f64::EPSILON);
     }
@@ -73,13 +70,8 @@ mod tests {
     // ── Cohesion: only cross-module edges = zero cohesion ──
     #[test]
     fn cross_module_only_zero_cohesion() {
-        let edges = vec![
-            edge("src/a.rs", "lib/b.rs"),
-        ];
-        let snap = snap_with_edges(
-            edges,
-            vec![file("src/a.rs"), file("lib/b.rs")],
-        );
+        let edges = vec![edge("src/a.rs", "lib/b.rs")];
+        let snap = snap_with_edges(edges, vec![file("src/a.rs"), file("lib/b.rs")]);
         let report = compute_health(&snap);
         // Each module (src/, lib/) has only 1 file -> no modules with >=2 files -> None
         assert_eq!(report.avg_cohesion, None);
@@ -88,10 +80,7 @@ mod tests {
     // ── Instability: file with only fan-out = I=1.0 (maximally unstable) ──
     #[test]
     fn pure_fanout_max_instability() {
-        let edges = vec![
-            edge("src/a.rs", "src/b.rs"),
-            edge("src/a.rs", "src/c.rs"),
-        ];
+        let edges = vec![edge("src/a.rs", "src/b.rs"), edge("src/a.rs", "src/c.rs")];
         let snap = snap_with_edges(
             edges,
             vec![file("src/a.rs"), file("src/b.rs"), file("src/c.rs")],
@@ -105,10 +94,7 @@ mod tests {
     // ── Instability: file with only fan-in = I=0.0 (maximally stable) ──
     #[test]
     fn pure_fanin_zero_instability() {
-        let edges = vec![
-            edge("src/a.rs", "src/b.rs"),
-            edge("src/c.rs", "src/b.rs"),
-        ];
+        let edges = vec![edge("src/a.rs", "src/b.rs"), edge("src/c.rs", "src/b.rs")];
         let snap = snap_with_edges(
             edges,
             vec![file("src/a.rs"), file("src/b.rs"), file("src/c.rs")],
@@ -132,7 +118,12 @@ mod tests {
         ];
         let mut snap = snap_with_edges(
             edges,
-            vec![file("src/a.rs"), file("src/b.rs"), file("src/c.rs"), file("src/d.rs")],
+            vec![
+                file("src/a.rs"),
+                file("src/b.rs"),
+                file("src/c.rs"),
+                file("src/d.rs"),
+            ],
         );
         snap.entry_points = vec![EntryPoint {
             file: "src/a.rs".to_string(),
@@ -151,7 +142,10 @@ mod tests {
             vec![edge("src/a.rs", "src/b.rs")],
             vec![file("src/a.rs"), file("src/b.rs")],
         );
-        assert_eq!(snap.total_files, 2, "test helper must set total_files from file count");
+        assert_eq!(
+            snap.total_files, 2,
+            "test helper must set total_files from file count"
+        );
     }
 
     // ── Normalization: god file ratio scales with project size ──
@@ -171,11 +165,14 @@ mod tests {
             let snap = snap_with_edges(edges, files_vec);
             compute_health(&snap)
         };
-        let small = make_project(0);   // 21 files, 1 god
-        let large = make_project(200);  // 221 files, 1 god
+        let small = make_project(0); // 21 files, 1 god
+        let large = make_project(200); // 221 files, 1 god
         let small_ratio = small.god_files.len() as f64 / 21.0;
         let large_ratio = large.god_files.len() as f64 / 221.0;
-        assert!(large_ratio < small_ratio, "god file impact should decrease with project size");
+        assert!(
+            large_ratio < small_ratio,
+            "god file impact should decrease with project size"
+        );
     }
 
     // ── BUG 2 verification: entry-point files excluded from god files ──
@@ -197,7 +194,10 @@ mod tests {
             confidence: "high".to_string(),
         }];
         let report = compute_health(&snap);
-        assert!(report.god_files.is_empty(), "entry-point files should not be flagged as god files");
+        assert!(
+            report.god_files.is_empty(),
+            "entry-point files should not be flagged as god files"
+        );
     }
 
     // ── Depth: no entry points falls back to root nodes (fan-in=0) ──
@@ -206,7 +206,10 @@ mod tests {
         let edges = vec![edge("src/a.rs", "src/b.rs")];
         let snap = snap_with_edges(edges, vec![file("src/a.rs"), file("src/b.rs")]);
         let report = compute_health(&snap);
-        assert_eq!(report.max_depth, 1, "should compute depth from root nodes when no entry points");
+        assert_eq!(
+            report.max_depth, 1,
+            "should compute depth from root nodes when no entry points"
+        );
     }
 
     // ── Comment ratio: simple ratio ──
@@ -231,8 +234,11 @@ mod tests {
         let report = compute_health(&snap);
         assert_eq!(report.large_file_count, 1);
         // Simple ratio: 1/2 = 0.5
-        assert!((report.large_file_ratio - 0.5).abs() < 0.01,
-            "simple ratio, got {}", report.large_file_ratio);
+        assert!(
+            (report.large_file_ratio - 0.5).abs() < 0.01,
+            "simple ratio, got {}",
+            report.large_file_ratio
+        );
     }
 
     // ── Long function ratio ──
@@ -242,14 +248,50 @@ mod tests {
             path: "src/a.rs".to_string(),
             name: "a.rs".to_string(),
             is_dir: false,
-            lines: 200, logic: 150, comments: 20, blanks: 30, funcs: 2,
-            mtime: 0.0, gs: String::new(), lang: "rust".to_string(),
+            lines: 200,
+            logic: 150,
+            comments: 20,
+            blanks: 30,
+            funcs: 2,
+            mtime: 0.0,
+            gs: String::new(),
+            lang: "rust".to_string(),
             sa: Some(StructuralAnalysis {
                 functions: Some(vec![
-                    FuncInfo { n: "short".into(), sl: 1, el: 10, ln: 10, cc: Some(2), cog: None, pc: None, bh: None, d: None, co: None, is_public: false, is_method: false },
-                    FuncInfo { n: "long".into(), sl: 11, el: 100, ln: 90, cc: Some(3), cog: None, pc: None, bh: None, d: None, co: None, is_public: false, is_method: false },
+                    FuncInfo {
+                        n: "short".into(),
+                        sl: 1,
+                        el: 10,
+                        ln: 10,
+                        cc: Some(2),
+                        cog: None,
+                        pc: None,
+                        bh: None,
+                        d: None,
+                        co: None,
+                        is_public: false,
+                        is_method: false,
+                    },
+                    FuncInfo {
+                        n: "long".into(),
+                        sl: 11,
+                        el: 100,
+                        ln: 90,
+                        cc: Some(3),
+                        cog: None,
+                        pc: None,
+                        bh: None,
+                        d: None,
+                        co: None,
+                        is_public: false,
+                        is_method: false,
+                    },
                 ]),
-                cls: None, imp: None, co: None, tags: None, comment_lines: None,
+                cls: None,
+                imp: None,
+                co: None,
+                tags: None,
+                comment_lines: None,
             }),
             children: None,
         };
@@ -257,8 +299,11 @@ mod tests {
         let report = compute_health(&snap);
         assert_eq!(report.long_functions.len(), 1);
         // Simple ratio: 1/2 = 0.5
-        assert!((report.long_fn_ratio - 0.5).abs() < 0.01,
-            "simple ratio, got {}", report.long_fn_ratio);
+        assert!(
+            (report.long_fn_ratio - 0.5).abs() < 0.01,
+            "simple ratio, got {}",
+            report.long_fn_ratio
+        );
     }
 
     // ── Monotonicity: worse input -> same or worse score for each dimension ──
@@ -269,8 +314,6 @@ mod tests {
         assert!(coupling_score(0.1) >= coupling_score(0.5));
         assert!(coupling_score(0.5) >= coupling_score(0.8));
         // Higher quality signal = better (direct comparison)
-        assert!(0.8 > 0.2);
-        assert!(0.2 > 0.01);
     }
 
     // ── module_of: depth-2 boundary ──
@@ -280,7 +323,10 @@ mod tests {
         assert_eq!(module_of("src/layout/types.rs"), "src/layout");
         // Depth-3: nested dirs get finer-grained module boundaries
         assert_eq!(module_of("src/layout/nested/deep.rs"), "src/layout/nested");
-        assert_eq!(module_of("frontend/components/btn.js"), "frontend/components");
+        assert_eq!(
+            module_of("frontend/components/btn.js"),
+            "frontend/components"
+        );
         assert_eq!(module_of("backend/routes/api.js"), "backend/routes");
         assert_eq!(module_of("tests/unit/test_foo.rs"), "tests/unit");
     }

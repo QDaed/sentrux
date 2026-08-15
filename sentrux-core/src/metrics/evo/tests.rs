@@ -7,9 +7,10 @@
 //! and monotonicity (more authors improve bus factor grade) properties.
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
-    use crate::metrics::evo::*;
     use crate::metrics::evo::git_walker::{CommitFile, CommitRecord};
+    use crate::metrics::evo::*;
     use std::collections::{HashMap, HashSet};
 
     // ── Unit tests for scoring functions ──
@@ -51,7 +52,10 @@ mod tests {
                 },
             );
         }
-        assert!(score_churn_concentration(&churn) > 0.5, "uniform churn should score high");
+        assert!(
+            score_churn_concentration(&churn) > 0.5,
+            "uniform churn should score high"
+        );
     }
 
     #[test]
@@ -77,7 +81,10 @@ mod tests {
                 },
             );
         }
-        assert!(score_churn_concentration(&churn) < 0.2, "concentrated churn should score low");
+        assert!(
+            score_churn_concentration(&churn) < 0.2,
+            "concentrated churn should score low"
+        );
     }
 
     // ── Min score test ──
@@ -97,24 +104,48 @@ mod tests {
                 author: "alice".to_string(),
                 epoch: 1000000,
                 files: vec![
-                    CommitFile { path: "a.rs".to_string(), added: 10, removed: 2 },
-                    CommitFile { path: "b.rs".to_string(), added: 5, removed: 1 },
+                    CommitFile {
+                        path: "a.rs".to_string(),
+                        added: 10,
+                        removed: 2,
+                    },
+                    CommitFile {
+                        path: "b.rs".to_string(),
+                        added: 5,
+                        removed: 1,
+                    },
                 ],
             },
             CommitRecord {
                 author: "bob".to_string(),
                 epoch: 1100000,
                 files: vec![
-                    CommitFile { path: "a.rs".to_string(), added: 3, removed: 3 },
-                    CommitFile { path: "c.rs".to_string(), added: 20, removed: 0 },
+                    CommitFile {
+                        path: "a.rs".to_string(),
+                        added: 3,
+                        removed: 3,
+                    },
+                    CommitFile {
+                        path: "c.rs".to_string(),
+                        added: 20,
+                        removed: 0,
+                    },
                 ],
             },
             CommitRecord {
                 author: "alice".to_string(),
                 epoch: 1200000,
                 files: vec![
-                    CommitFile { path: "a.rs".to_string(), added: 1, removed: 1 },
-                    CommitFile { path: "b.rs".to_string(), added: 2, removed: 0 },
+                    CommitFile {
+                        path: "a.rs".to_string(),
+                        added: 1,
+                        removed: 1,
+                    },
+                    CommitFile {
+                        path: "b.rs".to_string(),
+                        added: 2,
+                        removed: 0,
+                    },
                 ],
             },
         ]
@@ -154,8 +185,16 @@ mod tests {
             author: "x".to_string(),
             epoch: 1000,
             files: vec![
-                CommitFile { path: "known.rs".to_string(), added: 1, removed: 0 },
-                CommitFile { path: "deleted.rs".to_string(), added: 1, removed: 0 },
+                CommitFile {
+                    path: "known.rs".to_string(),
+                    added: 1,
+                    removed: 0,
+                },
+                CommitFile {
+                    path: "deleted.rs".to_string(),
+                    added: 1,
+                    removed: 0,
+                },
             ],
         }];
         let known: HashSet<String> = ["known.rs"].into_iter().map(String::from).collect();
@@ -179,8 +218,16 @@ mod tests {
                 author: "alice".to_string(),
                 epoch: 1000000 + i * 1000,
                 files: vec![
-                    CommitFile { path: "a.rs".to_string(), added: 1, removed: 0 },
-                    CommitFile { path: "b.rs".to_string(), added: 1, removed: 0 },
+                    CommitFile {
+                        path: "a.rs".to_string(),
+                        added: 1,
+                        removed: 0,
+                    },
+                    CommitFile {
+                        path: "b.rs".to_string(),
+                        added: 1,
+                        removed: 0,
+                    },
                 ],
             });
         }
@@ -219,12 +266,24 @@ mod tests {
     #[test]
     fn hotspots_ranked_by_risk() {
         let mut churn = HashMap::new();
-        churn.insert("simple.rs".to_string(), FileChurn {
-            commit_count: 10, lines_added: 0, lines_removed: 0, total_churn: 0,
-        });
-        churn.insert("complex.rs".to_string(), FileChurn {
-            commit_count: 5, lines_added: 0, lines_removed: 0, total_churn: 0,
-        });
+        churn.insert(
+            "simple.rs".to_string(),
+            FileChurn {
+                commit_count: 10,
+                lines_added: 0,
+                lines_removed: 0,
+                total_churn: 0,
+            },
+        );
+        churn.insert(
+            "complex.rs".to_string(),
+            FileChurn {
+                commit_count: 5,
+                lines_added: 0,
+                lines_removed: 0,
+                total_churn: 0,
+            },
+        );
 
         let mut complexity = HashMap::new();
         complexity.insert("simple.rs".to_string(), 2u32);
@@ -283,11 +342,9 @@ mod tests {
             .into_iter()
             .map(String::from)
             .collect();
-        let complexity: HashMap<String, u32> = [
-            ("sentrux-core/src/lib.rs".to_string(), 5u32),
-        ]
-        .into_iter()
-        .collect();
+        let complexity: HashMap<String, u32> = [("sentrux-core/src/lib.rs".to_string(), 5u32)]
+            .into_iter()
+            .collect();
 
         let result = compute_evolution(root, &known, &complexity, Some(365));
         assert!(result.is_ok());

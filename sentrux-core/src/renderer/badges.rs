@@ -4,7 +4,7 @@
 //! High-confidence entry points get the theme's badge_high color; low-confidence
 //! get badge_low. Only visible when the file block is large enough on screen.
 
-use super::{RectKind, RenderData, RenderContext};
+use super::{RectKind, RenderContext, RenderData};
 use egui::{CornerRadius, Stroke, StrokeKind};
 
 /// Draw entry-point badges at the top-right corner of file rects.
@@ -28,7 +28,9 @@ pub fn draw_badges(
     let inset = ctx.settings.file_rect_inset;
     for r in &rd.rects {
         if let Some(confidence) = badge_candidate(r, &ep_set, vp) {
-            let screen_rect = vp.world_to_screen_rect(r.x, r.y, r.w, r.h, canvas_origin).shrink(inset);
+            let screen_rect = vp
+                .world_to_screen_rect(r.x, r.y, r.w, r.h, canvas_origin)
+                .shrink(inset);
             if screen_rect.width() >= 14.0 && screen_rect.height() >= 14.0 {
                 draw_single_badge(painter, screen_rect, badge_size, confidence, ctx);
             }
@@ -42,14 +44,20 @@ fn badge_candidate<'a>(
     ep_set: &std::collections::HashMap<&str, &'a str>,
     vp: &crate::layout::viewport::ViewportTransform,
 ) -> Option<&'a str> {
-    if r.kind != RectKind::File { return None; }
+    if r.kind != RectKind::File {
+        return None;
+    }
     let confidence = *ep_set.get(r.path.as_str())?;
-    if !vp.is_visible(r.x, r.y, r.w, r.h) { return None; }
+    if !vp.is_visible(r.x, r.y, r.w, r.h) {
+        return None;
+    }
     Some(confidence)
 }
 
 /// Build a map of entry-point file paths to their confidence level.
-fn build_entry_point_set<'a>(ctx: &'a RenderContext) -> std::collections::HashMap<&'a str, &'a str> {
+fn build_entry_point_set<'a>(
+    ctx: &'a RenderContext,
+) -> std::collections::HashMap<&'a str, &'a str> {
     ctx.snapshot
         .as_ref()
         .map(|snap| {
@@ -78,8 +86,17 @@ fn draw_single_badge(
     );
 
     let tc = &ctx.theme_config;
-    let fill = if confidence == "high" { tc.badge_high } else { tc.badge_low };
+    let fill = if confidence == "high" {
+        tc.badge_high
+    } else {
+        tc.badge_low
+    };
 
     painter.rect_filled(badge_rect, CornerRadius::ZERO, fill);
-    painter.rect_stroke(badge_rect, CornerRadius::ZERO, Stroke::new(1.0, tc.section_border), StrokeKind::Middle);
+    painter.rect_stroke(
+        badge_rect,
+        CornerRadius::ZERO,
+        Stroke::new(1.0_f32, tc.section_border),
+        StrokeKind::Middle,
+    );
 }

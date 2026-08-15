@@ -6,9 +6,7 @@
 
 // Re-export color computation functions from color_utils
 pub(crate) use crate::app::color_utils::lang_profile_color;
-pub(crate) use crate::app::color_utils::score_color;
 pub(crate) use crate::app::color_utils::score_color_for_theme;
-pub(crate) use crate::app::color_utils::score_color_themed;
 
 #[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
@@ -30,11 +28,18 @@ pub(crate) fn draw_flagged_list<T, F, H>(
         return;
     }
     ui.add_space(3.0);
-    ui.label(egui::RichText::new(title).monospace().size(8.0).color(color));
+    ui.label(
+        egui::RichText::new(title)
+            .monospace()
+            .size(8.0)
+            .color(color),
+    );
     for item in items.iter().take(max_items) {
         let text = format_fn(item);
-        let (rect, resp) =
-            ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let (rect, resp) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         if resp.hovered() {
             resp.on_hover_text(egui::RichText::new(hover_fn(item)).monospace().size(10.0));
         }
@@ -48,8 +53,10 @@ pub(crate) fn draw_flagged_list<T, F, H>(
     }
     let remaining = items.len().saturating_sub(max_items);
     if remaining > 0 {
-        let (rect, _) =
-            ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
             egui::Align2::LEFT_CENTER,

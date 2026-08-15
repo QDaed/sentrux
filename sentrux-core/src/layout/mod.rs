@@ -57,7 +57,11 @@ fn find_subtree<'a>(node: &'a FileNode, target_path: &str) -> Option<&'a FileNod
     find_subtree_inner(node, target_path, 0)
 }
 
-fn find_subtree_inner<'a>(node: &'a FileNode, target_path: &str, depth: u32) -> Option<&'a FileNode> {
+fn find_subtree_inner<'a>(
+    node: &'a FileNode,
+    target_path: &str,
+    depth: u32,
+) -> Option<&'a FileNode> {
     if depth >= weight::MAX_DEPTH {
         return None;
     }
@@ -92,18 +96,20 @@ pub fn compute_layout_from_snapshot(
 ) -> RenderData {
     let layout_root = resolve_drill_target(&snapshot.root, drill_path);
 
-    let (rects, anchors, content_w, content_h, route_margin) = dispatch_layout(
-        layout_root, snapshot, viewport_w, viewport_h, cfg,
-    );
+    let (rects, anchors, content_w, content_h, route_margin) =
+        dispatch_layout(layout_root, snapshot, viewport_w, viewport_h, cfg);
 
-    let (edge_paths, edge_adjacency) = aggregation::compute_all_edge_paths(
-        snapshot, &anchors, cfg.settings,
-    );
+    let (edge_paths, edge_adjacency) =
+        aggregation::compute_all_edge_paths(snapshot, &anchors, cfg.settings);
 
     RenderData {
-        rects, anchors, edge_paths,
-        content_width: content_w, content_height: content_h,
-        route_margin, edge_adjacency,
+        rects,
+        anchors,
+        edge_paths,
+        content_width: content_w,
+        content_height: content_h,
+        route_margin,
+        edge_adjacency,
     }
 }
 
@@ -122,10 +128,15 @@ fn dispatch_layout(
     viewport_w: f64,
     viewport_h: f64,
     cfg: &LayoutConfig<'_>,
-) -> (Vec<types::LayoutRectSlim>, std::collections::HashMap<String, types::Anchor>, f64, f64, f64) {
+) -> (
+    Vec<types::LayoutRectSlim>,
+    std::collections::HashMap<String, types::Anchor>,
+    f64,
+    f64,
+    f64,
+) {
     if cfg.layout_mode.is_blueprint() {
-        let (rects, anchors, cw, ch) =
-            blueprint::layout_blueprint(layout_root, snapshot, cfg);
+        let (rects, anchors, cw, ch) = blueprint::layout_blueprint(layout_root, snapshot, cfg);
         (rects, anchors, cw, ch, cfg.settings.blueprint_route_margin)
     } else {
         let (rects, anchors) =

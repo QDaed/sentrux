@@ -8,7 +8,6 @@
 
 use super::*;
 use crate::metrics::test_helpers::edge;
-use crate::core::types::ImportEdge;
 
 #[test]
 fn empty_dsm() {
@@ -30,10 +29,7 @@ fn single_edge_dsm() {
 
 #[test]
 fn dsm_sorted_by_level() {
-    let edges = vec![
-        edge("a.rs", "b.rs"),
-        edge("b.rs", "c.rs"),
-    ];
+    let edges = vec![edge("a.rs", "b.rs"), edge("b.rs", "c.rs")];
     let dsm = build_dsm(&edges);
     assert_eq!(dsm.files[0], "c.rs");
     assert_eq!(dsm.files[1], "b.rs");
@@ -42,10 +38,7 @@ fn dsm_sorted_by_level() {
 
 #[test]
 fn dsm_above_below_diagonal() {
-    let edges = vec![
-        edge("a.rs", "b.rs"),
-        edge("b.rs", "c.rs"),
-    ];
+    let edges = vec![edge("a.rs", "b.rs"), edge("b.rs", "c.rs")];
     let dsm = build_dsm(&edges);
     assert_eq!(dsm.below_diagonal, 2, "clean DAG = all below diagonal");
     assert_eq!(dsm.above_diagonal, 0);
@@ -61,11 +54,17 @@ fn dsm_same_level_edges_not_counted() {
     ];
     let dsm = build_dsm(&edges);
     assert_eq!(dsm.below_diagonal, 2, "only cross-level edges counted");
-    assert_eq!(dsm.above_diagonal, 0, "same-level edges not counted as inversions");
+    assert_eq!(
+        dsm.above_diagonal, 0,
+        "same-level edges not counted as inversions"
+    );
     assert_eq!(dsm.same_level, 2, "cycle edges are same-level");
     assert_eq!(dsm.edge_count, 4, "all edges still in matrix");
-    assert_eq!(dsm.above_diagonal + dsm.below_diagonal + dsm.same_level, dsm.edge_count,
-        "edge classification must be exhaustive");
+    assert_eq!(
+        dsm.above_diagonal + dsm.below_diagonal + dsm.same_level,
+        dsm.edge_count,
+        "edge classification must be exhaustive"
+    );
 }
 
 #[test]
@@ -77,8 +76,11 @@ fn dsm_detects_inversion() {
     ];
     let dsm = build_dsm(&edges);
     assert_eq!(dsm.edge_count, 3);
-    assert_eq!(dsm.above_diagonal + dsm.below_diagonal, 0,
-        "cycle edges are same-level, not classified as above/below");
+    assert_eq!(
+        dsm.above_diagonal + dsm.below_diagonal,
+        0,
+        "cycle edges are same-level, not classified as above/below"
+    );
 }
 
 #[test]
@@ -95,10 +97,7 @@ fn dsm_detects_cross_level_inversion() {
 
 #[test]
 fn dsm_stats_density() {
-    let edges = vec![
-        edge("a.rs", "b.rs"),
-        edge("b.rs", "c.rs"),
-    ];
+    let edges = vec![edge("a.rs", "b.rs"), edge("b.rs", "c.rs")];
     let dsm = build_dsm(&edges);
     let stats = compute_stats(&dsm);
     assert!((stats.density - 2.0 / 6.0).abs() < 0.001);
@@ -106,17 +105,18 @@ fn dsm_stats_density() {
 
 #[test]
 fn dsm_propagation_cost() {
-    let edges = vec![
-        edge("a.rs", "b.rs"),
-        edge("b.rs", "c.rs"),
-    ];
+    let edges = vec![edge("a.rs", "b.rs"), edge("b.rs", "c.rs")];
     let dsm = build_dsm(&edges);
     let stats = compute_stats(&dsm);
     // a reaches {b,c}=2, b reaches {c}=1, c reaches {}=0. Total=3.
     // Normalized by N*(N-1) = 3*2 = 6 (max reachability per node is N-1, not N).
     let expected = 3.0 / 6.0;
-    assert!((stats.propagation_cost - expected).abs() < 0.01,
-        "propagation_cost={}, expected={}", stats.propagation_cost, expected);
+    assert!(
+        (stats.propagation_cost - expected).abs() < 0.01,
+        "propagation_cost={}, expected={}",
+        stats.propagation_cost,
+        expected
+    );
 }
 
 #[test]
@@ -128,7 +128,11 @@ fn dsm_clusters_one_directional_no_cluster() {
     ];
     let dsm = build_dsm(&edges);
     let stats = compute_stats(&dsm);
-    assert_eq!(stats.clusters.len(), 0, "one-directional edge = no mutual dependency cluster");
+    assert_eq!(
+        stats.clusters.len(),
+        0,
+        "one-directional edge = no mutual dependency cluster"
+    );
 }
 
 #[test]
@@ -143,7 +147,10 @@ fn dsm_clusters_mutual_dependency() {
     let stats = compute_stats(&dsm);
     assert_eq!(stats.clusters.len(), 1, "mutual dependency = cluster");
     assert_eq!(stats.clusters[0].files.len(), 2);
-    assert_eq!(stats.clusters[0].internal_edges, 2, "both directed edges counted");
+    assert_eq!(
+        stats.clusters[0].internal_edges, 2,
+        "both directed edges counted"
+    );
 }
 
 #[test]

@@ -48,7 +48,7 @@ pub fn draw_progress_overlay(ui: &mut egui::Ui, state: &AppState, compact: bool)
     painter.rect_stroke(
         overlay_rect,
         egui::CornerRadius::ZERO,
-        egui::Stroke::new(1.0, tc.section_border),
+        egui::Stroke::new(1.0_f32, tc.section_border),
         egui::StrokeKind::Middle,
     );
 
@@ -89,7 +89,8 @@ fn draw_compact_content(
     painter.rect_filled(bar_rect, egui::CornerRadius::ZERO, pc.bar_bg);
     let fill_w = (bar_w * (state.scan_pct.min(100) as f32 / 100.0)).min(bar_w);
     if fill_w > 0.0 {
-        let fill_rect = egui::Rect::from_min_size(egui::pos2(bar_x, bar_y), egui::vec2(fill_w, 8.0));
+        let fill_rect =
+            egui::Rect::from_min_size(egui::pos2(bar_x, bar_y), egui::vec2(fill_w, 8.0));
         painter.rect_filled(fill_rect, egui::CornerRadius::ZERO, pc.bar_fill);
     }
 }
@@ -116,7 +117,8 @@ fn draw_centered_content(
     painter.rect_filled(bar_rect, egui::CornerRadius::ZERO, pc.bar_bg);
     let fill_w = (bar_w * (state.scan_pct.min(100) as f32 / 100.0)).min(bar_w);
     if fill_w > 0.0 {
-        let fill_rect = egui::Rect::from_min_size(egui::pos2(bar_x, bar_y), egui::vec2(fill_w, 12.0));
+        let fill_rect =
+            egui::Rect::from_min_size(egui::pos2(bar_x, bar_y), egui::vec2(fill_w, 12.0));
         painter.rect_filled(fill_rect, egui::CornerRadius::ZERO, pc.bar_fill);
     }
     painter.text(

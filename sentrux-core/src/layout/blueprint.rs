@@ -4,14 +4,14 @@
 //! dependency level (DAG topological sort). Produces a grid-like arrangement
 //! that emphasizes architectural layers over space-filling.
 
+use crate::core::settings::Settings;
+use crate::core::snapshot::Snapshot;
+use crate::core::types::FileNode;
 use crate::layout::blueprint_dag::compute_dag_order;
 use crate::layout::squarify::{squarify, SquarifyConfig, WeightedItem};
 use crate::layout::types::{Anchor, LayoutCtx, LayoutRectSlim, RectKind};
 use crate::layout::weight::{WeightConfig, MAX_DEPTH};
 use crate::layout::LayoutConfig;
-use crate::core::settings::Settings;
-use crate::core::snapshot::Snapshot;
-use crate::core::types::FileNode;
 use std::collections::HashMap;
 
 /// Rectangle for blueprint layout — bundles (x, y, w, h) to reduce parameter counts.
@@ -54,12 +54,7 @@ pub fn layout_blueprint(
     root: &FileNode,
     snapshot: &Snapshot,
     cfg: &LayoutConfig<'_>,
-) -> (
-    Vec<LayoutRectSlim>,
-    HashMap<String, Anchor>,
-    f64,
-    f64,
-) {
+) -> (Vec<LayoutRectSlim>, HashMap<String, Anchor>, f64, f64) {
     let settings = cfg.settings;
     let wc = WeightConfig {
         size_mode: cfg.size_mode,
@@ -95,13 +90,22 @@ pub fn layout_blueprint(
     layout_dir(root, root_rect, 0, &mut lctx, dag_order.as_ref());
 
     let (max_x, max_y) = compute_bounds(&rects);
-    (rects, anchors, max_x + settings.blueprint_route_margin, max_y + settings.blueprint_route_margin)
+    (
+        rects,
+        anchors,
+        max_x + settings.blueprint_route_margin,
+        max_y + settings.blueprint_route_margin,
+    )
 }
 
 /// Compute DAG order from snapshot graphs if any edges exist.
 fn compute_optional_dag(root: &FileNode, snapshot: &Snapshot) -> Option<HashMap<String, usize>> {
     let has_graph = !snapshot.import_graph.is_empty() || !snapshot.call_graph.is_empty();
-    if has_graph { Some(compute_dag_order(root, snapshot)) } else { None }
+    if has_graph {
+        Some(compute_dag_order(root, snapshot))
+    } else {
+        None
+    }
 }
 
 /// Find the bounding box (max x, max y) of all layout rects.
@@ -135,22 +139,34 @@ struct TreeStatsAcc {
 
 /// Walk the tree collecting visible dir count, max depth, and visible file paths.
 fn collect_tree_stats(root: &FileNode, weights: &HashMap<String, f64>) -> (u32, u32, Vec<String>) {
-    let mut acc = TreeStatsAcc { total_dirs: 0, max_depth: 0, flat_files: Vec::new() };
+    let mut acc = TreeStatsAcc {
+        total_dirs: 0,
+        max_depth: 0,
+        flat_files: Vec::new(),
+    };
 
     fn count(n: &FileNode, d: u32, acc: &mut TreeStatsAcc, weights: &HashMap<String, f64>) -> bool {
         if !n.is_dir {
             let w = weights.get(&n.path).copied().unwrap_or(0.0);
-            if w > 0.0 { acc.flat_files.push(n.path.clone()); }
+            if w > 0.0 {
+                acc.flat_files.push(n.path.clone());
+            }
             return w > 0.0;
         }
-        if d > acc.max_depth { acc.max_depth = d; }
+        if d > acc.max_depth {
+            acc.max_depth = d;
+        }
         let mut has_visible = false;
         if let Some(children) = &n.children {
             for c in children {
-                if count(c, d + 1, acc, weights) { has_visible = true; }
+                if count(c, d + 1, acc, weights) {
+                    has_visible = true;
+                }
             }
         }
-        if has_visible { acc.total_dirs += 1; }
+        if has_visible {
+            acc.total_dirs += 1;
+        }
         has_visible
     }
     count(root, 0, &mut acc, weights);
@@ -158,11 +174,26 @@ fn collect_tree_stats(root: &FileNode, weights: &HashMap<String, f64>) -> (u32, 
 }
 
 /// Compute (width, height) content area from collected tree statistics.
-fn size_from_stats(total_dirs: u32, max_depth: u32, flat_files: &[String], weights: &HashMap<String, f64>) -> (f64, f64) {
-    let total_weight: f64 = flat_files.iter().map(|f| weights.get(f).copied().unwrap_or(0.0)).sum();
-    let visible_files = flat_files.iter().filter(|f| weights.get(*f).copied().unwrap_or(0.0) > 0.0).count();
-    let avg_weight = if visible_files > 0 { total_weight / visible_files as f64 } else { 1.0 };
-    let side_per_file = (avg_weight.sqrt() * 40.0).max(30.0).min(200.0);
+fn size_from_stats(
+    total_dirs: u32,
+    max_depth: u32,
+    flat_files: &[String],
+    weights: &HashMap<String, f64>,
+) -> (f64, f64) {
+    let total_weight: f64 = flat_files
+        .iter()
+        .map(|f| weights.get(f).copied().unwrap_or(0.0))
+        .sum();
+    let visible_files = flat_files
+        .iter()
+        .filter(|f| weights.get(*f).copied().unwrap_or(0.0) > 0.0)
+        .count();
+    let avg_weight = if visible_files > 0 {
+        total_weight / visible_files as f64
+    } else {
+        1.0
+    };
+    let side_per_file = (avg_weight.sqrt() * 40.0).clamp(30.0, 200.0);
 
     let nesting_overhead = max_depth as f64 * 40.0;
     let file_area = (visible_files.max(1) as f64) * side_per_file * side_per_file;
@@ -222,10 +253,10 @@ fn sort_and_build_weighted<'a>(
 
     let mut wchildren: Vec<(&FileNode, f64)> = Vec::with_capacity(dirs.len() + files.len());
     for d in dirs.iter() {
-        wchildren.push((*d, get_w(*d, weights)));
+        wchildren.push((*d, get_w(d, weights)));
     }
     for f in files.iter() {
-        wchildren.push((*f, get_w(*f, weights)));
+        wchildren.push((*f, get_w(f, weights)));
     }
     wchildren
 }
@@ -240,7 +271,10 @@ fn emit_file_rect(
 ) {
     lctx.rects.push(LayoutRectSlim {
         path: child.path.clone(),
-        x: r.x, y: r.y, w: r.w, h: r.h,
+        x: r.x,
+        y: r.y,
+        w: r.w,
+        h: r.h,
         depth,
         kind: RectKind::File,
         section_id: parent_path.to_string(),
@@ -255,7 +289,10 @@ fn emit_file_rect(
                 cx: r.x + r.w / 2.0,
                 cy: r.y + r.h / 2.0,
                 section_id: parent_path.to_string(),
-                bx: r.x, by: r.y, bw: r.w, bh: r.h,
+                bx: r.x,
+                by: r.y,
+                bw: r.w,
+                bh: r.h,
             },
         );
     }
@@ -303,12 +340,19 @@ fn layout_dir(
 
 /// Emit a section (directory) rect into the output.
 fn emit_section_rect(
-    node: &FileNode, r: BpRect, depth: u32, header: f64,
+    node: &FileNode,
+    r: BpRect,
+    depth: u32,
+    header: f64,
     rects: &mut Vec<LayoutRectSlim>,
 ) {
     rects.push(LayoutRectSlim {
         path: node.path.clone(),
-        x: r.x, y: r.y, w: r.w, h: r.h, depth,
+        x: r.x,
+        y: r.y,
+        w: r.w,
+        h: r.h,
+        depth,
         kind: RectKind::Section,
         section_id: node.path.clone(),
         grid_coord: None,
@@ -320,19 +364,28 @@ fn emit_section_rect(
 fn place_children(
     wchildren: &[(&FileNode, f64)],
     inner: BpRect,
-    depth: u32, parent_path: &str,
+    depth: u32,
+    parent_path: &str,
     lctx: &mut LayoutCtx<'_>,
     dag_order: Option<&HashMap<String, usize>>,
 ) {
-    let mut items: Vec<WeightedItem> = wchildren.iter().enumerate()
-        .map(|(i, (_, w))| WeightedItem { weight: *w, index: i })
+    let mut items: Vec<WeightedItem> = wchildren
+        .iter()
+        .enumerate()
+        .map(|(i, (_, w))| WeightedItem {
+            weight: *w,
+            index: i,
+        })
         .collect();
     items.sort_by(|a, b| b.weight.total_cmp(&a.weight));
 
     let gutter = gutter_for_depth(depth, lctx.settings);
     let mut placed: Vec<(usize, f64, f64, f64, f64)> = Vec::new();
     let sc = SquarifyConfig {
-        x: inner.x, y: inner.y, w: inner.w, h: inner.h,
+        x: inner.x,
+        y: inner.y,
+        w: inner.w,
+        h: inner.h,
         gutter,
         min_rect: lctx.settings.squarify_min_rect,
     };
@@ -342,7 +395,12 @@ fn place_children(
 
     for (idx, cx, cy, cw, ch) in placed {
         let (child_node, _) = wchildren[idx];
-        let cr = BpRect { x: cx, y: cy, w: cw, h: ch };
+        let cr = BpRect {
+            x: cx,
+            y: cy,
+            w: cw,
+            h: ch,
+        };
         if child_node.is_dir {
             layout_dir(child_node, cr, depth + 1, lctx, dag_order);
         } else {

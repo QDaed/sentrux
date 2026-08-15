@@ -32,14 +32,20 @@ fn draw_toolbar_panel(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pa
 
 /// Draw settings panel if open, updating result flags.
 fn draw_settings_if_open(app: &mut SentruxApp, ctx: &egui::Context, result: &mut PanelResult) {
-    if !app.state.settings_open { return; }
+    if !app.state.settings_open {
+        return;
+    }
     let (s_layout, s_visual) = crate::app::settings_panel::draw_settings_panel(
         ctx,
         &mut app.state.settings,
         &mut app.state.settings_open,
     );
-    if s_layout { result.layout_changed = true; }
-    if s_visual { result.visual_changed = true; }
+    if s_layout {
+        result.layout_changed = true;
+    }
+    if s_visual {
+        result.visual_changed = true;
+    }
 }
 
 /// Draw optional side panels (settings, metrics, activity, DSM).
@@ -53,14 +59,17 @@ fn draw_side_panels(app: &mut SentruxApp, ctx: &egui::Context, result: &mut Pane
     // Right panel: always visible when project loaded (context-sensitive)
     // Shows file detail when a file is selected, activity otherwise
     if app.state.snapshot.is_some()
-        && crate::app::panels::activity_panel::draw_activity_panel(ctx, &mut app.state) {
-            result.visual_changed = true;
-        }
+        && crate::app::panels::activity_panel::draw_activity_panel(ctx, &mut app.state)
+    {
+        result.visual_changed = true;
+    }
 
-    if app.state.dsm_panel_open && app.state.snapshot.is_some()
-        && crate::app::panels::dsm_panel::draw_dsm_panel(ctx, &mut app.state) {
-            result.visual_changed = true;
-        }
+    if app.state.dsm_panel_open
+        && app.state.snapshot.is_some()
+        && crate::app::panels::dsm_panel::draw_dsm_panel(ctx, &mut app.state)
+    {
+        result.visual_changed = true;
+    }
 }
 
 /// Draw all non-canvas panels. Returns what changed so update_loop can act.
@@ -90,6 +99,10 @@ pub(crate) fn draw_all_panels(app: &mut SentruxApp, ctx: &egui::Context) -> Pane
 }
 
 /// Draw the progress overlay on the canvas when scanning.
-pub(crate) fn draw_progress(ui: &mut egui::Ui, state: &crate::app::state::AppState, has_render: bool) {
+pub(crate) fn draw_progress(
+    ui: &mut egui::Ui,
+    state: &crate::app::state::AppState,
+    has_render: bool,
+) {
     crate::app::progress::draw_progress_overlay(ui, state, has_render);
 }

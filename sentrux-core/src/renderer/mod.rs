@@ -13,15 +13,15 @@ pub mod minimap;
 pub mod rects;
 
 // Re-exports for sub-modules — import from super:: instead of cross-module
+pub(crate) use crate::core::heat::{self, HeatTracker};
+pub(crate) use crate::core::settings::{Settings, ThemeConfig};
 pub(crate) use crate::core::snapshot::Snapshot;
 pub(crate) use crate::core::types::FileIndexEntry;
 pub(crate) use crate::layout::types::{
     ColorMode, EdgeFilter, EdgePath, LayoutRectSlim, RectKind, RenderData,
 };
-pub(crate) use crate::metrics::arch::ArchReport;
-pub(crate) use crate::core::heat::{self, HeatTracker};
-pub(crate) use crate::core::settings::{Settings, ThemeConfig};
 pub(crate) use crate::layout::viewport::ViewportTransform;
+pub(crate) use crate::metrics::arch::ArchReport;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -78,11 +78,7 @@ pub struct RenderContext<'a> {
 }
 
 /// Orchestrate a single frame of rendering onto the canvas painter.
-pub fn render_frame(
-    painter: &egui::Painter,
-    clip_rect: egui::Rect,
-    ctx: &RenderContext,
-) {
+pub fn render_frame(painter: &egui::Painter, clip_rect: egui::Rect, ctx: &RenderContext) {
     let rd = match ctx.render_data {
         Some(rd) => rd,
         None => return,
@@ -105,7 +101,8 @@ pub fn render_frame(
     }
 
     // Draw edges on top of blocks
-    if lod_full && (ctx.show_all_edges || ctx.selected_path.is_some() || ctx.hovered_path.is_some()) {
+    if lod_full && (ctx.show_all_edges || ctx.selected_path.is_some() || ctx.hovered_path.is_some())
+    {
         edges::draw_edges(painter, clip_rect, rd, ctx);
     }
 

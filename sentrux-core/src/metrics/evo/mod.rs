@@ -17,7 +17,7 @@ pub mod git_walker;
 #[cfg(test)]
 mod tests;
 
-use self::git_walker::{walk_git_log, epoch_now, CommitRecord};
+use self::git_walker::{epoch_now, walk_git_log, CommitRecord};
 
 // ── Named constants ──
 
@@ -433,7 +433,10 @@ pub(crate) fn compute_authors(
         })
         .collect();
 
-    let single_author_count = author_entries.iter().filter(|(_, _, is_single)| *is_single).count() as u32;
+    let single_author_count = author_entries
+        .iter()
+        .filter(|(_, _, is_single)| *is_single)
+        .count() as u32;
     let authors: HashMap<String, AuthorInfo> = author_entries
         .into_iter()
         .map(|(path, info, _)| (path, info))
@@ -451,9 +454,12 @@ pub(crate) fn compute_authors(
 fn build_author_info(author_map: HashMap<String, u32>) -> (AuthorInfo, bool) {
     let total_commits: u32 = author_map.values().sum();
     let mut sorted: Vec<(String, u32)> = author_map.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1));
 
-    let primary = sorted.first().map(|(n, _)| n.clone()).unwrap_or_else(|| "unknown".to_string());
+    let primary = sorted
+        .first()
+        .map(|(n, _)| n.clone())
+        .unwrap_or_else(|| "unknown".to_string());
     let primary_count = sorted.first().map(|(_, c)| *c).unwrap_or(0);
     let author_count = sorted.len() as u32;
 
@@ -493,7 +499,7 @@ pub(crate) fn compute_hotspots(
         })
         .collect();
 
-    hotspots.sort_by(|a, b| b.risk_score.cmp(&a.risk_score));
+    hotspots.sort_by_key(|b| std::cmp::Reverse(b.risk_score));
     hotspots.truncate(30);
     hotspots
 }
@@ -541,4 +547,3 @@ fn empty_report(days: u32) -> EvolutionReport {
         commits_analyzed: 0,
     }
 }
-

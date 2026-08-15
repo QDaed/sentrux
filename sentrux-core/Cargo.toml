@@ -2,6 +2,7 @@
 name = "sentrux-core"
 version = "0.5.7"
 edition = "2021"
+rust-version.workspace = true
 description = "Core library for sentrux — structural quality analysis engine"
 license = "MIT"
 repository = "https://github.com/sentrux/sentrux"

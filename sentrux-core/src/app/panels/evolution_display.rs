@@ -3,12 +3,16 @@
 //! Renders the EvolutionReport data in the metrics panel.
 //! Uses continuous [0,1] scores with smooth color gradient.
 
-use crate::metrics::evo::EvolutionReport;
-use super::ThemeConfig;
 use super::ui_helpers::score_color_for_theme;
+use super::ThemeConfig;
+use crate::metrics::evo::EvolutionReport;
 
 /// Draw the evolution section in the metrics panel.
-pub(crate) fn draw_evolution_section(ui: &mut egui::Ui, report: &EvolutionReport, tc: &ThemeConfig) {
+pub(crate) fn draw_evolution_section(
+    ui: &mut egui::Ui,
+    report: &EvolutionReport,
+    tc: &ThemeConfig,
+) {
     let row_h = 13.0;
     let font = egui::FontId::monospace(9.0);
 
@@ -22,18 +26,39 @@ pub(crate) fn draw_evolution_section(ui: &mut egui::Ui, report: &EvolutionReport
     ui.add_space(2.0);
 
     // Raw data rows — no score, just facts from git history
-    let commits_tooltip = format!("Total commits analyzed (last {} days)", report.lookback_days);
+    let commits_tooltip = format!(
+        "Total commits analyzed (last {} days)",
+        report.lookback_days
+    );
     let metrics: Vec<(&str, String, f64, &str)> = vec![
-        ("churn", format!("{} files", report.churn.len()), -1.0,
-         "Files with changes in lookback window"),
-        ("bus factor", format!("{} solo", (report.single_author_ratio * report.churn.len() as f64).round() as u32), -1.0,
-         "Files with only one author — bus factor risk"),
-        ("commits", format!("{}", report.commits_analyzed), -1.0,
-         commits_tooltip.as_str()),
+        (
+            "churn",
+            format!("{} files", report.churn.len()),
+            -1.0,
+            "Files with changes in lookback window",
+        ),
+        (
+            "bus factor",
+            format!(
+                "{} solo",
+                (report.single_author_ratio * report.churn.len() as f64).round() as u32
+            ),
+            -1.0,
+            "Files with only one author — bus factor risk",
+        ),
+        (
+            "commits",
+            format!("{}", report.commits_analyzed),
+            -1.0,
+            commits_tooltip.as_str(),
+        ),
     ];
 
     for (label, value, score, tooltip) in &metrics {
-        let (rect, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let (rect, resp) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         let cy = rect.center().y;
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, cy),
@@ -83,85 +108,147 @@ pub(crate) fn draw_evolution_section(ui: &mut egui::Ui, report: &EvolutionReport
 }
 
 fn draw_hotspots(ui: &mut egui::Ui, report: &EvolutionReport, tc: &ThemeConfig, row_h: f32) {
-    if report.hotspots.is_empty() { return; }
+    if report.hotspots.is_empty() {
+        return;
+    }
     let color = tc.accent_hotspot;
     ui.add_space(3.0);
-    ui.label(egui::RichText::new("HOTSPOTS (churn x complexity)").monospace().size(8.0).color(color));
+    ui.label(
+        egui::RichText::new("HOTSPOTS (churn x complexity)")
+            .monospace()
+            .size(8.0)
+            .color(color),
+    );
     for hs in report.hotspots.iter().take(5) {
         let name = hs.file.rsplit('/').next().unwrap_or(&hs.file);
-        let text = format!("  {} ({}x{}={})", name, hs.churn_count, hs.max_complexity, hs.risk_score);
-        let (rect, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let text = format!(
+            "  {} ({}x{}={})",
+            name, hs.churn_count, hs.max_complexity, hs.risk_score
+        );
+        let (rect, resp) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         if resp.hovered() {
             resp.on_hover_text(egui::RichText::new(&hs.file).monospace().size(10.0));
         }
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
-            egui::Align2::LEFT_CENTER, &text,
-            egui::FontId::monospace(8.0), color);
+            egui::Align2::LEFT_CENTER,
+            &text,
+            egui::FontId::monospace(8.0),
+            color,
+        );
     }
     if report.hotspots.len() > 5 {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
             egui::Align2::LEFT_CENTER,
             format!("  +{} more", report.hotspots.len() - 5),
-            egui::FontId::monospace(8.0), tc.text_muted);
+            egui::FontId::monospace(8.0),
+            tc.text_muted,
+        );
     }
 }
 
 fn draw_coupling(ui: &mut egui::Ui, report: &EvolutionReport, tc: &ThemeConfig, row_h: f32) {
-    if report.coupling_pairs.is_empty() { return; }
+    if report.coupling_pairs.is_empty() {
+        return;
+    }
     let color = tc.accent_coupling;
     ui.add_space(3.0);
-    ui.label(egui::RichText::new("CHANGE COUPLING (co-change)").monospace().size(8.0).color(color));
+    ui.label(
+        egui::RichText::new("CHANGE COUPLING (co-change)")
+            .monospace()
+            .size(8.0)
+            .color(color),
+    );
     for pair in report.coupling_pairs.iter().take(5) {
         let a = pair.file_a.rsplit('/').next().unwrap_or(&pair.file_a);
         let b = pair.file_b.rsplit('/').next().unwrap_or(&pair.file_b);
-        let text = format!("  {} <> {} ({} J:{})", a, b, pair.co_change_count, (pair.coupling_strength * 10000.0).round() as u32);
-        let (rect, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let text = format!(
+            "  {} <> {} ({} J:{})",
+            a,
+            b,
+            pair.co_change_count,
+            (pair.coupling_strength * 10000.0).round() as u32
+        );
+        let (rect, resp) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         if resp.hovered() {
             resp.on_hover_text(
-                egui::RichText::new(format!("{} <> {}", pair.file_a, pair.file_b)).monospace().size(10.0)
+                egui::RichText::new(format!("{} <> {}", pair.file_a, pair.file_b))
+                    .monospace()
+                    .size(10.0),
             );
         }
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
-            egui::Align2::LEFT_CENTER, &text,
-            egui::FontId::monospace(8.0), color);
+            egui::Align2::LEFT_CENTER,
+            &text,
+            egui::FontId::monospace(8.0),
+            color,
+        );
     }
     if report.coupling_pairs.len() > 5 {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
             egui::Align2::LEFT_CENTER,
             format!("  +{} more pairs", report.coupling_pairs.len() - 5),
-            egui::FontId::monospace(8.0), tc.text_muted);
+            egui::FontId::monospace(8.0),
+            tc.text_muted,
+        );
     }
 }
 
 fn draw_bus_factor(ui: &mut egui::Ui, report: &EvolutionReport, tc: &ThemeConfig, row_h: f32) {
-    let mut single_author_files: Vec<(&str, &str)> = report.authors.iter()
+    let mut single_author_files: Vec<(&str, &str)> = report
+        .authors
+        .iter()
         .filter(|(_, info)| info.author_count == 1)
         .map(|(path, info)| (path.as_str(), info.primary_author.as_str()))
         .collect();
     single_author_files.sort_unstable_by_key(|(path, _)| *path);
     single_author_files.truncate(5);
 
-    if single_author_files.is_empty() { return; }
+    if single_author_files.is_empty() {
+        return;
+    }
 
     let color = tc.accent_bus_factor;
     ui.add_space(3.0);
-    ui.label(egui::RichText::new("BUS FACTOR RISK (single author)").monospace().size(8.0).color(color));
+    ui.label(
+        egui::RichText::new("BUS FACTOR RISK (single author)")
+            .monospace()
+            .size(8.0)
+            .color(color),
+    );
     for (path, author) in single_author_files.iter().take(5) {
         let name = path.rsplit('/').next().unwrap_or(path);
         let text = format!("  {} ({})", name, author);
-        let (rect, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let (rect, resp) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         if resp.hovered() {
             resp.on_hover_text(egui::RichText::new(*path).monospace().size(10.0));
         }
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
-            egui::Align2::LEFT_CENTER, &text,
-            egui::FontId::monospace(8.0), color);
+            egui::Align2::LEFT_CENTER,
+            &text,
+            egui::FontId::monospace(8.0),
+            color,
+        );
     }
 }

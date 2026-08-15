@@ -121,7 +121,13 @@ pub fn simulate_sequence(
     let after = compute_arch_snapshot(&current_edges);
     let description = descriptions.join(" \u{2192} ");
 
-    build_whatif_result(description, &before, &after, edges.len(), current_edges.len())
+    build_whatif_result(
+        description,
+        &before,
+        &after,
+        edges.len(),
+        current_edges.len(),
+    )
 }
 
 #[allow(dead_code)]
@@ -158,9 +164,19 @@ fn compute_arch_snapshot(edges: &[ImportEdge]) -> ArchMetricSnapshot {
     let violations = arch::find_upward_violations(edges, &levels);
     let blast = arch::compute_blast_radius(edges);
     let max_blast = blast.values().copied().max().unwrap_or(0);
-    let ratio = if edges.is_empty() { 0.0 } else { violations.len() as f64 / edges.len() as f64 };
+    let ratio = if edges.is_empty() {
+        0.0
+    } else {
+        violations.len() as f64 / edges.len() as f64
+    };
     let score = score_from_ratio(ratio);
-    ArchMetricSnapshot { levels, max_level, violation_count: violations.len(), max_blast, score }
+    ArchMetricSnapshot {
+        levels,
+        max_level,
+        violation_count: violations.len(),
+        max_blast,
+        score,
+    }
 }
 
 /// Build a WhatIfResult from before/after snapshots and edge counts.
@@ -173,9 +189,24 @@ fn build_whatif_result(
 ) -> WhatIfResult {
     let mut changes = Vec::new();
     compare_metric(&mut changes, "Max level", before.max_level, after.max_level);
-    compare_metric(&mut changes, "Upward violations", before.violation_count as u32, after.violation_count as u32);
-    compare_metric(&mut changes, "Max blast radius", before.max_blast, after.max_blast);
-    compare_metric(&mut changes, "Total edges", edge_count_before as u32, edge_count_after as u32);
+    compare_metric(
+        &mut changes,
+        "Upward violations",
+        before.violation_count as u32,
+        after.violation_count as u32,
+    );
+    compare_metric(
+        &mut changes,
+        "Max blast radius",
+        before.max_blast,
+        after.max_blast,
+    );
+    compare_metric(
+        &mut changes,
+        "Total edges",
+        edge_count_before as u32,
+        edge_count_after as u32,
+    );
 
     let level_changes = compute_level_changes(&before.levels, &after.levels);
 
@@ -219,7 +250,9 @@ pub fn find_best_cycle_break(
 
     let cycle_edges: Vec<&ImportEdge> = edges
         .iter()
-        .filter(|e| cycle_set.contains(e.from_file.as_str()) && cycle_set.contains(e.to_file.as_str()))
+        .filter(|e| {
+            cycle_set.contains(e.from_file.as_str()) && cycle_set.contains(e.to_file.as_str())
+        })
         .collect();
 
     if cycle_edges.is_empty() {
@@ -233,7 +266,8 @@ pub fn find_best_cycle_break(
         *fan_in.entry(e.to_file.as_str()).or_default() += 1;
     }
 
-    let best = cycle_edges.iter()
+    let best = cycle_edges
+        .iter()
         .min_by_key(|e| fan_in.get(e.to_file.as_str()).copied().unwrap_or(0));
 
     best.map(|e| (e.from_file.clone(), e.to_file.clone()))
@@ -255,9 +289,20 @@ fn apply_move(edges: &[ImportEdge], old_path: &str, new_path: &str) -> (Vec<Impo
     let new_edges: Vec<ImportEdge> = edges
         .iter()
         .map(|e| {
-            let from = if e.from_file == old_path { new_path.to_string() } else { e.from_file.clone() };
-            let to = if e.to_file == old_path { new_path.to_string() } else { e.to_file.clone() };
-            ImportEdge { from_file: from, to_file: to }
+            let from = if e.from_file == old_path {
+                new_path.to_string()
+            } else {
+                e.from_file.clone()
+            };
+            let to = if e.to_file == old_path {
+                new_path.to_string()
+            } else {
+                e.to_file.clone()
+            };
+            ImportEdge {
+                from_file: from,
+                to_file: to,
+            }
         })
         .collect();
     (new_edges, format!("Move {old_path} \u{2192} {new_path}"))
@@ -265,7 +310,10 @@ fn apply_move(edges: &[ImportEdge], old_path: &str, new_path: &str) -> (Vec<Impo
 
 fn apply_add_edge(edges: &[ImportEdge], from: &str, to: &str) -> (Vec<ImportEdge>, String) {
     let mut new_edges = edges.to_vec();
-    new_edges.push(ImportEdge { from_file: from.to_string(), to_file: to.to_string() });
+    new_edges.push(ImportEdge {
+        from_file: from.to_string(),
+        to_file: to.to_string(),
+    });
     (new_edges, format!("Add edge {from} \u{2192} {to}"))
 }
 
@@ -294,7 +342,10 @@ fn apply_break_cycle(edges: &[ImportEdge], files: &[String]) -> (Vec<ImportEdge>
             .filter(|e| !(e.from_file == from && e.to_file == to))
             .cloned()
             .collect();
-        (new_edges, format!("Break cycle: remove {from} \u{2192} {to}"))
+        (
+            new_edges,
+            format!("Break cycle: remove {from} \u{2192} {to}"),
+        )
     } else {
         (edges.to_vec(), "No cycle edge found to break".to_string())
     }

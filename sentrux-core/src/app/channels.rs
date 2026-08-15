@@ -4,15 +4,15 @@
 //! (scanner, layout) goes through typed channels using these messages.
 //! Each message carries a generation counter for stale-result rejection.
 
-use crate::layout::types::{LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::core::settings::Settings;
-use crate::layout::types::FocusMode;
 use crate::core::snapshot::{ScanProgress, Snapshot};
-use crate::metrics::HealthReport;
+use crate::layout::types::FocusMode;
+use crate::layout::types::{LayoutMode, RenderData, ScaleMode, SizeMode};
 use crate::metrics::arch::ArchReport;
 use crate::metrics::evo::EvolutionReport;
-use crate::metrics::testgap::TestGapReport;
 use crate::metrics::rules::checks::RuleCheckResult;
+use crate::metrics::testgap::TestGapReport;
+use crate::metrics::HealthReport;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -123,4 +123,3 @@ pub enum LayoutMsg {
     /// Layout computation complete: render data + version for stale-result rejection
     Ready(RenderData, u64),
 }
-

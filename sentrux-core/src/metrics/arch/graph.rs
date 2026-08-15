@@ -92,7 +92,14 @@ fn kosaraju_finish_order<'a>(
         }
         let mut stack = vec![(node, false)];
         while let Some((n, finished)) = stack.pop() {
-            kosaraju_dfs_step(n, finished, &mut visited, &mut finish_order, &mut stack, adj);
+            kosaraju_dfs_step(
+                n,
+                finished,
+                &mut visited,
+                &mut finish_order,
+                &mut stack,
+                adj,
+            );
         }
     }
     finish_order
@@ -144,7 +151,11 @@ fn kosaraju_assign_sccs<'a>(
     }
 
     let scc_count = scc_sizes.len();
-    SccResult { scc_id, scc_sizes, scc_count }
+    SccResult {
+        scc_id,
+        scc_sizes,
+        scc_count,
+    }
 }
 
 // ── Levelization (Lakos 1996) ──
@@ -168,7 +179,10 @@ pub fn compute_levels(edges: &[ImportEdge]) -> (HashMap<String, u32>, u32) {
 
 /// Same as `compute_levels` but accepts pre-computed SCCs to avoid redundant
 /// O(V+E) Kosaraju when the caller also needs SCCs for other purposes.
-pub(crate) fn compute_levels_with_sccs(edges: &[ImportEdge], sccs: &SccResult<'_>) -> (HashMap<String, u32>, u32) {
+pub(crate) fn compute_levels_with_sccs(
+    edges: &[ImportEdge],
+    sccs: &SccResult<'_>,
+) -> (HashMap<String, u32>, u32) {
     if edges.is_empty() {
         return (HashMap::new(), 0);
     }
@@ -217,7 +231,8 @@ pub(crate) fn compute_levels_with_sccs(edges: &[ImportEdge], sccs: &SccResult<'_
     }
 
     // Map SCC levels back to individual nodes
-    let owned: HashMap<String, u32> = sccs.scc_id
+    let owned: HashMap<String, u32> = sccs
+        .scc_id
         .iter()
         .map(|(&node, &sid)| (node.to_string(), scc_levels[sid]))
         .collect();
@@ -254,7 +269,6 @@ pub(crate) fn find_upward_violations_with_sccs(
     levels: &HashMap<String, u32>,
     sccs: &SccResult<'_>,
 ) -> Vec<UpwardViolation> {
-
     let mut violations = Vec::new();
     for edge in edges {
         let from_level = levels.get(&edge.from_file).copied().unwrap_or(0);
@@ -273,7 +287,11 @@ pub(crate) fn find_upward_violations_with_sccs(
             // Intra-SCC edge: both files are in the same cycle (same level).
             // These ARE architectural violations — the cycle prevents clean layering.
             // Only count edges within SCCs of size > 1 (actual cycles, not self-loops).
-            let from_scc = sccs.scc_id.get(edge.from_file.as_str()).copied().unwrap_or(0);
+            let from_scc = sccs
+                .scc_id
+                .get(edge.from_file.as_str())
+                .copied()
+                .unwrap_or(0);
             let to_scc = sccs.scc_id.get(edge.to_file.as_str()).copied().unwrap_or(0);
             if from_scc == to_scc
                 && sccs.scc_sizes.get(from_scc).copied().unwrap_or(0) > 1
@@ -318,7 +336,8 @@ pub fn compute_blast_radius(edges: &[ImportEdge]) -> HashMap<String, u32> {
     // containment, not functional dependencies. A change in a sub-module doesn't
     // propagate through the parent's `pub mod` declaration. This is consistent with
     // how health metrics already exclude mod-declarations from coupling/cycle/depth.
-    let dep_edges: Vec<&ImportEdge> = edges.iter()
+    let dep_edges: Vec<&ImportEdge> = edges
+        .iter()
         .filter(|e| !crate::metrics::types::is_mod_declaration_edge(e))
         .collect();
 
@@ -334,14 +353,18 @@ pub fn compute_blast_radius(edges: &[ImportEdge]) -> HashMap<String, u32> {
     // Sort for deterministic ordering — HashSet iteration is nondeterministic,
     // which caused different sampling subsets on each run (violating idempotency).
     node_list.sort_unstable();
-    let node_idx: HashMap<&str, usize> = node_list.iter().enumerate().map(|(i, &n)| (n, i)).collect();
+    let node_idx: HashMap<&str, usize> =
+        node_list.iter().enumerate().map(|(i, &n)| (n, i)).collect();
     let n = node_list.len();
 
     // Reverse adjacency: if A imports B, changing B affects A → edge B→A
     // Uses functional edges only (mod-declarations filtered out above).
     let mut rev_adj: Vec<Vec<usize>> = vec![Vec::new(); n];
     for edge in &dep_edges {
-        if let (Some(&from_idx), Some(&to_idx)) = (node_idx.get(edge.to_file.as_str()), node_idx.get(edge.from_file.as_str())) {
+        if let (Some(&from_idx), Some(&to_idx)) = (
+            node_idx.get(edge.to_file.as_str()),
+            node_idx.get(edge.from_file.as_str()),
+        ) {
             rev_adj[from_idx].push(to_idx);
         }
     }
@@ -371,7 +394,8 @@ fn blast_radius_sample_indices(n: usize, rev_adj: &[Vec<usize>]) -> Vec<usize> {
             .map(|i| ((i as f64) * step) as usize)
             .collect();
         // Guarantee the node with max reverse-out-degree is sampled.
-        if let Some((max_deg_idx, _)) = rev_adj.iter().enumerate().max_by_key(|(_, adj)| adj.len()) {
+        if let Some((max_deg_idx, _)) = rev_adj.iter().enumerate().max_by_key(|(_, adj)| adj.len())
+        {
             if !indices.contains(&max_deg_idx) {
                 if let Some(last) = indices.last_mut() {
                     *last = max_deg_idx;
@@ -420,10 +444,7 @@ fn blast_radius_bfs(
 
 /// Compute how many files are transitively reachable from entry points.
 /// This represents the "attack surface" — code reachable from public APIs.
-pub fn compute_attack_surface(
-    edges: &[ImportEdge],
-    entry_points: &[EntryPoint],
-) -> (u32, u32) {
+pub fn compute_attack_surface(edges: &[ImportEdge], entry_points: &[EntryPoint]) -> (u32, u32) {
     let (adj, nodes) = build_forward_adjacency(edges);
     let total = nodes.len() as u32;
 

@@ -10,7 +10,7 @@
 //!   5. Complexity Gini (Gini 1912) — concentration of complexity
 //!   6. Redundancy      (Kolmogorov) — unnecessary code fraction
 
-use crate::core::types::{FileNode, ImportEdge, CallEdge};
+use crate::core::types::{CallEdge, FileNode, ImportEdge};
 use std::collections::{HashMap, HashSet};
 
 /// All 5 root cause scores, each normalized to [0, 1] where 1 = best.
@@ -170,7 +170,11 @@ fn shannon_entropy_normalized(values: &[f64]) -> f64 {
     }
 
     let max_h = (n as f64).log2();
-    if max_h > 0.0 { h / max_h } else { 0.0 }
+    if max_h > 0.0 {
+        h / max_h
+    } else {
+        0.0
+    }
 }
 
 /// Compute structural entropy: average normalized entropy of
@@ -179,7 +183,8 @@ fn shannon_entropy_normalized(values: &[f64]) -> f64 {
 /// Low entropy = consistent (all files similar size, all functions similar CC)
 /// High entropy = inconsistent (wildly varying sizes and complexities)
 pub fn compute_structural_entropy(files: &[&FileNode]) -> f64 {
-    let code_files: Vec<&&FileNode> = files.iter()
+    let code_files: Vec<&&FileNode> = files
+        .iter()
         .filter(|f| !f.is_dir && !f.lang.is_empty() && f.lang != "unknown")
         .collect();
 
@@ -233,7 +238,9 @@ pub fn compute_complexity_gini(files: &[&FileNode]) -> f64 {
     // Collect all function CCs
     let mut values: Vec<f64> = Vec::new();
     for f in files {
-        if f.is_dir || f.lang.is_empty() { continue; }
+        if f.is_dir || f.lang.is_empty() {
+            continue;
+        }
         if let Some(sa) = &f.sa {
             if let Some(funcs) = &sa.functions {
                 for func in funcs {
@@ -245,7 +252,8 @@ pub fn compute_complexity_gini(files: &[&FileNode]) -> f64 {
 
     // Fallback to file line counts if no function data
     if values.len() <= 1 {
-        values = files.iter()
+        values = files
+            .iter()
             .filter(|f| !f.is_dir && !f.lang.is_empty() && f.lang != "unknown")
             .map(|f| f.lines as f64)
             .collect();
@@ -346,7 +354,10 @@ mod tests {
     #[test]
     fn gini_equal_distribution() {
         let mut v = vec![10.0, 10.0, 10.0, 10.0];
-        assert!((gini_coefficient(&mut v)).abs() < 0.01, "equal values = Gini ≈ 0");
+        assert!(
+            (gini_coefficient(&mut v)).abs() < 0.01,
+            "equal values = Gini ≈ 0"
+        );
     }
 
     #[test]
@@ -360,14 +371,22 @@ mod tests {
     fn entropy_uniform_is_max() {
         let v = vec![10.0, 10.0, 10.0, 10.0];
         let h = shannon_entropy_normalized(&v);
-        assert!((h - 1.0).abs() < 0.01, "uniform distribution = max entropy = 1.0, got {}", h);
+        assert!(
+            (h - 1.0).abs() < 0.01,
+            "uniform distribution = max entropy = 1.0, got {}",
+            h
+        );
     }
 
     #[test]
     fn entropy_concentrated_is_low() {
         let v = vec![100.0, 1.0, 1.0, 1.0];
         let h = shannon_entropy_normalized(&v);
-        assert!(h < 0.5, "concentrated distribution = low entropy, got {}", h);
+        assert!(
+            h < 0.5,
+            "concentrated distribution = low entropy, got {}",
+            h
+        );
     }
 
     #[test]
@@ -385,11 +404,31 @@ mod tests {
             redundancy_ratio: 0.1,
         };
         let (scores, signal) = compute_root_cause_scores(&raw);
-        assert!(scores.modularity > 0.6, "Q=0.5 → good modularity, got {}", scores.modularity);
+        assert!(
+            scores.modularity > 0.6,
+            "Q=0.5 → good modularity, got {}",
+            scores.modularity
+        );
         assert_eq!(scores.acyclicity, 1.0, "0 cycles = perfect");
-        assert!(scores.depth > 0.5, "depth 4 / midpoint 8 = decent, got {}", scores.depth);
-        assert!(scores.equality > 0.7, "low gini = good equality, got {}", scores.equality);
-        assert!(scores.redundancy > 0.8, "low redundancy = good, got {}", scores.redundancy);
-        assert!(signal > 0.6, "overall signal should be decent, got {}", signal);
+        assert!(
+            scores.depth > 0.5,
+            "depth 4 / midpoint 8 = decent, got {}",
+            scores.depth
+        );
+        assert!(
+            scores.equality > 0.7,
+            "low gini = good equality, got {}",
+            scores.equality
+        );
+        assert!(
+            scores.redundancy > 0.8,
+            "low redundancy = good, got {}",
+            scores.redundancy
+        );
+        assert!(
+            signal > 0.6,
+            "overall signal should be decent, got {}",
+            signal
+        );
     }
 }

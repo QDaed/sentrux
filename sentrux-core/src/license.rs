@@ -22,8 +22,8 @@ use serde::{Deserialize, Serialize};
 /// Ed25519 public key for license verification (embedded at compile time).
 /// The corresponding private key is kept offline — never in any repository.
 const LICENSE_PUBLIC_KEY: [u8; 32] = [
-    51, 80, 192, 124, 169, 177, 177, 37, 40, 185, 99, 192, 167, 42, 157, 250,
-    1, 110, 189, 234, 236, 9, 143, 61, 221, 122, 243, 48, 251, 237, 154, 119,
+    51, 80, 192, 124, 169, 177, 177, 37, 40, 185, 99, 192, 167, 42, 157, 250, 1, 110, 189, 234,
+    236, 9, 143, 61, 221, 122, 243, 48, 251, 237, 154, 119,
 ];
 
 /// License tier determining feature access.
@@ -141,9 +141,7 @@ pub fn validate_license(key_json: &str) -> Option<ValidatedLicense> {
     // Verify Ed25519 signature
     use ed25519_dalek::{Signature, VerifyingKey};
     let verifying_key = VerifyingKey::from_bytes(&LICENSE_PUBLIC_KEY).ok()?;
-    let signature = Signature::from_bytes(
-        sig_bytes.as_slice().try_into().ok()?,
-    );
+    let signature = Signature::from_bytes(sig_bytes.as_slice().try_into().ok()?);
     use ed25519_dalek::Verifier;
     verifying_key.verify(message.as_bytes(), &signature).ok()?;
 
@@ -215,9 +213,15 @@ fn license_search_paths() -> Vec<std::path::PathBuf> {
     if let Ok(sudo_user) = std::env::var("SUDO_USER") {
         // Linux: /home/<user>, macOS: /Users/<user>
         #[cfg(target_os = "macos")]
-        paths.push(std::path::PathBuf::from(format!("/Users/{}/.sentrux/license.key", sudo_user)));
+        paths.push(std::path::PathBuf::from(format!(
+            "/Users/{}/.sentrux/license.key",
+            sudo_user
+        )));
         #[cfg(not(target_os = "macos"))]
-        paths.push(std::path::PathBuf::from(format!("/home/{}/.sentrux/license.key", sudo_user)));
+        paths.push(std::path::PathBuf::from(format!(
+            "/home/{}/.sentrux/license.key",
+            sudo_user
+        )));
     }
 
     // 3. System-wide location (for shared/server installs)
@@ -234,8 +238,13 @@ pub fn load_license_from_disk() -> Tier {
     for path in license_search_paths() {
         if let Ok(content) = std::fs::read_to_string(&path) {
             if let Some(license) = validate_license(&content) {
-                crate::debug_log!("[license] Valid: {} ({}), expires {} [{}]",
-                    license.user, license.tier, license.expires, path.display());
+                crate::debug_log!(
+                    "[license] Valid: {} ({}), expires {} [{}]",
+                    license.user,
+                    license.tier,
+                    license.expires,
+                    path.display()
+                );
                 return license.tier;
             }
             crate::debug_log!("[license] Invalid or expired at {}", path.display());
@@ -264,9 +273,15 @@ fn pro_dylib_search_paths() -> Vec<std::path::PathBuf> {
 
     if let Ok(sudo_user) = std::env::var("SUDO_USER") {
         #[cfg(target_os = "macos")]
-        paths.push(std::path::PathBuf::from(format!("/Users/{}/.sentrux/pro/{}", sudo_user, dylib_name)));
+        paths.push(std::path::PathBuf::from(format!(
+            "/Users/{}/.sentrux/pro/{}",
+            sudo_user, dylib_name
+        )));
         #[cfg(not(target_os = "macos"))]
-        paths.push(std::path::PathBuf::from(format!("/home/{}/.sentrux/pro/{}", sudo_user, dylib_name)));
+        paths.push(std::path::PathBuf::from(format!(
+            "/home/{}/.sentrux/pro/{}",
+            sudo_user, dylib_name
+        )));
     }
 
     paths
@@ -291,7 +306,11 @@ fn try_load_pro_dylib(license: &ValidatedLicense) -> bool {
                 crate::debug_log!("[pro] Watermark matches license {}", license.id);
             }
             Some(watermark_id) => {
-                crate::debug_log!("[pro] Watermark mismatch: dylib={}, license={}", watermark_id, license.id);
+                crate::debug_log!(
+                    "[pro] Watermark mismatch: dylib={}, license={}",
+                    watermark_id,
+                    license.id
+                );
                 continue; // dylib belongs to a different user
             }
             None => {
@@ -365,8 +384,13 @@ pub fn init() {
     for path in license_search_paths() {
         if let Ok(content) = std::fs::read_to_string(&path) {
             if let Some(lic) = validate_license(&content) {
-                crate::debug_log!("[license] Valid: {} ({}), expires {} [{}]",
-                    lic.user, lic.tier, lic.expires, path.display());
+                crate::debug_log!(
+                    "[license] Valid: {} ({}), expires {} [{}]",
+                    lic.user,
+                    lic.tier,
+                    lic.expires,
+                    path.display()
+                );
                 tier = lic.tier;
                 license = Some(lic);
                 break;
@@ -456,8 +480,8 @@ mod tests {
 
     #[test]
     fn sign_and_verify_roundtrip() {
-        use ed25519_dalek::{SigningKey, Signer};
         use base64::Engine;
+        use ed25519_dalek::{Signer, SigningKey};
 
         // Use the actual keypair
         let private_bytes = base64::engine::general_purpose::STANDARD
@@ -484,7 +508,8 @@ mod tests {
             "expires": expires,
             "id": id,
             "sig": sig_b64,
-        }).to_string();
+        })
+        .to_string();
 
         let result = validate_license(&key_json);
         assert!(result.is_some(), "Roundtrip sign+verify failed");

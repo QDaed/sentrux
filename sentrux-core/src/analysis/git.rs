@@ -21,8 +21,7 @@ use std::time::Instant;
 /// Cached git status entry: (timestamp, file_path -> status_string).
 type GitStatusEntry = (Instant, HashMap<String, String>);
 
-static STATUS_CACHE: LazyLock<DashMap<String, GitStatusEntry>> =
-    LazyLock::new(DashMap::new);
+static STATUS_CACHE: LazyLock<DashMap<String, GitStatusEntry>> = LazyLock::new(DashMap::new);
 
 const STATUS_CACHE_TTL_MS: u128 = 2000;
 
@@ -155,4 +154,3 @@ fn collect_status_entries(
         }
     }
 }
-

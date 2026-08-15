@@ -64,13 +64,22 @@ trait Printable {
 </html>
 "#;
         let sa = parse_bytes(code, "html").expect("html parse failed");
-        let imp = sa.imp.as_ref().expect("no imports captured for <link>/<script>");
+        let imp = sa
+            .imp
+            .as_ref()
+            .expect("no imports captured for <link>/<script>");
         let imp_strs: Vec<&str> = imp.iter().map(|s| s.as_str()).collect();
         eprintln!("ALL HTML imports captured: {:?}", imp_strs);
-        assert!(imp_strs.contains(&"/src/style.css"),
-            "expected /src/style.css import, got {:?}", imp_strs);
-        assert!(imp_strs.contains(&"/src/main.ts"),
-            "expected /src/main.ts import, got {:?}", imp_strs);
+        assert!(
+            imp_strs.contains(&"/src/style.css"),
+            "expected /src/style.css import, got {:?}",
+            imp_strs
+        );
+        assert!(
+            imp_strs.contains(&"/src/main.ts"),
+            "expected /src/main.ts import, got {:?}",
+            imp_strs
+        );
     }
 
     #[test]
@@ -156,7 +165,11 @@ func distance(from a: Point, to b: Point) -> Double {
         assert_eq!(fns.len(), 3, "expected 3 functions, got {:?}", fns);
         let cls = sa.cls.as_ref().expect("no classes");
         // ViewController + Point = 2
-        assert!(cls.len() >= 2, "expected at least 2 class-like items, got {:?}", cls);
+        assert!(
+            cls.len() >= 2,
+            "expected at least 2 class-like items, got {:?}",
+            cls
+        );
         assert!(sa.imp.is_some(), "expected imports");
     }
 
@@ -177,8 +190,11 @@ struct StreetPlaceDemoApp: App {
         let sa = parse_bytes(code, "swift").expect("swift @main parse failed");
         let tags = sa.tags.as_ref().expect("no tags -- @main not captured");
         eprintln!("Swift tags: {:?}", tags);
-        assert!(tags.contains(&"@main".to_string()),
-            "expected @main tag, got {:?}", tags);
+        assert!(
+            tags.contains(&"@main".to_string()),
+            "expected @main tag, got {:?}",
+            tags
+        );
     }
 
     #[test]
@@ -203,11 +219,16 @@ print(helper())
         let fns = sa.functions.as_ref().expect("no functions");
         // greet, math.add, helper = 3
         assert_eq!(fns.len(), 3, "expected 3 functions, got {:?}", fns);
-        let all_calls: Vec<String> = fns.iter()
+        let all_calls: Vec<String> = fns
+            .iter()
             .flat_map(|f| f.co.iter().flat_map(|c| c.iter().cloned()))
             .chain(sa.co.iter().flat_map(|c| c.iter().cloned()))
             .collect();
-        assert!(all_calls.len() >= 2, "expected at least 2 calls, got {:?}", all_calls);
+        assert!(
+            all_calls.len() >= 2,
+            "expected at least 2 calls, got {:?}",
+            all_calls
+        );
     }
 
     // ---- Oracle tests: new Phase 5 languages ----
@@ -228,7 +249,11 @@ end
         let sa = parse_bytes(code, "elixir").expect("elixir parse failed");
         let fns = sa.functions.as_ref().expect("no functions");
         // greet + helper = 2
-        assert!(fns.len() >= 2, "expected at least 2 functions, got {:?}", fns);
+        assert!(
+            fns.len() >= 2,
+            "expected at least 2 functions, got {:?}",
+            fns
+        );
     }
 
     #[test]
@@ -242,10 +267,26 @@ require Logger
         let sa = parse_bytes(code, "elixir").expect("elixir parse failed");
         let imports = sa.imp.as_ref().expect("no imports");
         let import_strs: Vec<&str> = imports.iter().map(|s| s.as_str()).collect();
-        assert!(import_strs.contains(&"acme/shared/v1"), "missing acme/shared/v1, got {:?}", imports);
-        assert!(import_strs.contains(&"ecto/query"), "missing ecto/query, got {:?}", imports);
-        assert!(import_strs.contains(&"gen_server"), "missing gen_server, got {:?}", imports);
-        assert!(import_strs.contains(&"logger"), "missing logger, got {:?}", imports);
+        assert!(
+            import_strs.contains(&"acme/shared/v1"),
+            "missing acme/shared/v1, got {:?}",
+            imports
+        );
+        assert!(
+            import_strs.contains(&"ecto/query"),
+            "missing ecto/query, got {:?}",
+            imports
+        );
+        assert!(
+            import_strs.contains(&"gen_server"),
+            "missing gen_server, got {:?}",
+            imports
+        );
+        assert!(
+            import_strs.contains(&"logger"),
+            "missing logger, got {:?}",
+            imports
+        );
     }
 
     #[test]
@@ -258,12 +299,21 @@ alias Acme.Inventory.Domain.{Product, ProductNotFoundError, InsufficientStockErr
         let imports = sa.imp.as_ref().expect("no imports");
         let import_strs: Vec<&str> = imports.iter().map(|s| s.as_str()).collect();
         // Each must have the FULL path: prefix + name
-        assert!(import_strs.contains(&"acme/inventory/domain/product"),
-            "missing acme/inventory/domain/product, got {:?}", imports);
-        assert!(import_strs.contains(&"acme/inventory/domain/product_not_found_error"),
-            "missing acme/inventory/domain/product_not_found_error, got {:?}", imports);
-        assert!(import_strs.contains(&"acme/inventory/domain/insufficient_stock_error"),
-            "missing acme/inventory/domain/insufficient_stock_error, got {:?}", imports);
+        assert!(
+            import_strs.contains(&"acme/inventory/domain/product"),
+            "missing acme/inventory/domain/product, got {:?}",
+            imports
+        );
+        assert!(
+            import_strs.contains(&"acme/inventory/domain/product_not_found_error"),
+            "missing acme/inventory/domain/product_not_found_error, got {:?}",
+            imports
+        );
+        assert!(
+            import_strs.contains(&"acme/inventory/domain/insufficient_stock_error"),
+            "missing acme/inventory/domain/insufficient_stock_error, got {:?}",
+            imports
+        );
     }
 
     #[test]
@@ -287,12 +337,20 @@ main = putStrLn (greet "World")
 "#;
         let sa = parse_bytes(code, "haskell").expect("haskell parse failed");
         let fns = sa.functions.as_ref().expect("no functions");
-        assert!(fns.len() >= 1, "expected at least 1 function, got {:?}", fns);
+        assert!(
+            !fns.is_empty(),
+            "expected at least 1 function, got {:?}",
+            fns
+        );
         let cls = sa.cls.as_ref().expect("no classes");
         // Color (data_type) + Printable (class) + Name (newtype) = 3
-        assert!(cls.len() >= 2, "expected at least 2 class-like items, got {:?}", cls);
+        assert!(
+            cls.len() >= 2,
+            "expected at least 2 class-like items, got {:?}",
+            cls
+        );
         let imp = sa.imp.as_ref().expect("no imports");
-        assert!(imp.len() >= 1, "expected at least 1 import, got {:?}", imp);
+        assert!(!imp.is_empty(), "expected at least 1 import, got {:?}", imp);
     }
 
     #[test]
@@ -317,7 +375,11 @@ test "addition" {
         let sa = parse_bytes(code, "zig").expect("zig parse failed");
         let fns = sa.functions.as_ref().expect("no functions");
         // add + main + test = 3
-        assert!(fns.len() >= 2, "expected at least 2 functions, got {:?}", fns);
+        assert!(
+            fns.len() >= 2,
+            "expected at least 2 functions, got {:?}",
+            fns
+        );
     }
 
     #[test]
@@ -339,12 +401,21 @@ print(result)
         let sa = parse_bytes(code, "r").expect("r parse failed");
         let fns = sa.functions.as_ref().expect("no functions");
         // add + multiply = 2
-        assert!(fns.len() >= 2, "expected at least 2 functions, got {:?}", fns);
-        let all_calls: Vec<String> = fns.iter()
+        assert!(
+            fns.len() >= 2,
+            "expected at least 2 functions, got {:?}",
+            fns
+        );
+        let all_calls: Vec<String> = fns
+            .iter()
             .flat_map(|f| f.co.iter().flat_map(|c| c.iter().cloned()))
             .chain(sa.co.iter().flat_map(|c| c.iter().cloned()))
             .collect();
-        assert!(all_calls.len() >= 2, "expected at least 2 calls, got {:?}", all_calls);
+        assert!(
+            all_calls.len() >= 2,
+            "expected at least 2 calls, got {:?}",
+            all_calls
+        );
     }
 
     // dockerfile: temporarily removed — tree-sitter-dockerfile incompatible with tree-sitter 0.25
@@ -365,7 +436,11 @@ let () =
         let sa = parse_bytes(code, "ocaml").expect("ocaml parse failed");
         let fns = sa.functions.as_ref().expect("no functions");
         // greet + add = 2
-        assert!(fns.len() >= 2, "expected at least 2 functions, got {:?}", fns);
+        assert!(
+            fns.len() >= 2,
+            "expected at least 2 functions, got {:?}",
+            fns
+        );
     }
 
     // ---- Boundary tests ----
@@ -478,13 +553,26 @@ class Bar:
 
             // Check name extraction (if expected)
             if !expected_name.is_empty() {
-                let has_name = sa.functions.as_ref().map_or(false, |fns| fns.iter().any(|f| f.n == expected_name))
-                    || sa.cls.as_ref().map_or(false, |cls| cls.iter().any(|c| c.n == expected_name));
+                let has_name = sa
+                    .functions
+                    .as_ref()
+                    .is_some_and(|fns| fns.iter().any(|f| f.n == expected_name))
+                    || sa
+                        .cls
+                        .as_ref()
+                        .is_some_and(|cls| cls.iter().any(|c| c.n == expected_name));
                 if !has_name {
-                    eprintln!("[{}] FAIL name: expected '{}', got functions={:?} classes={:?}",
-                        lang, expected_name,
-                        sa.functions.as_ref().map(|f| f.iter().map(|x| x.n.as_str()).collect::<Vec<_>>()),
-                        sa.cls.as_ref().map(|c| c.iter().map(|x| x.n.as_str()).collect::<Vec<_>>()));
+                    eprintln!(
+                        "[{}] FAIL name: expected '{}', got functions={:?} classes={:?}",
+                        lang,
+                        expected_name,
+                        sa.functions
+                            .as_ref()
+                            .map(|f| f.iter().map(|x| x.n.as_str()).collect::<Vec<_>>()),
+                        sa.cls
+                            .as_ref()
+                            .map(|c| c.iter().map(|x| x.n.as_str()).collect::<Vec<_>>())
+                    );
                     failed += 1;
                     continue;
                 }
@@ -492,11 +580,15 @@ class Bar:
 
             // Check import extraction (if expected)
             if !expected_import.is_empty() {
-                let has_import = sa.imp.as_ref().map_or(false, |imps|
-                    imps.iter().any(|i| i.contains(expected_import)));
+                let has_import = sa
+                    .imp
+                    .as_ref()
+                    .is_some_and(|imps| imps.iter().any(|i| i.contains(expected_import)));
                 if !has_import {
-                    eprintln!("[{}] FAIL import: expected substring '{}', got {:?}",
-                        lang, expected_import, sa.imp);
+                    eprintln!(
+                        "[{}] FAIL import: expected substring '{}', got {:?}",
+                        lang, expected_import, sa.imp
+                    );
                     failed += 1;
                     continue;
                 }
@@ -506,7 +598,10 @@ class Bar:
         }
 
         eprintln!("\n=== ALL LANGS VERIFIED: {passed} passed, {failed} failed ===");
-        assert_eq!(failed, 0, "{failed} languages failed extraction verification");
+        assert_eq!(
+            failed, 0,
+            "{failed} languages failed extraction verification"
+        );
     }
 
     #[test]
@@ -523,6 +618,10 @@ func hello():
         let sa = parse_bytes(code, "gdscript").expect("gdscript parse failed");
         let imp = sa.imp.as_ref().expect("no imports found");
         eprintln!("[gdscript] imports: {:?}", imp);
-        assert!(imp.len() >= 2, "expected at least 2 imports from preload/load, got {:?}", imp);
+        assert!(
+            imp.len() >= 2,
+            "expected at least 2 imports from preload/load, got {:?}",
+            imp
+        );
     }
 }

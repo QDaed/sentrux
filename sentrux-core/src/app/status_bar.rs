@@ -31,10 +31,14 @@ fn draw_left_info(ui: &mut egui::Ui, state: &AppState) {
         // Hover: show file details [ref:56e27d59]
         if let Some(entry) = state.file_index.get(path) {
             ui.label(egui::RichText::new(abs(path)).strong().monospace());
-            ui.label(egui::RichText::new(format!(
-                "{}  {}  {} lines  {} logic  {} functions",
-                entry.lang, entry.gs, entry.lines, entry.logic, entry.funcs
-            )).weak().monospace());
+            ui.label(
+                egui::RichText::new(format!(
+                    "{}  {}  {} lines  {} logic  {} functions",
+                    entry.lang, entry.gs, entry.lines, entry.logic, entry.funcs
+                ))
+                .weak()
+                .monospace(),
+            );
         } else {
             ui.label(egui::RichText::new(abs(path)).monospace());
         }
@@ -42,28 +46,47 @@ fn draw_left_info(ui: &mut egui::Ui, state: &AppState) {
         let (imports, calls, inherits) = edge_counts_for(state, path);
         let total = imports + calls + inherits;
         ui.label(egui::RichText::new(abs(path)).strong().monospace());
-        ui.label(egui::RichText::new(format!(
-            "{} edges  ({} import {} call {} inherit)",
-            total, imports, calls, inherits
-        )).weak().monospace());
+        ui.label(
+            egui::RichText::new(format!(
+                "{} edges  ({} import {} call {} inherit)",
+                total, imports, calls, inherits
+            ))
+            .weak()
+            .monospace(),
+        );
     } else if let Some(root) = &state.root_path {
         // Idle: show absolute path of opened folder
         ui.label(egui::RichText::new(root.as_str()).weak().monospace());
     } else {
-        ui.label(egui::RichText::new("Open a folder to begin").weak().monospace());
+        ui.label(
+            egui::RichText::new("Open a folder to begin")
+                .weak()
+                .monospace(),
+        );
     }
 }
 
 /// Right side: zoom percentage, compact grades, file/edge counts.
 fn draw_right_stats(ui: &mut egui::Ui, state: &AppState) {
     let vp = &state.viewport;
-    ui.label(egui::RichText::new(format!("{:.0}%", vp.scale * 100.0)).weak().monospace());
+    ui.label(
+        egui::RichText::new(format!("{:.0}%", vp.scale * 100.0))
+            .weak()
+            .monospace(),
+    );
 
     // Unified quality signal display — continuous score, no grade letter
     if let Some(report) = &state.health_report {
         let tc = crate::core::settings::ThemeConfig::from_theme(state.theme);
         let c = crate::app::panels::ui_helpers::score_color_for_theme(report.quality_signal, &tc);
-        ui.label(egui::RichText::new(format!("Q:{}", (report.quality_signal * 10000.0).round() as u32)).monospace().color(c));
+        ui.label(
+            egui::RichText::new(format!(
+                "Q:{}",
+                (report.quality_signal * 10000.0).round() as u32
+            ))
+            .monospace()
+            .color(c),
+        );
     }
 
     draw_edge_file_counts(ui, state);
@@ -79,22 +102,29 @@ fn draw_edge_file_counts(ui: &mut egui::Ui, state: &AppState) {
         let total_edges = n_imp + n_call + n_inh;
         if total_edges > 0 {
             // ASCII-only edge stats — avoids fallback font for unicode symbols
-            ui.label(egui::RichText::new(format!(
-                "{} import  {} call  {} inherit",
-                n_imp, n_call, n_inh
-            )).weak().monospace());
+            ui.label(
+                egui::RichText::new(format!(
+                    "{} import  {} call  {} inherit",
+                    n_imp, n_call, n_inh
+                ))
+                .weak()
+                .monospace(),
+            );
             ui.separator();
         } else if state.scanning {
             ui.label(egui::RichText::new("edges ...").weak().monospace());
             ui.separator();
         }
-        ui.label(egui::RichText::new(format!(
-            "{} files  {} dirs",
-            snap.total_files, snap.total_dirs
-        )).weak().monospace());
+        ui.label(
+            egui::RichText::new(format!(
+                "{} files  {} dirs",
+                snap.total_files, snap.total_dirs
+            ))
+            .weak()
+            .monospace(),
+        );
     }
 }
-
 
 /// Count edges connected to a file from render_data (what's actually drawn).
 /// Respects the active edge_filter so counts match what's visible on canvas. [ref:4e8f1175]

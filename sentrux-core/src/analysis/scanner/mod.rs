@@ -5,16 +5,16 @@
 //! Reports progress via callback for UI progress bars.
 
 pub mod common;
-mod tree;
 pub mod rescan;
+mod tree;
 
 use self::common::{
-    MAX_FILES, ScanLimits, count_lines_from_bytes, detect_lang,
-    should_ignore_dir, should_ignore_file,
+    count_lines_from_bytes, detect_lang, should_ignore_dir, should_ignore_file, ScanLimits,
+    MAX_FILES,
 };
 use self::tree::build_tree;
-use crate::core::types::AppError;
 use crate::core::snapshot::{ScanProgress, Snapshot};
+use crate::core::types::AppError;
 use crate::core::types::FileNode;
 use ignore::WalkBuilder;
 use rayon::prelude::*;
@@ -101,7 +101,7 @@ fn collect_paths(root: &Path, file_size_limit: u64) -> Vec<CollectedFile> {
 /// handles monorepos/workspaces, and requires zero heuristic filtering.
 fn collect_paths_git(root: &Path, file_size_limit: u64) -> Option<Vec<CollectedFile>> {
     let output = std::process::Command::new("git")
-        .args(["ls-files", "-z"])  // null-delimited for safe path handling
+        .args(["ls-files", "-z"]) // null-delimited for safe path handling
         .current_dir(root)
         .output()
         .ok()?;
@@ -127,10 +127,15 @@ fn collect_paths_git(root: &Path, file_size_limit: u64) -> Option<Vec<CollectedF
             }
             let meta = match fs::metadata(&abs) {
                 Ok(m) => m,
-                Err(_) => { meta_fail += 1; return None; }
+                Err(_) => {
+                    meta_fail += 1;
+                    return None;
+                }
             };
             if !meta.is_file() || meta.len() > file_size_limit {
-                if meta.len() > file_size_limit { too_big += 1; }
+                if meta.len() > file_size_limit {
+                    too_big += 1;
+                }
                 return None;
             }
             let mtime = extract_mtime(&meta, &abs);
@@ -142,7 +147,12 @@ fn collect_paths_git(root: &Path, file_size_limit: u64) -> Option<Vec<CollectedF
     if dropped > 0 {
         eprintln!(
             "[scan] git ls-files: {} total, {} kept, {} dropped (ext:{}, meta:{}, big:{})",
-            total_git, files.len(), dropped, ignored_ext, meta_fail, too_big
+            total_git,
+            files.len(),
+            dropped,
+            ignored_ext,
+            meta_fail,
+            too_big
         );
     }
     Some(files)
@@ -193,7 +203,6 @@ fn collect_paths_walk(root: &Path, file_size_limit: u64) -> Vec<CollectedFile> {
     rx.iter().collect()
 }
 
-
 /// Scan + parse a single file in one pass: read once, count lines, tree-sitter parse.
 /// No tokei dependency — line counts computed from raw bytes + AST comment nodes.
 fn scan_and_parse_file(
@@ -205,7 +214,12 @@ fn scan_and_parse_file(
     // Normalize to forward slashes — ONE place, ALL platforms.
     // Every downstream consumer (resolver, graph builder, treemap) uses `/`.
     let rel_str = common::normalize_path(rel.to_string_lossy());
-    let name = collected.path.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let name = collected
+        .path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
     let lang = detect_lang(&collected.path);
 
     // Read content ONCE — used for both line counting and tree-sitter parse
@@ -213,10 +227,19 @@ fn scan_and_parse_file(
         Ok(c) => c,
         Err(_) => {
             return FileNode {
-                path: rel_str, name, is_dir: false,
-                lines: 0, logic: 0, comments: 0, blanks: 0,
-                funcs: 0, mtime: collected.mtime, gs: String::new(),
-                lang, sa: None, children: None,
+                path: rel_str,
+                name,
+                is_dir: false,
+                lines: 0,
+                logic: 0,
+                comments: 0,
+                blanks: 0,
+                funcs: 0,
+                mtime: collected.mtime,
+                gs: String::new(),
+                lang,
+                sa: None,
+                children: None,
             };
         }
     };
@@ -225,31 +248,42 @@ fn scan_and_parse_file(
     let lc = count_lines_from_bytes(&content);
 
     // Tree-sitter parse (if language supported and file within parse size limit)
-    let (sa, comment_count) = if !lang.is_empty() && lang != "unknown"
-        && content.len() <= max_parse_size_kb * 1024
-    {
-        match crate::analysis::parser::parse_file_from_content(&content, &lang) {
-            Some(sa) => {
-                let cl = sa.comment_lines.unwrap_or(0);
-                (Some(sa), cl)
+    let (sa, comment_count) =
+        if !lang.is_empty() && lang != "unknown" && content.len() <= max_parse_size_kb * 1024 {
+            match crate::analysis::parser::parse_file_from_content(&content, &lang) {
+                Some(sa) => {
+                    let cl = sa.comment_lines.unwrap_or(0);
+                    (Some(sa), cl)
+                }
+                None => (None, 0),
             }
-            None => (None, 0),
-        }
-    } else {
-        (None, 0)
-    };
+        } else {
+            (None, 0)
+        };
 
     let total = lc.total;
     let blanks = lc.blanks;
     let comments = comment_count;
     let logic = total.saturating_sub(comments).saturating_sub(blanks);
-    let funcs = sa.as_ref().and_then(|s| s.functions.as_ref()).map_or(0, |v| v.len() as u32);
+    let funcs = sa
+        .as_ref()
+        .and_then(|s| s.functions.as_ref())
+        .map_or(0, |v| v.len() as u32);
 
     FileNode {
-        path: rel_str, name, is_dir: false,
-        lines: total, logic, comments, blanks,
-        funcs, mtime: collected.mtime, gs: String::new(),
-        lang, sa, children: None,
+        path: rel_str,
+        name,
+        is_dir: false,
+        lines: total,
+        logic,
+        comments,
+        blanks,
+        funcs,
+        mtime: collected.mtime,
+        gs: String::new(),
+        lang,
+        sa,
+        children: None,
     }
 }
 
@@ -266,7 +300,11 @@ fn walk_and_scan_files(
     emit("Collecting files\u{2026}", 5);
     let collected = collect_paths(root, max_file_size * 1024);
     let total_files = collected.len();
-    crate::debug_log!("[scan] collect_paths: {:.1}ms ({} files)", scan_t0.elapsed().as_secs_f64() * 1000.0, total_files);
+    crate::debug_log!(
+        "[scan] collect_paths: {:.1}ms ({} files)",
+        scan_t0.elapsed().as_secs_f64() * 1000.0,
+        total_files
+    );
 
     emit(&format!("Scanning & parsing ({total_files} files)"), 15);
 
@@ -285,13 +323,22 @@ fn walk_and_scan_files(
         })
         .collect();
 
-    crate::debug_log!("[scan] scan_and_parse: {:.1}ms ({} files)", scan_t0.elapsed().as_secs_f64() * 1000.0, files.len());
+    crate::debug_log!(
+        "[scan] scan_and_parse: {:.1}ms ({} files)",
+        scan_t0.elapsed().as_secs_f64() * 1000.0,
+        files.len()
+    );
     emit(&format!("Scanned {total_files} files"), 50);
     files
 }
 
 /// Apply git statuses to file nodes in-place.
-fn apply_git_statuses(files: &mut [FileNode], root_path: &str, scan_t0: std::time::Instant, emit: &dyn Fn(&str, u8)) {
+fn apply_git_statuses(
+    files: &mut [FileNode],
+    root_path: &str,
+    scan_t0: std::time::Instant,
+    emit: &dyn Fn(&str, u8),
+) {
     let total_files = files.len();
     emit(&format!("Git status ({total_files} files)"), 40);
     let git_statuses = crate::analysis::git::get_statuses(root_path);
@@ -300,7 +347,10 @@ fn apply_git_statuses(files: &mut [FileNode], root_path: &str, scan_t0: std::tim
             file.gs = gs.clone();
         }
     }
-    crate::debug_log!("[scan] git_status: {:.1}ms", scan_t0.elapsed().as_secs_f64() * 1000.0);
+    crate::debug_log!(
+        "[scan] git_status: {:.1}ms",
+        scan_t0.elapsed().as_secs_f64() * 1000.0
+    );
 }
 
 /// Poll parse progress until completion, emitting progress updates.
@@ -316,14 +366,16 @@ struct BuildContext<'a> {
 }
 
 /// Build the file tree and emit a tree-ready snapshot, then build graphs.
-fn build_tree_and_graphs(
-    files: Vec<FileNode>,
-    bctx: &BuildContext<'_>,
-) -> ScanResult {
+fn build_tree_and_graphs(files: Vec<FileNode>, bctx: &BuildContext<'_>) -> ScanResult {
     // Use u64 to prevent overflow when summing line counts across many files. [ref:4e8f1175]
-    let total_lines: u32 = files.iter().map(|f| f.lines as u64).sum::<u64>().min(u32::MAX as u64) as u32;
+    let total_lines: u32 = files
+        .iter()
+        .map(|f| f.lines as u64)
+        .sum::<u64>()
+        .min(u32::MAX as u64) as u32;
     let total_files = files.len() as u32;
-    let root_name = bctx.root
+    let root_name = bctx
+        .root
         .file_name()
         .unwrap_or_default()
         .to_string_lossy()
@@ -336,7 +388,9 @@ fn build_tree_and_graphs(
     if let Some(cb) = bctx.on_tree_ready {
         cb(Snapshot {
             root: Arc::clone(&tree),
-            total_files, total_lines, total_dirs,
+            total_files,
+            total_lines,
+            total_dirs,
             call_graph: Vec::new(),
             import_graph: Vec::new(),
             inherit_graph: Vec::new(),
@@ -345,18 +399,33 @@ fn build_tree_and_graphs(
         });
     }
 
-    crate::debug_log!("[scan] tree_ready sent at: {:.1}ms", bctx.scan_t0.elapsed().as_secs_f64() * 1000.0);
-    (bctx.emit)(&format!("Building graphs ({total_files} files, {total_dirs} dirs)"), 85);
+    crate::debug_log!(
+        "[scan] tree_ready sent at: {:.1}ms",
+        bctx.scan_t0.elapsed().as_secs_f64() * 1000.0
+    );
+    (bctx.emit)(
+        &format!("Building graphs ({total_files} files, {total_dirs} dirs)"),
+        85,
+    );
     let flat_files = crate::core::snapshot::flatten_files_ref(&tree);
-    let gr = crate::analysis::graph::build_graphs(&flat_files, Some(bctx.root), bctx.max_call_targets);
+    let gr =
+        crate::analysis::graph::build_graphs(&flat_files, Some(bctx.root), bctx.max_call_targets);
 
-    crate::debug_log!("[scan] build_graphs done at: {:.1}ms | {} import, {} call, {} inherit edges",
-        bctx.scan_t0.elapsed().as_secs_f64() * 1000.0, gr.import_edges.len(), gr.call_edges.len(), gr.inherit_edges.len());
+    crate::debug_log!(
+        "[scan] build_graphs done at: {:.1}ms | {} import, {} call, {} inherit edges",
+        bctx.scan_t0.elapsed().as_secs_f64() * 1000.0,
+        gr.import_edges.len(),
+        gr.call_edges.len(),
+        gr.inherit_edges.len()
+    );
     (bctx.emit)("Done", 100);
 
     ScanResult {
         snapshot: Snapshot {
-            root: tree, total_files, total_lines, total_dirs,
+            root: tree,
+            total_files,
+            total_lines,
+            total_dirs,
             call_graph: gr.call_edges,
             import_graph: gr.import_edges,
             inherit_graph: gr.inherit_edges,
@@ -378,19 +447,29 @@ pub fn scan_directory(
     let scan_t0 = std::time::Instant::now();
     let root = Path::new(root_path);
     if !root.exists() || !root.is_dir() {
-        return Err(AppError::Path(format!("Not a valid directory: {}", root_path)));
+        return Err(AppError::Path(format!(
+            "Not a valid directory: {}",
+            root_path
+        )));
     }
 
     let emit = |step: &str, pct: u8| {
         if let Some(cb) = on_progress {
-            cb(ScanProgress { step: step.into(), pct });
+            cb(ScanProgress {
+                step: step.into(),
+                pct,
+            });
         }
     };
 
     // Single pass: collect + scan + parse per file (no tokei, no separate parse phase)
     let mut files = walk_and_scan_files(
-        root, limits.max_file_size_kb, limits.max_parse_size_kb,
-        scan_t0, &emit, cancel,
+        root,
+        limits.max_file_size_kb,
+        limits.max_parse_size_kb,
+        scan_t0,
+        &emit,
+        cancel,
     );
 
     // Check cancel
@@ -403,7 +482,11 @@ pub fn scan_directory(
     apply_git_statuses(&mut files, root_path, scan_t0, &emit);
 
     let bctx = BuildContext {
-        root, max_call_targets: limits.max_call_targets, scan_t0, emit: &emit, on_tree_ready,
+        root,
+        max_call_targets: limits.max_call_targets,
+        scan_t0,
+        emit: &emit,
+        on_tree_ready,
     };
     Ok(build_tree_and_graphs(files, &bctx))
 }

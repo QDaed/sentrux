@@ -14,11 +14,11 @@ pub mod handlers;
 pub mod handlers_evo;
 pub mod registry;
 
+use crate::core::snapshot::Snapshot;
 use crate::license::{self, Tier};
+use crate::metrics;
 use crate::metrics::arch;
 use crate::metrics::evolution;
-use crate::metrics;
-use crate::core::snapshot::Snapshot;
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
@@ -105,10 +105,7 @@ fn dispatch_request(
     state: &mut McpState,
 ) -> Option<Value> {
     let id = request.get("id").cloned().unwrap_or(Value::Null);
-    let method = request
-        .get("method")
-        .and_then(|m| m.as_str())
-        .unwrap_or("");
+    let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
 
     match method {
         "initialize" => Some(handle_initialize(&id)),
@@ -170,14 +167,8 @@ fn handle_tools_call(
     registry: &registry::ToolRegistry,
     state: &mut McpState,
 ) -> Value {
-    let tool_name = params
-        .get("name")
-        .and_then(|n| n.as_str())
-        .unwrap_or("");
-    let args = params
-        .get("arguments")
-        .cloned()
-        .unwrap_or(json!({}));
+    let tool_name = params.get("name").and_then(|n| n.as_str()).unwrap_or("");
+    let args = params.get("arguments").cloned().unwrap_or(json!({}));
 
     // Copy tier to avoid borrow conflict (&state.tier vs &mut state)
     let tier = state.tier;

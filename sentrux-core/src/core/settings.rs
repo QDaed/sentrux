@@ -198,7 +198,7 @@ impl Default for Settings {
             trail_max_age: 30.0,
             trail_dot_radius: 3.0,
 
-            file_rect_inset: 2.0,   // gap between blocks so selection borders are visible
+            file_rect_inset: 2.0, // gap between blocks so selection borders are visible
 
             max_call_targets: 5,
 
@@ -654,7 +654,11 @@ mod wcag_tests {
 
     fn srgb_to_linear(c: u8) -> f64 {
         let s = c as f64 / 255.0;
-        if s <= 0.04045 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) }
+        if s <= 0.04045 {
+            s / 12.92
+        } else {
+            ((s + 0.055) / 1.055).powf(2.4)
+        }
     }
 
     fn luminance(color: Color32) -> f64 {
@@ -699,7 +703,11 @@ mod wcag_tests {
                 assert!(
                     ratio >= 4.5,
                     "WCAG FAIL: {} theme '{}' has contrast {:.2}:1 (need >=4.5:1) -- {:?} on {:?}",
-                    theme.label(), name, ratio, color, tc.canvas_bg
+                    theme.label(),
+                    name,
+                    ratio,
+                    color,
+                    tc.canvas_bg
                 );
             }
         }

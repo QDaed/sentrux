@@ -6,7 +6,7 @@
 
 use super::squarify::{squarify, SquarifyConfig, WeightedItem};
 use super::types::{Anchor, LayoutCtx, LayoutRectSlim, RectKind, ViewportRect};
-use super::weight::{self, WeightConfig, get_w, MAX_DEPTH};
+use super::weight::{self, get_w, WeightConfig, MAX_DEPTH};
 use super::LayoutConfig;
 use crate::core::settings::Settings;
 use crate::core::types::FileNode;
@@ -43,10 +43,14 @@ pub fn layout_treemap(
     // Pre-compute weights into a HashMap keyed by path (focus mode + hidden filters here)
     let mut weights: HashMap<String, f64> = HashMap::new();
     let wc = WeightConfig {
-        size_mode: cfg.size_mode, scale_mode: cfg.scale_mode, heat_map: cfg.heat_map,
+        size_mode: cfg.size_mode,
+        scale_mode: cfg.scale_mode,
+        heat_map: cfg.heat_map,
         min_child_weight: cfg.settings.min_child_weight,
-        focus_mode: cfg.focus_mode, entry_point_files: cfg.entry_point_files,
-        hidden_paths: cfg.hidden_paths, impact_files: cfg.impact_files,
+        focus_mode: cfg.focus_mode,
+        entry_point_files: cfg.entry_point_files,
+        hidden_paths: cfg.hidden_paths,
+        impact_files: cfg.impact_files,
     };
     weight::precompute_weights(root, &wc, &mut weights);
 
@@ -56,7 +60,12 @@ pub fn layout_treemap(
         anchors: &mut anchors,
         settings: cfg.settings,
     };
-    layout_node(root, &ViewportRect::new(0.0, 0.0, viewport_w, viewport_h), 0, &mut lctx);
+    layout_node(
+        root,
+        &ViewportRect::new(0.0, 0.0, viewport_w, viewport_h),
+        0,
+        &mut lctx,
+    );
 
     (rects, anchors)
 }
@@ -77,19 +86,19 @@ fn make_rect(node: &FileNode, x: f64, y: f64, w: f64, h: f64, depth: u32) -> Lay
     };
     LayoutRectSlim {
         path: node.path.clone(),
-        x, y, w, h, depth,
-        kind, section_id,
+        x,
+        y,
+        w,
+        h,
+        depth,
+        kind,
+        section_id,
         grid_coord: None,
         header_h: 0.0,
     }
 }
 
-fn layout_node(
-    node: &FileNode,
-    vp: &ViewportRect,
-    depth: u32,
-    lctx: &mut LayoutCtx<'_>,
-) {
+fn layout_node(node: &FileNode, vp: &ViewportRect, depth: u32, lctx: &mut LayoutCtx<'_>) {
     if depth >= MAX_DEPTH {
         return;
     }
@@ -108,13 +117,9 @@ fn layout_node(
 }
 
 /// Emit a file leaf rect and its anchor into the output vectors.
-fn emit_file_leaf(
-    node: &FileNode,
-    vp: &ViewportRect,
-    depth: u32,
-    lctx: &mut LayoutCtx<'_>,
-) {
-    lctx.rects.push(make_rect(node, vp.x, vp.y, vp.w, vp.h, depth));
+fn emit_file_leaf(node: &FileNode, vp: &ViewportRect, depth: u32, lctx: &mut LayoutCtx<'_>) {
+    lctx.rects
+        .push(make_rect(node, vp.x, vp.y, vp.w, vp.h, depth));
     let section_id = match node.path.rfind('/') {
         Some(pos) if pos > 0 => node.path[..pos].to_string(),
         _ => String::new(),
@@ -126,18 +131,16 @@ fn emit_file_leaf(
             cx: vp.x + vp.w / 2.0,
             cy: vp.y + vp.h / 2.0,
             section_id,
-            bx: vp.x, by: vp.y, bw: vp.w, bh: vp.h,
+            bx: vp.x,
+            by: vp.y,
+            bw: vp.w,
+            bh: vp.h,
         },
     );
 }
 
 /// Layout children of a directory node using squarified treemap subdivision.
-fn layout_dir_children(
-    node: &FileNode,
-    vp: &ViewportRect,
-    depth: u32,
-    lctx: &mut LayoutCtx<'_>,
-) {
+fn layout_dir_children(node: &FileNode, vp: &ViewportRect, depth: u32, lctx: &mut LayoutCtx<'_>) {
     let children = match &node.children {
         Some(c) if !c.is_empty() => c,
         _ => return,
@@ -156,7 +159,10 @@ fn layout_dir_children(
     }
 
     // Filter and sort children by weight descending
-    let mut kids: Vec<&FileNode> = children.iter().filter(|c| get_w(c, lctx.weights) > 0.0).collect();
+    let mut kids: Vec<&FileNode> = children
+        .iter()
+        .filter(|c| get_w(c, lctx.weights) > 0.0)
+        .collect();
     kids.sort_by(|a, b| get_w(b, lctx.weights).total_cmp(&get_w(a, lctx.weights)));
     if kids.is_empty() {
         return;
@@ -167,13 +173,27 @@ fn layout_dir_children(
     sec_rect.header_h = header;
     lctx.rects.push(sec_rect);
 
-    let items: Vec<WeightedItem> = kids.iter().enumerate()
-        .map(|(i, k)| WeightedItem { weight: get_w(k, lctx.weights), index: i })
+    let items: Vec<WeightedItem> = kids
+        .iter()
+        .enumerate()
+        .map(|(i, k)| WeightedItem {
+            weight: get_w(k, lctx.weights),
+            index: i,
+        })
         .collect();
 
-    let gutter = if depth == 0 { settings.treemap_gutter_root } else { settings.treemap_gutter_inner };
+    let gutter = if depth == 0 {
+        settings.treemap_gutter_root
+    } else {
+        settings.treemap_gutter_inner
+    };
     let sc = SquarifyConfig {
-        x: inner.x, y: inner.y, w: inner.w, h: inner.h, gutter, min_rect: settings.squarify_min_rect,
+        x: inner.x,
+        y: inner.y,
+        w: inner.w,
+        h: inner.h,
+        gutter,
+        min_rect: settings.squarify_min_rect,
     };
 
     // Collect placements first, then recurse (avoids borrow conflict with lctx)
@@ -182,6 +202,11 @@ fn layout_dir_children(
         placed.push((idx, rx, ry, rw, rh));
     });
     for (idx, rx, ry, rw, rh) in placed {
-        layout_node(kids[idx], &ViewportRect::new(rx, ry, rw, rh), depth + 1, lctx);
+        layout_node(
+            kids[idx],
+            &ViewportRect::new(rx, ry, rw, rh),
+            depth + 1,
+            lctx,
+        );
     }
 }

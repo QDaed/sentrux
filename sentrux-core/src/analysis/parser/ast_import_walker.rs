@@ -60,7 +60,11 @@ fn collect_from_direct_children(
     let mut results = Vec::new();
     for i in 0..import_node.named_child_count() {
         if let Some(child) = import_node.named_child(i) {
-            if config.module_path_node_kinds.iter().any(|k| k == child.kind()) {
+            if config
+                .module_path_node_kinds
+                .iter()
+                .any(|k| k == child.kind())
+            {
                 if config.filter_system_includes && child.kind() == config.system_include_kind {
                     continue;
                 }
@@ -105,7 +109,11 @@ fn collect_matching_descendants(
 ) {
     for i in 0..node.named_child_count() {
         if let Some(child) = node.named_child(i) {
-            if config.module_path_node_kinds.iter().any(|k| k == child.kind()) {
+            if config
+                .module_path_node_kinds
+                .iter()
+                .any(|k| k == child.kind())
+            {
                 if let Some(path) = read_path_from_node(child, content, config) {
                     results.push(apply_transform(&path, config));
                 }
@@ -182,7 +190,10 @@ fn read_path_from_node(
     }
 
     // Read node text directly
-    node.utf8_text(content).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+    node.utf8_text(content)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Read module path from a Python relative import node.
@@ -217,15 +228,15 @@ fn read_relative_import(
     }
 
     let combined = format!("{}{}", dots, module_path);
-    if combined.is_empty() { None } else { Some(combined) }
+    if combined.is_empty() {
+        None
+    } else {
+        Some(combined)
+    }
 }
 
 /// Find a child node of the given kind and read its text (unwrap string literals).
-fn find_string_content(
-    node: tree_sitter::Node,
-    content: &[u8],
-    kind: &str,
-) -> Option<String> {
+fn find_string_content(node: tree_sitter::Node, content: &[u8], kind: &str) -> Option<String> {
     // Direct child
     for i in 0..node.child_count() {
         if let Some(child) = node.child(i) {
@@ -256,7 +267,8 @@ fn extract_scoped_path(
 ) -> Vec<String> {
     // Module declaration (e.g., Rust `mod foo;`) — just read the name field.
     // Configured via mod_declaration_kind in plugin TOML.
-    if !config.mod_declaration_kind.is_empty() && import_node.kind() == config.mod_declaration_kind {
+    if !config.mod_declaration_kind.is_empty() && import_node.kind() == config.mod_declaration_kind
+    {
         if let Some(name) = import_node.child_by_field_name("name") {
             if let Ok(text) = name.utf8_text(content) {
                 let t = text.trim().to_string();
@@ -269,21 +281,21 @@ fn extract_scoped_path(
     }
 
     // Find the argument/path child of the import declaration
-    let arg_node = import_node.child_by_field_name("argument")
-        .or_else(|| {
-            // Fall back: find first child matching scoped_path_kinds
-            (0..import_node.named_child_count()).find_map(|i| {
-                import_node.named_child(i).filter(|c| {
-                    config.scoped_path_kinds.iter().any(|k| k == c.kind())
-                })
-            })
-        });
+    let arg_node = import_node.child_by_field_name("argument").or_else(|| {
+        // Fall back: find first child matching scoped_path_kinds
+        (0..import_node.named_child_count()).find_map(|i| {
+            import_node
+                .named_child(i)
+                .filter(|c| config.scoped_path_kinds.iter().any(|k| k == c.kind()))
+        })
+    });
 
     match arg_node {
         Some(node) => collect_scoped_paths(node, content, config, 0),
         None => {
             // Last resort: read the whole node text (minus keywords)
-            import_node.utf8_text(content)
+            import_node
+                .utf8_text(content)
                 .ok()
                 .map(|t| vec![t.trim().to_string()])
                 .unwrap_or_default()
@@ -318,7 +330,8 @@ fn expand_scoped_with_list(
 ) -> Option<Vec<String>> {
     let list = node.child_by_field_name("list")?;
 
-    let prefix = node.child_by_field_name("path")
+    let prefix = node
+        .child_by_field_name("path")
         .and_then(|p| read_scoped_text(p, content))
         .unwrap_or_default();
 
@@ -419,7 +432,10 @@ fn collect_scoped_paths(
 
 /// Read the full text of a scoped identifier/path node.
 fn read_scoped_text(node: tree_sitter::Node, content: &[u8]) -> Option<String> {
-    node.utf8_text(content).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+    node.utf8_text(content)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 // ── Post-processing transforms ────────────────────────────────────────

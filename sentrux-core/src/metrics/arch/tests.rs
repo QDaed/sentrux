@@ -1,7 +1,6 @@
 use super::*;
+use crate::core::types::EntryPoint;
 use crate::metrics::test_helpers::edge;
-use crate::core::types::{EntryPoint, ImportEdge};
-use crate::core::snapshot::Snapshot;
 
 fn entry(file: &str) -> EntryPoint {
     EntryPoint {
@@ -74,7 +73,10 @@ fn no_violations_in_clean_chain() {
     let edges = vec![edge("a.rs", "b.rs"), edge("b.rs", "c.rs")];
     let (levels, _) = compute_levels(&edges);
     let violations = find_upward_violations(&edges, &levels);
-    assert!(violations.is_empty(), "clean chain has no upward violations");
+    assert!(
+        violations.is_empty(),
+        "clean chain has no upward violations"
+    );
 }
 
 #[test]
@@ -86,8 +88,10 @@ fn violation_when_leaf_imports_high_level() {
     ];
     let (levels, _) = compute_levels(&edges);
     let violations = find_upward_violations(&edges, &levels);
-    assert!(!violations.is_empty() || levels.values().all(|&v| v == levels["a.rs"]),
-        "should detect violation or recognize cycle");
+    assert!(
+        !violations.is_empty() || levels.values().all(|&v| v == levels["a.rs"]),
+        "should detect violation or recognize cycle"
+    );
 }
 
 // ── Blast radius tests ──
@@ -123,10 +127,7 @@ fn blast_radius_empty() {
 
 #[test]
 fn attack_surface_from_entry() {
-    let edges = vec![
-        edge("main.rs", "handler.rs"),
-        edge("handler.rs", "db.rs"),
-    ];
+    let edges = vec![edge("main.rs", "handler.rs"), edge("handler.rs", "db.rs")];
     let entries = vec![entry("main.rs")];
     let (surface, total) = compute_attack_surface(&edges, &entries);
     assert_eq!(surface, 3);
@@ -181,14 +182,23 @@ fn baseline_detects_degradation() {
         entropy_bits: 1.5,
         avg_cohesion: Some(0.3),
         max_depth: 5,
-        god_files: vec![
-            crate::metrics::FileMetric { path: "app.rs".into(), value: 18 },
-        ],
+        god_files: vec![crate::metrics::FileMetric {
+            path: "app.rs".into(),
+            value: 18,
+        }],
         hotspot_files: vec![],
         most_unstable: vec![],
         complex_functions: vec![
-            crate::metrics::FuncMetric { file: "a.rs".into(), func: "f".into(), value: 20 },
-            crate::metrics::FuncMetric { file: "b.rs".into(), func: "g".into(), value: 18 },
+            crate::metrics::FuncMetric {
+                file: "a.rs".into(),
+                func: "f".into(),
+                value: 20,
+            },
+            crate::metrics::FuncMetric {
+                file: "b.rs".into(),
+                func: "g".into(),
+                value: 18,
+            },
         ],
         long_functions: vec![],
         cog_complex_functions: vec![],
@@ -212,20 +222,32 @@ fn baseline_detects_degradation() {
         cog_complex_ratio: 0.0,
         quality_signal: 0.5,
         root_cause_raw: crate::metrics::root_causes::RootCauseRaw {
-            modularity_q: 0.3, cycle_count: 2, max_depth: 5,
-            complexity_gini: 0.3, redundancy_ratio: 0.1,
+            modularity_q: 0.3,
+            cycle_count: 2,
+            max_depth: 5,
+            complexity_gini: 0.3,
+            redundancy_ratio: 0.1,
         },
         root_cause_scores: crate::metrics::root_causes::RootCauseScores {
-            modularity: 0.53, acyclicity: 0.33, depth: 0.62,
-            equality: 0.7, redundancy: 0.9,
+            modularity: 0.53,
+            acyclicity: 0.33,
+            depth: 0.62,
+            equality: 0.7,
+            redundancy: 0.9,
         },
     };
 
     let diff = baseline.diff(&current);
     assert!(diff.degraded, "should detect degradation");
-    assert!(!diff.violations.is_empty(), "should list specific violations");
+    assert!(
+        !diff.violations.is_empty(),
+        "should list specific violations"
+    );
     assert!(diff.violations.iter().any(|v| v.contains("Coupling")));
     assert!(diff.violations.iter().any(|v| v.contains("Cycles")));
     assert!(diff.violations.iter().any(|v| v.contains("God files")));
-    assert!(diff.violations.iter().any(|v| v.contains("Complex functions")));
+    assert!(diff
+        .violations
+        .iter()
+        .any(|v| v.contains("Complex functions")));
 }

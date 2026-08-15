@@ -1,12 +1,9 @@
 #[cfg(test)]
 mod tests {
+
+    use crate::core::types::{FileNode, FuncInfo, StructuralAnalysis};
+
     use crate::metrics::*;
-    use crate::metrics::stability::module_of;
-    use crate::core::types::{EntryPoint, ImportEdge};
-    use crate::core::snapshot::Snapshot;
-    use crate::core::types::{FileNode, StructuralAnalysis, FuncInfo};
-    use std::collections::HashMap;
-    use std::sync::Arc;
 
     use crate::metrics::test_helpers::{edge, file, snap_with_edges};
 
@@ -15,7 +12,10 @@ mod tests {
     fn empty_graph_is_healthy() {
         let snap = snap_with_edges(Vec::new(), Vec::new());
         let report = compute_health(&snap);
-        assert!(report.quality_signal > 0.8, "empty graph should have high quality signal");
+        assert!(
+            report.quality_signal > 0.8,
+            "empty graph should have high quality signal"
+        );
         assert_eq!(report.coupling_score, 0.0);
         assert_eq!(report.circular_dep_count, 0);
         assert!(report.god_files.is_empty());
@@ -25,10 +25,7 @@ mod tests {
     // ── Symmetry test: A→B and B→A form a cycle ──
     #[test]
     fn detects_simple_cycle() {
-        let edges = vec![
-            edge("src/a.rs", "src/b.rs"),
-            edge("src/b.rs", "src/a.rs"),
-        ];
+        let edges = vec![edge("src/a.rs", "src/b.rs"), edge("src/b.rs", "src/a.rs")];
         let snap = snap_with_edges(edges, vec![file("src/a.rs"), file("src/b.rs")]);
         let report = compute_health(&snap);
         assert_eq!(report.circular_dep_count, 1);
@@ -45,7 +42,11 @@ mod tests {
         ];
         let snap = snap_with_edges(
             edges,
-            vec![file("src/mod1/a.rs"), file("src/mod1/b.rs"), file("src/mod1/c.rs")],
+            vec![
+                file("src/mod1/a.rs"),
+                file("src/mod1/b.rs"),
+                file("src/mod1/c.rs"),
+            ],
         );
         let report = compute_health(&snap);
         assert_eq!(report.coupling_score, 0.0);
@@ -59,15 +60,13 @@ mod tests {
         // Each file directly under the dominant dir gets its own module identity
         // (file stem). This prevents flat src/ layouts from showing 0% coupling
         // when files import each other — that IS cross-module coupling.
-        let edges = vec![
-            edge("src/a.rs", "src/b.rs"),
-        ];
-        let snap = snap_with_edges(
-            edges,
-            vec![file("src/a.rs"), file("src/b.rs")],
-        );
+        let edges = vec![edge("src/a.rs", "src/b.rs")];
+        let snap = snap_with_edges(edges, vec![file("src/a.rs"), file("src/b.rs")]);
         let report = compute_health(&snap);
-        assert_eq!(report.coupling_score > 0.25, true, "flat files under dominant dir are separate modules");
+        assert!(
+            report.coupling_score > 0.25,
+            "flat files under dominant dir are separate modules"
+        );
         assert_eq!(report.cross_module_edges, 1);
     }
 
@@ -75,15 +74,13 @@ mod tests {
     #[test]
     fn root_level_files_cross_dir_are_cross_module() {
         // src/a.rs and lib/b.rs are different modules ("src" vs "lib")
-        let edges = vec![
-            edge("src/a.rs", "lib/b.rs"),
-        ];
-        let snap = snap_with_edges(
-            edges,
-            vec![file("src/a.rs"), file("lib/b.rs")],
-        );
+        let edges = vec![edge("src/a.rs", "lib/b.rs")];
+        let snap = snap_with_edges(edges, vec![file("src/a.rs"), file("lib/b.rs")]);
         let report = compute_health(&snap);
-        assert_eq!(report.coupling_score > 0.25, true, "files in different dirs are different modules");
+        assert!(
+            report.coupling_score > 0.25,
+            "files in different dirs are different modules"
+        );
         assert_eq!(report.cross_module_edges, 1);
     }
 
@@ -91,12 +88,16 @@ mod tests {
     #[test]
     fn coupling_score_correct() {
         let edges = vec![
-            edge("src/mod1/a.rs", "src/mod1/b.rs"),  // same sub-module ("src/mod1")
-            edge("src/mod1/a.rs", "lib/c.rs"),        // cross top-module ("src/mod1" → "lib")
+            edge("src/mod1/a.rs", "src/mod1/b.rs"), // same sub-module ("src/mod1")
+            edge("src/mod1/a.rs", "lib/c.rs"),      // cross top-module ("src/mod1" → "lib")
         ];
         let snap = snap_with_edges(
             edges,
-            vec![file("src/mod1/a.rs"), file("src/mod1/b.rs"), file("lib/c.rs")],
+            vec![
+                file("src/mod1/a.rs"),
+                file("src/mod1/b.rs"),
+                file("lib/c.rs"),
+            ],
         );
         let report = compute_health(&snap);
         // Beta(1,1): 1 cross-unstable out of 2 total → (1+1)/(2+2) = 0.5
@@ -114,8 +115,8 @@ mod tests {
         // These are DIFFERENT modules under depth-3, so edge IS cross-module.
         // Same-depth edges (both at depth-2) within one dir are intra-module.
         let edges = vec![
-            edge("src/models/user.rs", "src/models/base.rs"),           // same module "src/models"
-            edge("src/models/admin.rs", "src/models/base.rs"),          // same module "src/models"
+            edge("src/models/user.rs", "src/models/base.rs"), // same module "src/models"
+            edge("src/models/admin.rs", "src/models/base.rs"), // same module "src/models"
         ];
         let snap = snap_with_edges(
             edges,
@@ -126,7 +127,10 @@ mod tests {
             ],
         );
         let report = compute_health(&snap);
-        assert_eq!(report.coupling_score, 0.0, "same depth-2 module should not count as cross-module");
+        assert_eq!(
+            report.coupling_score, 0.0,
+            "same depth-2 module should not count as cross-module"
+        );
     }
 
     // ── Adaptive: cross second-level dirs within dominant DOES count ──
@@ -147,8 +151,11 @@ mod tests {
         );
         let report = compute_health(&snap);
         // Beta(1,1): 1 cross-unstable out of 2 → (1+1)/(2+2) = 0.5
-        assert!(report.coupling_score > 0.3 && report.coupling_score < 0.6,
-            "1 cross-module out of 2 edges, got {}", report.coupling_score);
+        assert!(
+            report.coupling_score > 0.3 && report.coupling_score < 0.6,
+            "1 cross-module out of 2 edges, got {}",
+            report.coupling_score
+        );
     }
 
     // ── Root-level files in dominant dir ARE cross-module with subdirs ──
@@ -157,16 +164,13 @@ mod tests {
     // are different modules — the coupling metric should reflect this.
     #[test]
     fn root_level_file_cross_module_with_subdirs() {
-        let edges = vec![
-            edge("src/app.rs", "src/layout/types.rs"),
-        ];
-        let snap = snap_with_edges(
-            edges,
-            vec![file("src/app.rs"), file("src/layout/types.rs")],
-        );
+        let edges = vec![edge("src/app.rs", "src/layout/types.rs")];
+        let snap = snap_with_edges(edges, vec![file("src/app.rs"), file("src/layout/types.rs")]);
         let report = compute_health(&snap);
-        assert_eq!(report.coupling_score > 0.25, true,
-            "root-level src/app.rs importing src/layout/ IS cross-module");
+        assert!(
+            report.coupling_score > 0.25,
+            "root-level src/app.rs importing src/layout/ IS cross-module"
+        );
     }
 
     // ── No dominant dir: uses first level ──
@@ -174,9 +178,7 @@ mod tests {
     fn no_dominant_uses_first_level() {
         // packages/auth → packages/api = cross-module (different first-level)
         // But 50% of endpoints are "packages", 50% are "services" → no dominant
-        let edges = vec![
-            edge("packages/auth/login.rs", "services/api/handler.rs"),
-        ];
+        let edges = vec![edge("packages/auth/login.rs", "services/api/handler.rs")];
         let snap = snap_with_edges(
             edges,
             vec![
@@ -185,16 +187,16 @@ mod tests {
             ],
         );
         let report = compute_health(&snap);
-        assert_eq!(report.coupling_score > 0.25, true, "cross first-level dirs = 100% coupling");
+        assert!(
+            report.coupling_score > 0.25,
+            "cross first-level dirs = 100% coupling"
+        );
     }
 
     // ── Idempotency test: computing twice gives same result ──
     #[test]
     fn idempotent() {
-        let edges = vec![
-            edge("src/a.rs", "lib/b.rs"),
-            edge("lib/b.rs", "src/a.rs"),
-        ];
+        let edges = vec![edge("src/a.rs", "lib/b.rs"), edge("lib/b.rs", "src/a.rs")];
         let snap = snap_with_edges(edges, vec![file("src/a.rs"), file("lib/b.rs")]);
         let r1 = compute_health(&snap);
         let r2 = compute_health(&snap);
@@ -215,15 +217,15 @@ mod tests {
 
         // 1 cycle
         let snap1 = snap_with_edges(
-            vec![
-                edge("src/a.rs", "src/b.rs"),
-                edge("src/b.rs", "src/a.rs"),
-            ],
+            vec![edge("src/a.rs", "src/b.rs"), edge("src/b.rs", "src/a.rs")],
             vec![file("src/a.rs"), file("src/b.rs")],
         );
         let r1 = compute_health(&snap1);
 
-        assert!(r0.quality_signal >= r1.quality_signal, "more cycles should lower quality signal");
+        assert!(
+            r0.quality_signal >= r1.quality_signal,
+            "more cycles should lower quality signal"
+        );
     }
 
     // ── Three-node cycle detection ──
@@ -286,12 +288,15 @@ mod tests {
                     pc: None,
                     bh: None,
                     d: None,
-                    co: None, is_public: false, is_method: false,
+                    co: None,
+                    is_public: false,
+                    is_method: false,
                 }]),
                 cls: None,
                 imp: None,
                 co: None,
-                tags: None, comment_lines: None,
+                tags: None,
+                comment_lines: None,
             }),
             children: None,
         };
@@ -314,10 +319,13 @@ mod tests {
         ];
         let snap = snap_with_edges(
             edges,
-            vec![file("src/mod1/a.rs"), file("src/mod1/c.rs"), file("src/mod2/b.rs")],
+            vec![
+                file("src/mod1/a.rs"),
+                file("src/mod1/c.rs"),
+                file("src/mod2/b.rs"),
+            ],
         );
         let report = compute_health(&snap);
         assert_eq!(report.entropy, 0.0);
     }
-
 }

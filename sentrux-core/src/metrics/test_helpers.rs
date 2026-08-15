@@ -4,9 +4,9 @@
 //! across mod_tests.rs, mod_tests2.rs, arch/tests.rs, arch/tests2.rs,
 //! dsm/tests.rs, rules/tests.rs, and whatif/tests.rs.
 
-use crate::core::types::ImportEdge;
 use crate::core::snapshot::Snapshot;
 use crate::core::types::FileNode;
+use crate::core::types::ImportEdge;
 use std::collections::HashMap;
 use std::sync::Arc;
 

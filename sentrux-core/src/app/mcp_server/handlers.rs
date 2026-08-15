@@ -6,20 +6,22 @@
 //! Tier-aware truncation: detail lists are limited to `tier.detail_limit()` items.
 //! Free users see top-3 + total counts. Pro users see everything.
 
+use super::registry::ToolDef;
+use super::McpState;
 use crate::analysis::scanner;
 use crate::core::snapshot::Snapshot;
 use crate::license::Tier;
-use crate::metrics::arch;
 use crate::metrics;
-use super::McpState;
-use super::registry::ToolDef;
+use crate::metrics::arch;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 // ── Scan helper (shared by scan, rescan, session_end) ──
 
-pub(crate) fn do_scan(root: &Path) -> Result<(Snapshot, metrics::HealthReport, arch::ArchReport), String> {
+pub(crate) fn do_scan(
+    root: &Path,
+) -> Result<(Snapshot, metrics::HealthReport, arch::ArchReport), String> {
     let root_str = root.to_str().ok_or("Invalid path encoding")?;
     let s = crate::core::settings::Settings::default();
     let result = scanner::scan_directory(
@@ -32,12 +34,12 @@ pub(crate) fn do_scan(root: &Path) -> Result<(Snapshot, metrics::HealthReport, a
             max_call_targets: s.max_call_targets,
         },
         None, // MCP scans are not cancellable
-    ).map_err(|e| format!("Scan failed: {e}"))?;
+    )
+    .map_err(|e| format!("Scan failed: {e}"))?;
     let arch_report = arch::compute_arch(&result.snapshot);
     let health = metrics::compute_health(&result.snapshot);
     Ok((result.snapshot, health, arch_report))
 }
-
 
 // ══════════════════════════════════════════════════════════════════
 //  SCAN
@@ -61,7 +63,9 @@ pub fn scan_def() -> ToolDef {
 }
 
 fn handle_scan(args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value, String> {
-    let path = args.get("path").and_then(|p| p.as_str())
+    let path = args
+        .get("path")
+        .and_then(|p| p.as_str())
         .ok_or("Missing 'path' argument")?;
 
     let root = PathBuf::from(path);
@@ -102,8 +106,11 @@ pub fn health_def() -> ToolDef {
     }
 }
 
-fn handle_health(_args: &Value, tier: &Tier, state: &mut McpState) -> Result<Value, String> {
-    let h = state.cached_health.as_ref().ok_or("No scan data. Call 'scan' first.")?;
+fn handle_health(_args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value, String> {
+    let h = state
+        .cached_health
+        .as_ref()
+        .ok_or("No scan data. Call 'scan' first.")?;
     let rc = &h.root_cause_scores;
     let raw = &h.root_cause_raw;
     // Identify the weakest root cause — this is where improvement effort should focus
@@ -114,7 +121,8 @@ fn handle_health(_args: &Value, tier: &Tier, state: &mut McpState) -> Result<Val
         ("equality", rc.equality),
         ("redundancy", rc.redundancy),
     ];
-    let bottleneck = scores_arr.iter()
+    let bottleneck = scores_arr
+        .iter()
         .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
         .map(|(name, _)| *name)
         .unwrap_or("none");
@@ -188,8 +196,15 @@ pub fn session_start_def() -> ToolDef {
     }
 }
 
-fn handle_session_start(_args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value, String> {
-    let h = state.cached_health.as_ref().ok_or("No scan data. Call 'scan' first.")?;
+fn handle_session_start(
+    _args: &Value,
+    _tier: &Tier,
+    state: &mut McpState,
+) -> Result<Value, String> {
+    let h = state
+        .cached_health
+        .as_ref()
+        .ok_or("No scan data. Call 'scan' first.")?;
     let b = arch::ArchBaseline::from_health(h);
     let signal = b.quality_signal;
     state.baseline = Some(b);
@@ -217,8 +232,14 @@ pub fn session_end_def() -> ToolDef {
 
 fn handle_session_end(_args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value, String> {
     // Clone to avoid borrow conflict: we read root+baseline, then mutate state.
-    let root = state.scan_root.clone().ok_or("No scan root. Call 'scan' first.")?;
-    let baseline = state.baseline.clone().ok_or("No baseline saved. Call 'session_start' first.")?;
+    let root = state
+        .scan_root
+        .clone()
+        .ok_or("No scan root. Call 'scan' first.")?;
+    let baseline = state
+        .baseline
+        .clone()
+        .ok_or("No baseline saved. Call 'session_start' first.")?;
 
     let (snapshot, health, arch_report) = do_scan(&root)?;
     let diff = baseline.diff(&health);
@@ -258,7 +279,10 @@ pub fn rescan_def() -> ToolDef {
 
 fn handle_rescan(_args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value, String> {
     // Clone root to avoid borrow conflict
-    let root = state.scan_root.clone().ok_or("No scan root. Call 'scan' first.")?;
+    let root = state
+        .scan_root
+        .clone()
+        .ok_or("No scan root. Call 'scan' first.")?;
     let (snapshot, health, arch_report) = do_scan(&root)?;
 
     let result = json!({
@@ -289,11 +313,23 @@ pub fn check_rules_def() -> ToolDef {
     }
 }
 
-fn handle_check_rules(_args: &Value, tier: &Tier, state: &mut McpState) -> Result<Value, String> {
-    let root = state.scan_root.as_ref().ok_or("No scan root. Call 'scan' first.")?;
-    let h = state.cached_health.as_ref().ok_or("No scan data. Call 'scan' first.")?;
-    let a = state.cached_arch.as_ref().ok_or("No scan data. Call 'scan' first.")?;
-    let snap = state.cached_snapshot.as_ref().ok_or("No scan data. Call 'scan' first.")?;
+fn handle_check_rules(_args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value, String> {
+    let root = state
+        .scan_root
+        .as_ref()
+        .ok_or("No scan root. Call 'scan' first.")?;
+    let h = state
+        .cached_health
+        .as_ref()
+        .ok_or("No scan data. Call 'scan' first.")?;
+    let a = state
+        .cached_arch
+        .as_ref()
+        .ok_or("No scan data. Call 'scan' first.")?;
+    let snap = state
+        .cached_snapshot
+        .as_ref()
+        .ok_or("No scan data. Call 'scan' first.")?;
 
     let mut config = crate::metrics::rules::RulesConfig::try_load(root)
         .ok_or_else(|| format!(
@@ -303,15 +339,22 @@ fn handle_check_rules(_args: &Value, tier: &Tier, state: &mut McpState) -> Resul
 
     // Free tier: max 3 rules (constraints count as 1 if any thresholds set,
     // plus layers and boundaries each count as 1 rule).
-    let total_rules = config.constraints.count_active()
-        + config.layers.len()
-        + config.boundaries.len();
-    let truncated = if !crate::pro_registry::has(crate::pro_registry::ProFeature::UnlimitedRules) && total_rules > 3 {
+    let total_rules =
+        config.constraints.count_active() + config.layers.len() + config.boundaries.len();
+    let truncated = if !crate::pro_registry::has(crate::pro_registry::ProFeature::UnlimitedRules)
+        && total_rules > 3
+    {
         // Keep constraints (1 rule) + first 2 of layers/boundaries
-        let mut remaining = 3usize.saturating_sub(if config.constraints.count_active() > 0 { 1 } else { 0 });
+        let mut remaining = 3usize.saturating_sub(if config.constraints.count_active() > 0 {
+            1
+        } else {
+            0
+        });
         config.layers.truncate(remaining.min(config.layers.len()));
         remaining = remaining.saturating_sub(config.layers.len());
-        config.boundaries.truncate(remaining.min(config.boundaries.len()));
+        config
+            .boundaries
+            .truncate(remaining.min(config.boundaries.len()));
         true
     } else {
         false

@@ -24,17 +24,26 @@ pub(crate) fn format_panic(thread_name: &str, payload: &Box<dyn std::any::Any + 
 
 /// Scanner background thread — handles both full scan and incremental rescan.
 /// Generation is embedded in each ScanCommand, so no shared atomic is needed. [ref:13696c9c]
-pub(crate) fn scanner_thread(
-    rx: Receiver<ScanCommand>,
-    tx: Sender<ScanMsg>,
-) {
+pub(crate) fn scanner_thread(rx: Receiver<ScanCommand>, tx: Sender<ScanMsg>) {
     while let Ok(cmd) = rx.recv() {
         let cmd = drain_to_latest(cmd, &rx);
         match cmd {
-            ScanCommand::FullScan { ref root, limits, gen, ref cancel } => {
+            ScanCommand::FullScan {
+                ref root,
+                limits,
+                gen,
+                ref cancel,
+            } => {
                 handle_full_scan(&tx, root, &limits, gen, cancel);
             }
-            ScanCommand::Rescan { ref root, ref changed, ref old_snap, limits, gen, ref cancel } => {
+            ScanCommand::Rescan {
+                ref root,
+                ref changed,
+                ref old_snap,
+                limits,
+                gen,
+                ref cancel,
+            } => {
                 handle_rescan(&tx, root, changed, old_snap, &limits, gen, cancel);
             }
         }
@@ -63,7 +72,9 @@ fn handle_full_scan(
             if cancel_clone.load(std::sync::atomic::Ordering::Relaxed) {
                 return; // Scan will complete but result will be discarded (stale gen)
             }
-            if let Err(crossbeam_channel::TrySendError::Disconnected(_)) = tx_progress.try_send(ScanMsg::Progress(p)) {
+            if let Err(crossbeam_channel::TrySendError::Disconnected(_)) =
+                tx_progress.try_send(ScanMsg::Progress(p))
+            {
                 crate::debug_log!("[scanner] progress channel disconnected");
             }
         }),
@@ -93,16 +104,14 @@ fn handle_rescan(
     gen: u64,
     cancel: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) {
-    let result = crate::analysis::scanner::rescan::rescan_changed(
-        root,
-        old_snap,
-        changed,
-        None,
-        limits,
-    );
+    let result =
+        crate::analysis::scanner::rescan::rescan_changed(root, old_snap, changed, None, limits);
 
     if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-        crate::debug_log!("[scanner] rescan cancelled (gen {}), discarding result", gen);
+        crate::debug_log!(
+            "[scanner] rescan cancelled (gen {}), discarding result",
+            gen
+        );
         return;
     }
     send_scan_result(tx, result, gen, root);
@@ -142,7 +151,10 @@ fn send_scan_result(
                 rules,
             };
 
-            if tx.send(ScanMsg::Complete(Arc::clone(&snap), gen, Box::new(reports))).is_err() {
+            if tx
+                .send(ScanMsg::Complete(Arc::clone(&snap), gen, Box::new(reports)))
+                .is_err()
+            {
                 crate::debug_log!("[scanner] failed to send Complete — receiver dropped");
             }
         }
@@ -162,11 +174,12 @@ fn compute_evolution_report_with_map(
     complexity_map: &std::collections::HashMap<String, u32>,
 ) -> Option<crate::metrics::evo::EvolutionReport> {
     let root_path = std::path::Path::new(root);
-    let known_files: std::collections::HashSet<String> = crate::core::snapshot::flatten_files_ref(&snap.root)
-        .iter()
-        .filter(|f| !f.is_dir)
-        .map(|f| f.path.clone())
-        .collect();
+    let known_files: std::collections::HashSet<String> =
+        crate::core::snapshot::flatten_files_ref(&snap.root)
+            .iter()
+            .filter(|f| !f.is_dir)
+            .map(|f| f.path.clone())
+            .collect();
     match crate::metrics::evo::compute_evolution(root_path, &known_files, complexity_map, None) {
         Ok(report) => Some(report),
         Err(e) => {
@@ -177,9 +190,14 @@ fn compute_evolution_report_with_map(
 }
 
 /// Build complexity map: file → max cyclomatic complexity.
-fn build_complexity_map(snap: &crate::core::snapshot::Snapshot) -> std::collections::HashMap<String, u32> {
+fn build_complexity_map(
+    snap: &crate::core::snapshot::Snapshot,
+) -> std::collections::HashMap<String, u32> {
     let mut map = std::collections::HashMap::new();
-    fn collect(node: &crate::core::types::FileNode, map: &mut std::collections::HashMap<String, u32>) {
+    fn collect(
+        node: &crate::core::types::FileNode,
+        map: &mut std::collections::HashMap<String, u32>,
+    ) {
         if !node.is_dir {
             if let Some(sa) = &node.sa {
                 if let Some(funcs) = &sa.functions {
@@ -215,7 +233,12 @@ fn compute_rules_check(
 ) -> Option<crate::metrics::rules::checks::RuleCheckResult> {
     let root_path = std::path::Path::new(root);
     let config = crate::metrics::rules::RulesConfig::try_load(root_path)?;
-    Some(crate::metrics::rules::check_rules(&config, health, arch, &snap.import_graph))
+    Some(crate::metrics::rules::check_rules(
+        &config,
+        health,
+        arch,
+        &snap.import_graph,
+    ))
 }
 
 /// Drain any queued commands, keeping only the latest. [ref:b9f45231]
@@ -246,7 +269,10 @@ pub(crate) fn drain_to_latest(first: ScanCommand, rx: &Receiver<ScanCommand>) ->
 
     let last_idx = commands.len() - 1;
     let mut result = commands.swap_remove(last_idx);
-    if let ScanCommand::Rescan { ref mut changed, .. } = result {
+    if let ScanCommand::Rescan {
+        ref mut changed, ..
+    } = result
+    {
         *changed = merged_changes.into_iter().collect();
     }
     result
@@ -269,8 +295,8 @@ pub(crate) fn layout_thread(rx: Receiver<LayoutRequest>, tx: Sender<LayoutMsg>) 
             heat_map: latest.heat_map.as_ref(),
             settings: &latest.settings,
             focus_mode: &latest.focus_mode,
-            entry_point_files: &*latest.entry_point_files,
-            hidden_paths: &*latest.hidden_paths,
+            entry_point_files: &latest.entry_point_files,
+            hidden_paths: &latest.hidden_paths,
             impact_files: latest.impact_files.as_deref(),
         };
         let rd = crate::layout::compute_layout_from_snapshot(

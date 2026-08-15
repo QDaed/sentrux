@@ -20,6 +20,12 @@ pub struct ViewportTransform {
     pub canvas_h: f64,
 }
 
+impl Default for ViewportTransform {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ViewportTransform {
     /// Create a default viewport (1x zoom, no offset, 800x600 canvas).
     pub fn new() -> Self {
@@ -70,7 +76,12 @@ impl ViewportTransform {
     /// Screen position → world position.
     /// Guards against scale ≤ 0 to prevent Infinity/NaN propagation.
     #[inline]
-    pub fn screen_to_world(&self, screen_x: f32, screen_y: f32, canvas_origin: egui::Pos2) -> (f64, f64) {
+    pub fn screen_to_world(
+        &self,
+        screen_x: f32,
+        screen_y: f32,
+        canvas_origin: egui::Pos2,
+    ) -> (f64, f64) {
         if self.scale <= 0.0 {
             return (self.offset_x, self.offset_y);
         }
@@ -83,7 +94,15 @@ impl ViewportTransform {
     /// BUG 12 fix: guards against NaN/Infinity factor (from malfunctioning input
     /// devices). NaN.clamp(min, max) returns NaN in Rust, which would freeze
     /// the viewport in an unrecoverable state with all offsets as NaN.
-    pub fn zoom_at(&mut self, screen_x: f32, screen_y: f32, canvas_origin: egui::Pos2, factor: f64, zoom_min: f64, zoom_max: f64) {
+    pub fn zoom_at(
+        &mut self,
+        screen_x: f32,
+        screen_y: f32,
+        canvas_origin: egui::Pos2,
+        factor: f64,
+        zoom_min: f64,
+        zoom_max: f64,
+    ) {
         if !factor.is_finite() || factor <= 0.0 {
             return; // reject NaN, Infinity, negative, and zero factors
         }
@@ -96,7 +115,13 @@ impl ViewportTransform {
 
     /// Compute the minimum zoom so content fills at least `fill_pct` of the screen.
     /// Returns a dynamic floor based on content dimensions. If content is unknown, falls back to `fallback`.
-    pub fn min_zoom_for_content(&self, content_w: f64, content_h: f64, fill_pct: f64, fallback: f64) -> f64 {
+    pub fn min_zoom_for_content(
+        &self,
+        content_w: f64,
+        content_h: f64,
+        fill_pct: f64,
+        fallback: f64,
+    ) -> f64 {
         if content_w <= 0.0 || content_h <= 0.0 || self.canvas_w <= 0.0 || self.canvas_h <= 0.0 {
             return fallback;
         }
