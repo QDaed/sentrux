@@ -198,18 +198,30 @@ pub struct InheritEdge {
 }
 
 impl GraphEdge for CallEdge {
-    fn source_file(&self) -> &str { &self.from_file }
-    fn target_file(&self) -> &str { &self.to_file }
+    fn source_file(&self) -> &str {
+        &self.from_file
+    }
+    fn target_file(&self) -> &str {
+        &self.to_file
+    }
 }
 
 impl GraphEdge for ImportEdge {
-    fn source_file(&self) -> &str { &self.from_file }
-    fn target_file(&self) -> &str { &self.to_file }
+    fn source_file(&self) -> &str {
+        &self.from_file
+    }
+    fn target_file(&self) -> &str {
+        &self.to_file
+    }
 }
 
 impl GraphEdge for InheritEdge {
-    fn source_file(&self) -> &str { &self.child_file }
-    fn target_file(&self) -> &str { &self.parent_file }
+    fn source_file(&self) -> &str {
+        &self.child_file
+    }
+    fn target_file(&self) -> &str {
+        &self.parent_file
+    }
 }
 
 /// A detected application entry point (main function, HTTP handler, etc.).

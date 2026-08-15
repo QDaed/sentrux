@@ -67,7 +67,12 @@ impl SentruxApp {
 
     /// Process TreeReady message: early snapshot with file tree but no graphs yet.
     /// Enables rendering file blocks before graph computation finishes.
-    fn handle_tree_ready(&mut self, snap: Arc<crate::core::snapshot::Snapshot>, gen: u64, ctx: &egui::Context) {
+    fn handle_tree_ready(
+        &mut self,
+        snap: Arc<crate::core::snapshot::Snapshot>,
+        gen: u64,
+        ctx: &egui::Context,
+    ) {
         if gen == self.scan_generation {
             self.state.snapshot = Some(snap);
             self.state.rebuild_file_index();
@@ -83,8 +88,12 @@ impl SentruxApp {
         reports: crate::app::channels::ScanReports,
         ctx: &egui::Context,
     ) {
-        let report = reports.health.unwrap_or_else(|| crate::metrics::compute_health(&snap));
-        let arch = reports.arch.unwrap_or_else(|| crate::metrics::arch::compute_arch(&snap));
+        let report = reports
+            .health
+            .unwrap_or_else(|| crate::metrics::compute_health(&snap));
+        let arch = reports
+            .arch
+            .unwrap_or_else(|| crate::metrics::arch::compute_arch(&snap));
         self.check_arch_degradation(&arch);
         // Record scan for telemetry
         crate::app::update_check::record_scan(snap.total_files, report.quality_signal);
@@ -130,11 +139,15 @@ impl SentruxApp {
     }
 
     /// Log specific architecture regressions between previous and current reports.
-    fn log_arch_regressions(prev: &crate::metrics::arch::ArchReport, current: &crate::metrics::arch::ArchReport) {
+    fn log_arch_regressions(
+        prev: &crate::metrics::arch::ArchReport,
+        current: &crate::metrics::arch::ArchReport,
+    ) {
         if current.upward_violations.len() > prev.upward_violations.len() {
             eprintln!(
                 "[arch-diff] Upward violations increased: {} -> {}",
-                prev.upward_violations.len(), current.upward_violations.len()
+                prev.upward_violations.len(),
+                current.upward_violations.len()
             );
         }
         if current.max_blast_radius > prev.max_blast_radius + 2 {
@@ -155,7 +168,12 @@ impl SentruxApp {
     }
 
     /// Process a single layout-ready message: build spatial index, fit viewport, update state.
-    fn apply_layout_ready(&mut self, rd: crate::layout::types::RenderData, version: u64, ctx: &egui::Context) {
+    fn apply_layout_ready(
+        &mut self,
+        rd: crate::layout::types::RenderData,
+        version: u64,
+        ctx: &egui::Context,
+    ) {
         let si = SpatialIndex::build(&rd.rects, rd.content_width, rd.content_height);
         if self.state.rendered_version == 0 {
             self.state.viewport.fit_content(
@@ -191,7 +209,9 @@ impl SentruxApp {
     fn poll_watcher_messages(&mut self, ctx: &egui::Context) {
         let mut had_watch_events = false;
         while let Ok(fe) = self.watch_rx.try_recv() {
-            self.state.heat.record_change(&fe.path, &self.state.settings.heat_config());
+            self.state
+                .heat
+                .record_change(&fe.path, &self.state.settings.heat_config());
             if !fe.is_dir {
                 self.state.record_activity(fe.path.clone(), fe.kind.clone());
             }
@@ -212,7 +232,8 @@ impl SentruxApp {
             Some(s) => s,
             None => return,
         };
-        let debounce_elapsed = since.elapsed() > Duration::from_millis(self.state.settings.file_change_debounce_ms);
+        let debounce_elapsed =
+            since.elapsed() > Duration::from_millis(self.state.settings.file_change_debounce_ms);
         if !debounce_elapsed || self.state.scanning {
             return;
         }
@@ -221,7 +242,9 @@ impl SentruxApp {
             // are flushed as soon as a snapshot becomes available. [H10 fix]
             return;
         }
-        let changed: Vec<String> = std::mem::take(&mut self.state.pending_changes).into_iter().collect();
+        let changed: Vec<String> = std::mem::take(&mut self.state.pending_changes)
+            .into_iter()
+            .collect();
         self.state.pending_since = None;
         if !changed.is_empty() {
             self.start_rescan(changed);
@@ -238,9 +261,12 @@ impl SentruxApp {
             Err(_) => return,
         };
         match maybe_handle {
-            Some(handle) => { self.watcher_handle = Some(handle); }
+            Some(handle) => {
+                self.watcher_handle = Some(handle);
+            }
             None => {
-                self.state.scan_step = "Warning: file watcher failed — live updates disabled".into();
+                self.state.scan_step =
+                    "Warning: file watcher failed — live updates disabled".into();
                 ctx.request_repaint();
             }
         }
@@ -263,19 +289,25 @@ impl SentruxApp {
     }
 
     fn retry_layout_if_needed(&mut self) {
-        let needs_layout = !self.state.scanning && self.state.snapshot.is_some() && (
-            self.state.layout_request_dropped
-            || self.state.render_data.is_none()
-        );
+        let needs_layout = !self.state.scanning
+            && self.state.snapshot.is_some()
+            && (self.state.layout_request_dropped || self.state.render_data.is_none());
         if needs_layout
-            && self.state.layout_retry_at.is_none_or(|t| t.elapsed() >= Duration::from_millis(50)) {
-                self.request_layout();
-                self.state.layout_retry_at = Some(Instant::now());
-            }
+            && self
+                .state
+                .layout_retry_at
+                .is_none_or(|t| t.elapsed() >= Duration::from_millis(50))
+        {
+            self.request_layout();
+            self.state.layout_retry_at = Some(Instant::now());
+        }
     }
 
     fn poll_dead_scanner(&mut self, ctx: &egui::Context) {
-        let is_finished = self.scanner_handle.as_ref().is_some_and(|h| h.is_finished());
+        let is_finished = self
+            .scanner_handle
+            .as_ref()
+            .is_some_and(|h| h.is_finished());
         if !is_finished {
             return;
         }
@@ -297,7 +329,11 @@ impl SentruxApp {
     }
 
     /// Handle a dead layout thread: check if it panicked and recover.
-    fn handle_dead_layout_result(&mut self, handle: std::thread::JoinHandle<()>, ctx: &egui::Context) {
+    fn handle_dead_layout_result(
+        &mut self,
+        handle: std::thread::JoinHandle<()>,
+        ctx: &egui::Context,
+    ) {
         let was_panic = match handle.join() {
             Err(panic_payload) => {
                 let msg = format_panic("layout", &panic_payload);
@@ -315,7 +351,9 @@ impl SentruxApp {
             self.request_layout();
         }
         if !was_panic {
-            crate::debug_log!("[app] layout thread exited normally (channel disconnected) — respawned");
+            crate::debug_log!(
+                "[app] layout thread exited normally (channel disconnected) — respawned"
+            );
         }
     }
 
@@ -334,8 +372,10 @@ impl SentruxApp {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_else(|e| {
                 crate::debug_log!("[app] system clock before epoch: {}", e);
-                if self.state.scan_step.is_empty() || !self.state.scan_step.starts_with("Warning:") {
-                    self.state.scan_step = "Warning: system clock error — Age/Heat colors unreliable".into();
+                if self.state.scan_step.is_empty() || !self.state.scan_step.starts_with("Warning:")
+                {
+                    self.state.scan_step =
+                        "Warning: system clock error — Age/Heat colors unreliable".into();
                 }
                 std::time::Duration::ZERO
             })
@@ -359,17 +399,29 @@ impl SentruxApp {
     /// Snapshot heat values for the layout thread when Heat size mode is active.
     fn snapshot_heat_map(&self) -> Option<std::collections::HashMap<String, f64>> {
         if self.state.size_mode == SizeMode::Heat {
-            Some(self.state.heat.hot_files(0.0, self.state.frame_instant, self.state.settings.heat_half_life)
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v))
-                .collect())
+            Some(
+                self.state
+                    .heat
+                    .hot_files(
+                        0.0,
+                        self.state.frame_instant,
+                        self.state.settings.heat_half_life,
+                    )
+                    .into_iter()
+                    .map(|(k, v)| (k.to_string(), v))
+                    .collect(),
+            )
         } else {
             None
         }
     }
 
     /// Build a layout request from current state.
-    fn build_layout_request(&self, snap: &Arc<crate::core::snapshot::Snapshot>, version: u64) -> LayoutRequest {
+    fn build_layout_request(
+        &self,
+        snap: &Arc<crate::core::snapshot::Snapshot>,
+        version: u64,
+    ) -> LayoutRequest {
         LayoutRequest {
             snapshot: Arc::clone(snap),
             size_mode: self.state.size_mode,
@@ -420,11 +472,16 @@ impl SentruxApp {
     /// Joins the old thread on a detached background thread to avoid blocking the UI.
     fn respawn_layout_thread(&mut self) {
         if let Some(old_handle) = self.layout_handle.take() {
-            drop(std::mem::replace(&mut self.layout_tx, bounded::<LayoutRequest>(0).0));
+            drop(std::mem::replace(
+                &mut self.layout_tx,
+                bounded::<LayoutRequest>(0).0,
+            ));
             // Join on a background thread to avoid blocking the UI event loop
             std::thread::Builder::new()
                 .name("layout-join".into())
-                .spawn(move || { let _ = old_handle.join(); })
+                .spawn(move || {
+                    let _ = old_handle.join();
+                })
                 .unwrap_or_else(|_| {
                     // If we can't spawn, just detach (the old thread will exit on its own)
                     std::thread::spawn(|| {})
@@ -436,8 +493,7 @@ impl SentruxApp {
             .name("layout".into())
             .spawn(move || {
                 layout_thread(layout_req_rx, layout_msg_tx);
-            })
-        {
+            }) {
             Ok(handle) => {
                 self.layout_tx = layout_req_tx;
                 self.layout_rx = layout_msg_rx;
@@ -457,14 +513,17 @@ impl SentruxApp {
     /// Joins the old thread on a detached background thread to avoid blocking the UI.
     fn respawn_scanner_thread(&mut self) {
         if let Some(old_handle) = self.scanner_handle.take() {
-            drop(std::mem::replace(&mut self.scan_tx, bounded::<ScanCommand>(0).0));
+            drop(std::mem::replace(
+                &mut self.scan_tx,
+                bounded::<ScanCommand>(0).0,
+            ));
             // Join on a background thread to avoid blocking the UI event loop
             std::thread::Builder::new()
                 .name("scanner-join".into())
-                .spawn(move || { let _ = old_handle.join(); })
-                .unwrap_or_else(|_| {
-                    std::thread::spawn(|| {})
-                });
+                .spawn(move || {
+                    let _ = old_handle.join();
+                })
+                .unwrap_or_else(|_| std::thread::spawn(|| {}));
         }
         let (scan_cmd_tx, scan_cmd_rx) = bounded::<ScanCommand>(1);
         let (scan_msg_tx, scan_msg_rx) = bounded::<ScanMsg>(64);
@@ -472,8 +531,7 @@ impl SentruxApp {
             .name("scanner".into())
             .spawn(move || {
                 scanner_thread(scan_cmd_rx, scan_msg_tx);
-            })
-        {
+            }) {
             Ok(handle) => {
                 self.scan_tx = scan_cmd_tx;
                 self.scan_rx = scan_msg_rx;
@@ -535,7 +593,8 @@ impl SentruxApp {
             None => return false,
         };
         // Cancel any running scan before starting new one
-        self.scan_cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.scan_cancel
+            .store(true, std::sync::atomic::Ordering::Relaxed);
         // Create fresh cancel token for the new scan
         self.scan_cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
@@ -626,7 +685,9 @@ impl SentruxApp {
                 .name("watcher-setup".into())
                 .spawn(move || {
                     match crate::app::watcher::start_watcher(&root_owned, tx, debounce_ms) {
-                        Ok(handle) => { let _ = handle_tx.send(Some(handle)); }
+                        Ok(handle) => {
+                            let _ = handle_tx.send(Some(handle));
+                        }
                         Err(e) => {
                             eprintln!("Failed to start watcher: {}", e);
                             let _ = handle_tx.send(None);

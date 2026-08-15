@@ -58,7 +58,7 @@ pub(super) struct ResolveEnv<'a> {
 /// e.g. "github.com/user/repo/internal/config" with module "github.com/user/repo"
 /// returns Some("internal/config"). If the specifier also has a project dir prefix
 /// (e.g. module is in "server/"), prepends it: "server/internal/config".
-fn strip_module_prefix<'a>(specifier: &'a str, module_prefixes: &[(String, String)]) -> Option<String> {
+fn strip_module_prefix(specifier: &str, module_prefixes: &[(String, String)]) -> Option<String> {
     for (module_path, project_dir) in module_prefixes {
         if let Some(rest) = specifier.strip_prefix(module_path.as_str()) {
             let rest = rest.strip_prefix('/').unwrap_or(rest);
@@ -84,9 +84,11 @@ pub(super) fn try_suffix_resolve(
     // Fast path: module-qualified imports — strip the module prefix first
     // so we jump straight to the local path instead of progressive stripping.
     if !env.suffix_index.module_prefixes.is_empty() {
-        if let Some(local_path) = strip_module_prefix(specifier, &env.suffix_index.module_prefixes) {
+        if let Some(local_path) = strip_module_prefix(specifier, &env.suffix_index.module_prefixes)
+        {
             // Try the module-stripped path through the suffix index
-            if let Some(result) = try_suffix_resolve_inner(&local_path, env, file_dir_str, file_dir) {
+            if let Some(result) = try_suffix_resolve_inner(&local_path, env, file_dir_str, file_dir)
+            {
                 return Some(result);
             }
         }
@@ -104,7 +106,10 @@ fn try_suffix_resolve_inner(
 ) -> Option<String> {
     let stripped = specifier.rfind('.').map(|i| &specifier[..i]);
     let specs: &[&str] = if let Some(s) = stripped {
-        if specifier.rfind('/').is_none_or(|slash| specifier.rfind('.').unwrap() > slash) {
+        if specifier
+            .rfind('/')
+            .is_none_or(|slash| specifier.rfind('.').unwrap() > slash)
+        {
             &[specifier, s]
         } else {
             &[specifier]
@@ -143,7 +148,12 @@ fn try_suffix_resolve_inner(
 ///
 /// Handles TypeScript ESM pattern: `./fleet.js` → tries `fleet.js` (exact),
 /// then `fleet.ts`, `fleet.tsx` (extension substitution), then `fleet/index.ts`.
-pub(super) fn try_resolve_name(name: &str, base_dir: &Path, known_files: &HashSet<&str>, exts: &[&str]) -> Option<String> {
+pub(super) fn try_resolve_name(
+    name: &str,
+    base_dir: &Path,
+    known_files: &HashSet<&str>,
+    exts: &[&str],
+) -> Option<String> {
     let joined = base_dir.join(name);
 
     // A. Exact match
@@ -194,14 +204,19 @@ pub(super) fn try_resolve_name(name: &str, base_dir: &Path, known_files: &HashSe
 }
 
 /// Resolve a relative import (starts with '.').
-pub(super) fn resolve_relative(specifier: &str, file_dir: &Path, known_files: &HashSet<&str>, exts: &[&str]) -> Option<String> {
+pub(super) fn resolve_relative(
+    specifier: &str,
+    file_dir: &Path,
+    known_files: &HashSet<&str>,
+    exts: &[&str],
+) -> Option<String> {
     let dots = specifier.bytes().take_while(|&b| b == b'.').count();
     let remainder = &specifier[dots..];
     let mut base = file_dir.to_path_buf();
     for _ in 1..dots {
-        match base.parent() {
-            Some(p) => base = p.to_path_buf(),
-            None => return None, // Already at filesystem root — can't go higher
+        {
+            let p = base.parent()?;
+            base = p.to_path_buf()
         }
     }
     if remainder.is_empty() {
@@ -221,13 +236,22 @@ pub(super) fn pick_closest<'a>(candidates: &[&'a str], file_dir: &str) -> &'a st
     if candidates.len() == 1 {
         return candidates[0];
     }
-    let dir_parts: Vec<&str> = if file_dir.is_empty() { Vec::new() } else { file_dir.split('/').collect() };
+    let dir_parts: Vec<&str> = if file_dir.is_empty() {
+        Vec::new()
+    } else {
+        file_dir.split('/').collect()
+    };
     let mut best = candidates[0];
     let mut best_shared = 0usize;
     for &c in candidates {
         let c_dir = c.rfind('/').map(|i| &c[..i]).unwrap_or("");
-        let c_parts: Vec<&str> = if c_dir.is_empty() { Vec::new() } else { c_dir.split('/').collect() };
-        let shared = c_parts.iter()
+        let c_parts: Vec<&str> = if c_dir.is_empty() {
+            Vec::new()
+        } else {
+            c_dir.split('/').collect()
+        };
+        let shared = c_parts
+            .iter()
             .zip(dir_parts.iter())
             .take_while(|(a, b)| a == b)
             .count();
@@ -270,7 +294,8 @@ pub(crate) fn normalize_path(path: &Path) -> String {
     if underflow > 0 && !is_absolute {
         return String::new();
     }
-    let suffix: Vec<std::borrow::Cow<'_, str>> = parts.iter().map(|s| s.to_string_lossy()).collect();
+    let suffix: Vec<std::borrow::Cow<'_, str>> =
+        parts.iter().map(|s| s.to_string_lossy()).collect();
     let all: Vec<&str> = suffix.iter().map(|s| s.as_ref()).collect();
     let joined = all.join("/");
     if is_absolute {

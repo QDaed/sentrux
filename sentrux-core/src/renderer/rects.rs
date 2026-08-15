@@ -5,8 +5,8 @@
 //! zoom-proportional text labels with monospace font.
 
 use super::{
-    ColorMode, EdgeFilter, LayoutRectSlim, RectKind, RenderData,
-    ViewportTransform, heat, colors, RenderContext,
+    colors, heat, ColorMode, EdgeFilter, LayoutRectSlim, RectKind, RenderContext, RenderData,
+    ViewportTransform,
 };
 use egui::{Color32, CornerRadius, Stroke, StrokeKind};
 use std::collections::HashSet;
@@ -15,7 +15,11 @@ use std::collections::HashSet;
 #[inline]
 fn lin(c: u8) -> f32 {
     let s = c as f32 / 255.0;
-    if s <= 0.04045 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) }
+    if s <= 0.04045 {
+        s / 12.92
+    } else {
+        ((s + 0.055) / 1.055).powf(2.4)
+    }
 }
 
 /// Compute relative luminance (WCAG 2.0).
@@ -23,7 +27,6 @@ fn lin(c: u8) -> f32 {
 fn luminance(r: u8, g: u8, b: u8) -> f32 {
     0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
 }
-
 
 /// Adaptive high-contrast text color for any background.
 ///
@@ -112,7 +115,14 @@ pub fn draw_rects(
     let px = fs * 0.25;
     let py = fs * 0.15;
 
-    let dctx = DrawCtx { painter, tc, fs, cw, px, py };
+    let dctx = DrawCtx {
+        painter,
+        tc,
+        fs,
+        cw,
+        px,
+        py,
+    };
 
     for r in &rd.rects {
         if r.kind != kind {
@@ -181,13 +191,14 @@ fn draw_section_rect(
     lod_full: bool,
 ) {
     let bg = dctx.tc.section_color(r.depth);
-    dctx.painter.rect_filled(screen_rect, CornerRadius::ZERO, bg);
+    dctx.painter
+        .rect_filled(screen_rect, CornerRadius::ZERO, bg);
 
     if screen_rect.width() > 10.0 {
         dctx.painter.rect_stroke(
             screen_rect,
             CornerRadius::ZERO,
-            Stroke::new(1.0, dctx.tc.section_border),
+            Stroke::new(1.0_f32, dctx.tc.section_border),
             StrokeKind::Middle,
         );
     }
@@ -210,7 +221,8 @@ fn draw_section_header(
         screen_rect.left_top(),
         egui::vec2(screen_rect.width(), strip_h),
     );
-    dctx.painter.rect_filled(strip, CornerRadius::ZERO, dctx.tc.header_strip_bg);
+    dctx.painter
+        .rect_filled(strip, CornerRadius::ZERO, dctx.tc.header_strip_bg);
 
     if dctx.fs + dctx.py >= strip_h {
         return;
@@ -309,10 +321,11 @@ fn draw_file_rect(
     let color = file_display_color(ctx, &r.path, connected_files, lod_full);
     let s = &ctx.settings;
     let inset_rect = screen_rect.shrink(s.file_rect_inset);
-    dctx.painter.rect_filled(inset_rect, CornerRadius::ZERO, color);
+    dctx.painter
+        .rect_filled(inset_rect, CornerRadius::ZERO, color);
 
     if lod_full {
-        draw_file_borders(&dctx, screen_rect, inset_rect, r, ctx);
+        draw_file_borders(dctx, screen_rect, inset_rect, r, ctx);
 
         if inset_rect.width() > dctx.cw * 2.0 && inset_rect.height() > dctx.fs + dctx.py * 2.0 {
             draw_file_text(dctx, inset_rect, r, ctx, color);
@@ -334,22 +347,24 @@ fn draw_file_borders(
     dctx.painter.rect_stroke(
         inset_rect,
         CornerRadius::ZERO,
-        Stroke::new(1.0, dctx.tc.file_border),
+        Stroke::new(1.0_f32, dctx.tc.file_border),
         StrokeKind::Middle,
     );
 
     if ctx.hovered_path == Some(r.path.as_str()) {
         dctx.painter.rect_stroke(
-            screen_rect, CornerRadius::ZERO,
-            Stroke::new(1.0, dctx.tc.hover_stroke),
+            screen_rect,
+            CornerRadius::ZERO,
+            Stroke::new(1.0_f32, dctx.tc.hover_stroke),
             StrokeKind::Outside,
         );
     }
 
     if ctx.selected_path == Some(r.path.as_str()) {
         dctx.painter.rect_stroke(
-            screen_rect, CornerRadius::ZERO,
-            Stroke::new(2.0, dctx.tc.selected_stroke),
+            screen_rect,
+            CornerRadius::ZERO,
+            Stroke::new(2.0_f32, dctx.tc.selected_stroke),
             StrokeKind::Outside,
         );
     }
@@ -376,13 +391,17 @@ fn draw_file_text(
 
     let text_x = inset_rect.left() + dctx.px;
     let text_y = inset_rect.top() + dctx.py;
-    let name_bottom = dctx.painter.text(
-        egui::pos2(text_x, text_y),
-        egui::Align2::LEFT_TOP,
-        display_name,
-        egui::FontId::monospace(dctx.fs),
-        label_color,
-    ).max.y;
+    let name_bottom = dctx
+        .painter
+        .text(
+            egui::pos2(text_x, text_y),
+            egui::Align2::LEFT_TOP,
+            display_name,
+            egui::FontId::monospace(dctx.fs),
+            label_color,
+        )
+        .max
+        .y;
 
     draw_stats_line(dctx, inset_rect, r, ctx, text_x, name_bottom, stats_color);
 }
@@ -452,7 +471,9 @@ fn color_by_language(ctx: &RenderContext, path: &str) -> Color32 {
 }
 
 fn color_by_heat(ctx: &RenderContext, path: &str) -> Color32 {
-    let h = ctx.heat.get_heat(path, ctx.frame_instant, ctx.settings.heat_half_life);
+    let h = ctx
+        .heat
+        .get_heat(path, ctx.frame_instant, ctx.settings.heat_half_life);
     if h > 0.01 {
         heat::heat_color(h)
     } else {
@@ -462,7 +483,11 @@ fn color_by_heat(ctx: &RenderContext, path: &str) -> Color32 {
 
 /// Age mode: color by file mtime — newer = brighter. O(1) via file_index.
 fn color_by_age(ctx: &RenderContext, path: &str) -> Color32 {
-    let mtime = ctx.file_index.get(path).map(|e| e.mtime).filter(|&m| m > 0.0);
+    let mtime = ctx
+        .file_index
+        .get(path)
+        .map(|e| e.mtime)
+        .filter(|&m| m > 0.0);
     match mtime {
         Some(mt) => {
             let now = ctx.frame_now_secs;

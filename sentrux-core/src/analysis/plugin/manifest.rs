@@ -1,9 +1,9 @@
 //! Plugin manifest (plugin.toml) — the single source of truth for a language plugin.
 
+use super::profile::{LanguageSemantics, LanguageThresholds};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
-use super::profile::{LanguageSemantics, LanguageThresholds};
 
 /// Root manifest structure parsed from plugin.toml.
 #[derive(Debug, Deserialize)]
@@ -79,22 +79,31 @@ impl PluginManifest {
         let path = plugin_dir.join("plugin.toml");
         let content = std::fs::read_to_string(&path)
             .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
-        toml::from_str(&content)
-            .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
+        toml::from_str(&content).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
     }
 
     /// Get the expected grammar filename for the current platform.
     pub fn grammar_filename() -> &'static str {
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-        { "darwin-arm64.dylib" }
+        {
+            "darwin-arm64.dylib"
+        }
         #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-        { "darwin-x86_64.dylib" }
+        {
+            "darwin-x86_64.dylib"
+        }
         #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-        { "linux-x86_64.so" }
+        {
+            "linux-x86_64.so"
+        }
         #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-        { "linux-aarch64.so" }
+        {
+            "linux-aarch64.so"
+        }
         #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-        { "windows-x86_64.dll" }
+        {
+            "windows-x86_64.dll"
+        }
         #[cfg(not(any(
             all(target_os = "macos", target_arch = "aarch64"),
             all(target_os = "macos", target_arch = "x86_64"),
@@ -102,7 +111,9 @@ impl PluginManifest {
             all(target_os = "linux", target_arch = "aarch64"),
             all(target_os = "windows", target_arch = "x86_64"),
         )))]
-        { "unsupported" }
+        {
+            "unsupported"
+        }
     }
 
     /// Validate that required capabilities have matching captures in query source.
@@ -110,8 +121,20 @@ impl PluginManifest {
     pub fn validate_query_captures(&self, query_src: &str) -> Result<(), String> {
         for cap in &self.queries.capabilities {
             let patterns: &[&str] = match cap.as_str() {
-                "functions" => &["func.def", "func.name", "definition.function", "definition.method", "function_definition", "name"],
-                "classes" => &["class.def", "class.name", "definition.class", "class_definition"],
+                "functions" => &[
+                    "func.def",
+                    "func.name",
+                    "definition.function",
+                    "definition.method",
+                    "function_definition",
+                    "name",
+                ],
+                "classes" => &[
+                    "class.def",
+                    "class.name",
+                    "definition.class",
+                    "class_definition",
+                ],
                 "imports" => &["import.path", "import.name", "import", "source"],
                 "calls" => &["call.name", "call", "reference.call"],
                 _ => continue,
@@ -121,7 +144,11 @@ impl PluginManifest {
                 return Err(format!(
                     "Query missing capture for '{}' capability (expected one of: {})",
                     cap,
-                    patterns.iter().map(|p| format!("@{p}")).collect::<Vec<_>>().join(", ")
+                    patterns
+                        .iter()
+                        .map(|p| format!("@{p}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ));
             }
         }

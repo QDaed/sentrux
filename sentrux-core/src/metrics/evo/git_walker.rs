@@ -40,8 +40,12 @@ pub(crate) fn walk_git_log(root: &Path, lookback_days: u32) -> Result<Vec<Commit
     let cutoff = epoch_now() - (lookback_days as i64 * 86400);
 
     let mut revwalk = repo.revwalk().map_err(|e| format!("Revwalk failed: {e}"))?;
-    revwalk.set_sorting(Sort::TIME).map_err(|e| format!("Sort failed: {e}"))?;
-    revwalk.push_head().map_err(|e| format!("Push HEAD failed: {e}"))?;
+    revwalk
+        .set_sorting(Sort::TIME)
+        .map_err(|e| format!("Sort failed: {e}"))?;
+    revwalk
+        .push_head()
+        .map_err(|e| format!("Push HEAD failed: {e}"))?;
 
     let prefix = scan_root_prefix(root, workdir);
     let (records, skip_counts) = collect_commits(&repo, revwalk, cutoff, &prefix);
@@ -50,8 +54,11 @@ pub(crate) fn walk_git_log(root: &Path, lookback_days: u32) -> Result<Vec<Commit
     if total_skipped > 0 {
         eprintln!(
             "[evolution] walked {} commits, skipped {} (oid_err={}, commit_err={}, unparseable={})",
-            records.len() + total_skipped as usize, total_skipped,
-            skip_counts.oid, skip_counts.commit, skip_counts.parse
+            records.len() + total_skipped as usize,
+            total_skipped,
+            skip_counts.oid,
+            skip_counts.commit,
+            skip_counts.parse
         );
     }
 
@@ -73,23 +80,35 @@ fn collect_commits(
     prefix: &str,
 ) -> (Vec<CommitRecord>, SkipCounts) {
     let mut records = Vec::new();
-    let mut skips = SkipCounts { oid: 0, commit: 0, parse: 0 };
+    let mut skips = SkipCounts {
+        oid: 0,
+        commit: 0,
+        parse: 0,
+    };
 
     for oid_result in revwalk {
         let oid = match oid_result {
             Ok(o) => o,
-            Err(_) => { skips.oid += 1; continue; }
+            Err(_) => {
+                skips.oid += 1;
+                continue;
+            }
         };
         let commit = match repo.find_commit(oid) {
             Ok(c) => c,
-            Err(_) => { skips.commit += 1; continue; }
+            Err(_) => {
+                skips.commit += 1;
+                continue;
+            }
         };
         if commit.time().seconds() < cutoff {
             break;
         }
         match parse_commit(repo, &commit, prefix) {
             Some(record) => records.push(record),
-            None => { skips.parse += 1; }
+            None => {
+                skips.parse += 1;
+            }
         }
     }
 
@@ -108,7 +127,9 @@ pub(crate) fn epoch_now() -> i64 {
 /// Determine the scan root relative to the workdir, for path filtering.
 fn scan_root_prefix(root: &Path, workdir: &Path) -> String {
     let root_canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    let workdir_canonical = workdir.canonicalize().unwrap_or_else(|_| workdir.to_path_buf());
+    let workdir_canonical = workdir
+        .canonicalize()
+        .unwrap_or_else(|_| workdir.to_path_buf());
     root_canonical
         .strip_prefix(&workdir_canonical)
         .unwrap_or(Path::new(""))
@@ -146,7 +167,11 @@ fn parse_commit(
     };
 
     if let Err(e) = diff.stats() {
-        crate::debug_log!("[evolution] commit {}: diff.stats() failed: {}", commit.id(), e);
+        crate::debug_log!(
+            "[evolution] commit {}: diff.stats() failed: {}",
+            commit.id(),
+            e
+        );
         return None;
     }
 
@@ -188,7 +213,11 @@ fn collect_diff_files(diff: &git2::Diff<'_>, prefix: &str) -> Vec<CommitFile> {
             continue;
         };
         let (added, removed) = get_patch_stats(diff, i);
-        files.push(CommitFile { path: rel_path, added, removed });
+        files.push(CommitFile {
+            path: rel_path,
+            added,
+            removed,
+        });
     }
     files
 }

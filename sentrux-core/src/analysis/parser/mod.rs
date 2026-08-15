@@ -11,18 +11,17 @@ mod lang_extractors;
 mod strings;
 
 #[cfg(test)]
+mod ast_import_test;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests2;
-#[cfg(test)]
-mod ast_import_test;
 
-
-use super::lang_registry;
 use self::captures::{
-    classify_captures, process_func_def, process_class_def, process_import,
-    ImportContext, MatchKind, ParseContext,
+    classify_captures, process_class_def, process_func_def, process_import, ImportContext,
+    MatchKind, ParseContext,
 };
+use super::lang_registry;
 use crate::core::types::{FuncInfo, StructuralAnalysis};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -224,15 +223,22 @@ impl ExtractionState {
             Some(MatchKind::FuncDef) => {
                 if let Some(name) = r.name_text {
                     process_func_def(
-                        name, r.match_node, fallback_node,
-                        pctx, &mut self.functions, &mut self.func_set,
+                        name,
+                        r.match_node,
+                        fallback_node,
+                        pctx,
+                        &mut self.functions,
+                        &mut self.func_set,
                     );
                 }
             }
             Some(MatchKind::ClassDef) => {
                 process_class_def(
-                    r.name_text, r.match_node, r.class_kind,
-                    pctx, &mut self.classes,
+                    r.name_text,
+                    r.match_node,
+                    r.class_kind,
+                    pctx,
+                    &mut self.classes,
                 );
             }
             Some(MatchKind::Import) => {
@@ -243,7 +249,11 @@ impl ExtractionState {
                     match_node: r.match_node,
                 };
                 process_import(
-                    &ictx, pctx.lang, pctx.content, &mut self.imports, &mut self.import_set,
+                    &ictx,
+                    pctx.lang,
+                    pctx.content,
+                    &mut self.imports,
+                    &mut self.import_set,
                 );
             }
             Some(MatchKind::Call) => {
@@ -257,18 +267,37 @@ impl ExtractionState {
 
     /// Post-processing for imports. No longer needed — all languages use
     /// @import/@import.module query captures or AST walker.
-    fn post_process_imports(&mut self, _content: &[u8], _lang: &str) {
-    }
+    fn post_process_imports(&mut self, _content: &[u8], _lang: &str) {}
 
     /// Convert into a StructuralAnalysis, distributing calls to functions.
     fn into_structural_analysis(mut self) -> StructuralAnalysis {
         let module_calls = distribute_calls_to_functions(&self.calls_raw, &mut self.functions);
         StructuralAnalysis {
-            functions: if self.functions.is_empty() { None } else { Some(self.functions) },
-            cls: if self.classes.is_empty() { None } else { Some(self.classes) },
-            imp: if self.imports.is_empty() { None } else { Some(self.imports) },
-            co: if module_calls.is_empty() { None } else { Some(module_calls) },
-            tags: if self.tags.is_empty() { None } else { Some(self.tags) },
+            functions: if self.functions.is_empty() {
+                None
+            } else {
+                Some(self.functions)
+            },
+            cls: if self.classes.is_empty() {
+                None
+            } else {
+                Some(self.classes)
+            },
+            imp: if self.imports.is_empty() {
+                None
+            } else {
+                Some(self.imports)
+            },
+            co: if module_calls.is_empty() {
+                None
+            } else {
+                Some(module_calls)
+            },
+            tags: if self.tags.is_empty() {
+                None
+            } else {
+                Some(self.tags)
+            },
             comment_lines: None, // Filled later by parse_file_from_content
         }
     }
@@ -292,8 +321,14 @@ pub(crate) fn extract_with_queries(
             continue;
         }
         let r = classify_captures(
-            m.captures, capture_names, content, lang,
-            &mut state.imports, &mut state.import_set, &mut state.tags, &mut state.tag_set,
+            m.captures,
+            capture_names,
+            content,
+            lang,
+            &mut state.imports,
+            &mut state.import_set,
+            &mut state.tags,
+            &mut state.tag_set,
         );
         state.dispatch_match(r, m.captures[0].node, &pctx);
     }
@@ -301,7 +336,6 @@ pub(crate) fn extract_with_queries(
     state.post_process_imports(content, lang);
     state.into_structural_analysis()
 }
-
 
 /// Distribute calls to their containing functions.
 /// Each call is assigned to the innermost function whose [sl, el] range
@@ -368,7 +402,6 @@ fn distribute_calls_to_functions(
     assign_deduped_calls(functions, &mut func_calls);
     module_calls
 }
-
 
 /// Parse a file and extract structural analysis. Cached by content hash.
 /// Uses thread-local Parser and registry-based query extraction.
@@ -456,8 +489,8 @@ pub fn parse_files_batch_with_progress(
     let result: Vec<(String, StructuralAnalysis)> = files
         .par_iter()
         .filter_map(|(abs_path, rel_path, lang)| {
-            let result = parse_file(abs_path, lang, max_parse_size)
-                .map(|sa| (rel_path.clone(), sa));
+            let result =
+                parse_file(abs_path, lang, max_parse_size).map(|sa| (rel_path.clone(), sa));
             if result.is_none() {
                 failed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
@@ -469,7 +502,11 @@ pub fn parse_files_batch_with_progress(
         .collect();
     let fail_count = failed.load(std::sync::atomic::Ordering::Relaxed);
     if fail_count > 0 {
-        crate::debug_log!("[parser] {}/{} files failed to parse (too large or binary)", fail_count, input_count);
+        crate::debug_log!(
+            "[parser] {}/{} files failed to parse (too large or binary)",
+            fail_count,
+            input_count
+        );
     }
     result
 }

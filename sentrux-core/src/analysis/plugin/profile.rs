@@ -24,7 +24,6 @@ use serde::Deserialize;
 #[serde(default)]
 pub struct LanguageSemantics {
     // ── Import system ──
-
     /// Whether `.` is a module separator (Python: `os.path` → `os/path`).
     /// If false, `.` is treated as file extension (C: `stdio.h`).
     pub dot_is_module_separator: bool,
@@ -51,7 +50,6 @@ pub struct LanguageSemantics {
     pub base_class_node_kinds: Vec<String>,
 
     // ── Comment & string syntax ──
-
     /// Whether `#` starts a line comment (Python, Ruby, Bash, R).
     pub hash_is_comment: bool,
 
@@ -60,14 +58,12 @@ pub struct LanguageSemantics {
     pub has_triple_quote_strings: bool,
 
     // ── Module resolution ──
-
     /// Filenames that represent "directory as module" / barrel re-exporters.
     /// These files' fan-in reflects re-exports, not genuine coupling.
     /// Examples: `["__init__.py"]` for Python, `["mod.rs"]` for Rust.
     pub package_index_files: Vec<String>,
 
     // ── Abstract type detection (Martin 2003 Distance from Main Sequence) ──
-
     /// Base class names that indicate an abstract type.
     /// Examples: Python `["Protocol", "ABC", "ABCMeta"]`.
     /// Used in `is_abstract_kind()` fallback when tree-sitter capture doesn't
@@ -96,7 +92,6 @@ pub struct LanguageSemantics {
     pub qualified_name_separator: String,
 
     // ── Visibility detection ──
-
     /// Keywords that indicate a function is publicly visible.
     /// Examples: Rust `["pub"]`, JS/TS `["export"]`, Java `["public"]`,
     ///          Swift `["public", "open"]`, C# `["public"]`.
@@ -121,7 +116,6 @@ pub struct LanguageSemantics {
     pub method_parent_kinds: Vec<String>,
 
     // ── Entry point detection ──
-
     /// Whether this language can have executable entry points.
     /// False for CSS, HTML, Markdown, etc.
     pub is_executable: bool,
@@ -138,7 +132,6 @@ pub struct LanguageSemantics {
     pub entry_point_patterns: Vec<String>,
 
     // ── Test module detection (import filtering) ──
-
     /// Node kind for test module declarations (to exclude from import graph).
     /// Rust: "mod_item". Empty = no test-module filtering.
     #[serde(default)]
@@ -155,7 +148,6 @@ pub struct LanguageSemantics {
     pub test_attribute_patterns: Vec<String>,
 
     // ── Parameter counting (AST-based) ──
-
     /// Node kinds for parameter list containers.
     /// Examples: ["parameters", "formal_parameters", "parameter_list"].
     #[serde(default)]
@@ -177,7 +169,6 @@ pub struct LanguageSemantics {
     pub param_kinds: Vec<String>,
 
     // ── Base class extraction ──
-
     /// Node kinds that represent type identifiers in class inheritance.
     /// Examples: ["type_identifier", "identifier", "constant", "scope_resolution"].
     #[serde(default)]
@@ -189,7 +180,6 @@ pub struct LanguageSemantics {
     pub visibility_keywords: Vec<String>,
 
     // ── Test file detection ──
-
     /// Directory prefixes that indicate test directories.
     /// Examples: `["test/", "tests/"]` for Python.
     pub test_dir_prefixes: Vec<String>,
@@ -207,31 +197,26 @@ pub struct LanguageSemantics {
     pub test_prefixes: Vec<String>,
 
     // ── Import extraction (AST-based) ──
-
     /// AST-based import path extraction configuration.
     #[serde(default)]
     pub import_ast: ImportAstConfig,
 
     // ── Project structure ──
-
     /// Project structure configuration — manifest files, ignored dirs, source dirs.
     #[serde(default)]
     pub project: ProjectConfig,
 
     // ── Import resolution ──
-
     /// Import resolver configuration — path aliases, module prefixes, crate aliases.
     #[serde(default)]
     pub resolver: ResolverConfig,
 
     // ── Complexity (AST-based) ──
-
     /// AST node kinds for complexity counting.
     /// The platform walks the tree-sitter AST and counts nodes matching these kinds.
     /// No text scanning — tree-sitter already parsed the structure.
     #[serde(default)]
     pub complexity: ComplexityNodes,
-
     // Legacy complexity_keywords section is ignored if present in plugin.toml.
     // All complexity analysis uses AST node-based branch_nodes/logic_nodes.
 }
@@ -246,12 +231,12 @@ pub struct LanguageSemantics {
 /// When `strategy` is empty, falls back to legacy text-based extractors.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct ImportAstConfig {
     /// Extraction strategy: "field_read", "scoped_path", or "" (legacy fallback).
     pub strategy: String,
 
     // ── field_read strategy ──
-
     /// Field name on the import node that contains the module path.
     /// Python: "module_name", Go: "path", JS: "source", C: "path".
     pub module_path_field: String,
@@ -277,7 +262,6 @@ pub struct ImportAstConfig {
     pub recursive_search: bool,
 
     // ── scoped_path strategy ──
-
     /// Separator for joining scoped path segments. Rust: "::", Java: ".".
     pub path_separator: String,
 
@@ -303,7 +287,6 @@ pub struct ImportAstConfig {
     pub skip_type_imports_in_use_list: bool,
 
     // ── Python relative imports ──
-
     /// Node kind that indicates a relative import. Python: "relative_import".
     pub relative_import_kind: String,
 
@@ -311,7 +294,6 @@ pub struct ImportAstConfig {
     pub import_prefix_kind: String,
 
     // ── Post-processing ──
-
     /// Transform applied to extracted module names.
     /// "pascal_to_snake" for Elixir. Empty = no transform.
     pub module_name_transform: String,
@@ -321,30 +303,6 @@ pub struct ImportAstConfig {
 
     /// Node kind for system includes to filter. C: "system_lib_string".
     pub system_include_kind: String,
-}
-
-impl Default for ImportAstConfig {
-    fn default() -> Self {
-        Self {
-            strategy: String::new(),
-            module_path_field: String::new(),
-            module_path_node_kinds: Vec::new(),
-            string_content_kind: String::new(),
-            child_import_kind: String::new(),
-            recursive_search: false,
-            path_separator: String::new(),
-            use_list_kind: String::new(),
-            scoped_path_kinds: Vec::new(),
-            mod_declaration_kind: String::new(),
-            leaf_identifier_kinds: Vec::new(),
-            skip_type_imports_in_use_list: false,
-            relative_import_kind: String::new(),
-            import_prefix_kind: String::new(),
-            module_name_transform: String::new(),
-            filter_system_includes: false,
-            system_include_kind: String::new(),
-        }
-    }
 }
 
 impl ImportAstConfig {
@@ -357,6 +315,7 @@ impl ImportAstConfig {
 /// Project structure configuration — how this language's ecosystem organizes projects.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct ProjectConfig {
     /// Project manifest files for boundary detection in monorepos.
     /// Examples: `["Cargo.toml"]` for Rust, `["package.json"]` for JS/TS.
@@ -389,22 +348,10 @@ pub struct ProjectConfig {
     pub implicit_module: bool,
 }
 
-impl Default for ProjectConfig {
-    fn default() -> Self {
-        Self {
-            manifest_files: Vec::new(),
-            ignored_dirs: Vec::new(),
-            source_dirs: Vec::new(),
-            mod_declaration_files: Vec::new(),
-            directory_is_package: false,
-            implicit_module: false,
-        }
-    }
-}
-
 /// Import resolver configuration — how to resolve import specifiers to files.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct ResolverConfig {
     /// File containing module/package prefix for stripping from import specifiers.
     /// Go: `"go.mod"`. Platform reads this file and strips the module path prefix.
@@ -463,31 +410,9 @@ pub struct ResolverConfig {
     /// JSON paths to prefix maps (used when format = "json_map").
     /// e.g., ["autoload.psr-4", "autoload-dev.psr-4"]
     pub module_prefix_json_paths: Vec<String>,
-
     // Workspace resolution is handled by the suffix-index + alias system.
     // No workspace-specific fields needed — the resolver accepts ALL edges
     // within the scan root. Cross-project imports are real dependencies.
-}
-
-impl Default for ResolverConfig {
-    fn default() -> Self {
-        Self {
-            module_prefix_file: String::new(),
-            module_prefix_directive: String::new(),
-            alias_file: String::new(),
-            alias_field: String::new(),
-            alias_transform: String::new(),
-            alias_entry_point: String::new(),
-            path_alias_file: String::new(),
-            path_alias_field: String::new(),
-            path_alias_base_url: String::new(),
-            resolve_extensions: Vec::new(),
-            source_root: String::new(),
-            namespace_separator: String::new(),
-            module_prefix_format: String::new(),
-            module_prefix_json_paths: Vec::new(),
-        }
-    }
 }
 
 /// AST node kinds for complexity counting via tree-sitter AST walk.
@@ -501,6 +426,7 @@ impl Default for ResolverConfig {
 /// No comment/string stripping needed — tree-sitter handles that.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct ComplexityNodes {
     /// Node kinds that count as branch points for cyclomatic complexity.
     /// Each occurrence adds +1 to CC. Also adds (1 + nesting) to cognitive complexity.
@@ -592,19 +518,6 @@ pub struct LanguageProfile {
 // These produce the universal baselines used when plugin.toml omits a section.
 // Values are chosen to match the current hardcoded behavior exactly,
 // ensuring zero behavior change during migration.
-
-impl Default for ComplexityNodes {
-    fn default() -> Self {
-        Self {
-            // Empty = no AST-based complexity counting.
-            // The platform falls back to legacy text-based keywords if these are empty.
-            branch_nodes: Vec::new(),
-            logic_nodes: Vec::new(),
-            logic_operators: Vec::new(),
-            nesting_nodes: Vec::new(),
-        }
-    }
-}
 
 impl ComplexityNodes {
     /// Whether this profile has AST-based complexity nodes configured.
@@ -705,18 +618,22 @@ impl LanguageProfile {
             return false;
         }
         let filename = path.rsplit('/').next().unwrap_or(path);
-        self.semantics.package_index_files.iter().any(|f| f == filename)
+        self.semantics
+            .package_index_files
+            .iter()
+            .any(|f| f == filename)
     }
 
     /// Check if a base class name indicates an abstract type for this language.
     pub fn has_abstract_base(&self, bases: Option<&Vec<String>>) -> bool {
         match bases {
-            Some(bs) if !self.semantics.abstract_base_classes.is_empty() => {
-                bs.iter().any(|b| {
-                    let name = b.rsplit('.').next().unwrap_or(b);
-                    self.semantics.abstract_base_classes.iter().any(|abc| abc == name)
-                })
-            }
+            Some(bs) if !self.semantics.abstract_base_classes.is_empty() => bs.iter().any(|b| {
+                let name = b.rsplit('.').next().unwrap_or(b);
+                self.semantics
+                    .abstract_base_classes
+                    .iter()
+                    .any(|abc| abc == name)
+            }),
             _ => false,
         }
     }
@@ -726,7 +643,9 @@ impl LanguageProfile {
         self.semantics.abstract_keywords.iter().any(|kw| {
             // Match as whole word: "abstract" should match "abstract class"
             // but not "abstractFactory" (check for word boundary after keyword)
-            source_text.split_whitespace().any(|word| word == kw.as_str())
+            source_text
+                .split_whitespace()
+                .any(|word| word == kw.as_str())
         })
     }
 
@@ -785,12 +704,12 @@ mod tests {
         let t = LanguageThresholds::default();
         // These must match the constants in metrics/types.rs exactly.
         // If they diverge, the migration will change behavior.
-        assert_eq!(t.cc_high, 15);        // CC_THRESHOLD_HIGH
-        assert_eq!(t.func_length, 50);    // FUNC_LENGTH_THRESHOLD
-        assert_eq!(t.cog_high, 15);       // COG_THRESHOLD_HIGH
-        assert_eq!(t.param_high, 4);      // PARAM_THRESHOLD_HIGH
-        assert_eq!(t.fan_out, 15);        // FAN_OUT_THRESHOLD
-        assert_eq!(t.fan_in, 20);         // FAN_IN_THRESHOLD
+        assert_eq!(t.cc_high, 15); // CC_THRESHOLD_HIGH
+        assert_eq!(t.func_length, 50); // FUNC_LENGTH_THRESHOLD
+        assert_eq!(t.cog_high, 15); // COG_THRESHOLD_HIGH
+        assert_eq!(t.param_high, 4); // PARAM_THRESHOLD_HIGH
+        assert_eq!(t.fan_out, 15); // FAN_OUT_THRESHOLD
+        assert_eq!(t.fan_in, 20); // FAN_IN_THRESHOLD
         assert_eq!(t.large_file_lines, 500); // LARGE_FILE_THRESHOLD
     }
 

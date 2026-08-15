@@ -128,10 +128,7 @@ fn break_cycles(
 }
 
 /// Kahn's algorithm toposort. Appends isolated nodes at the end.
-fn toposort_kahn(
-    dirs: &[&FileNode],
-    dag_out: &HashMap<String, Vec<String>>,
-) -> Vec<String> {
+fn toposort_kahn(dirs: &[&FileNode], dag_out: &HashMap<String, Vec<String>>) -> Vec<String> {
     let mut in_deg: HashMap<String, usize> = HashMap::new();
     for d in dirs {
         in_deg.insert(d.path.clone(), 0);

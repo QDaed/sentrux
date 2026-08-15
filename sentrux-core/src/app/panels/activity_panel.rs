@@ -3,7 +3,7 @@
 //! Right-side panel showing recent watcher events and top-connected files.
 //! Health and architecture grades moved to the always-visible metrics panel (left).
 
-use super::{ThemeConfig, AppState};
+use super::{AppState, ThemeConfig};
 use egui::{CursorIcon, Sense};
 use std::collections::HashMap;
 
@@ -12,12 +12,14 @@ pub(crate) fn draw_sep(ui: &mut egui::Ui, tc: &ThemeConfig, top: f32) {
     ui.add_space(top);
     let r = ui.available_rect_before_wrap();
     ui.painter().line_segment(
-        [egui::pos2(r.left(), r.top()), egui::pos2(r.right(), r.top())],
-        egui::Stroke::new(1.0, tc.section_border),
+        [
+            egui::pos2(r.left(), r.top()),
+            egui::pos2(r.right(), r.top()),
+        ],
+        egui::Stroke::new(1.0_f32, tc.section_border),
     );
     ui.add_space(3.0);
 }
-
 
 /// Draw the top connections section. Returns true if a file was clicked.
 fn draw_top_connections(
@@ -60,14 +62,17 @@ fn draw_connection_rows(
     for (path, count) in top {
         let filename = path.rsplit('/').next().unwrap_or(path);
         let is_selected = state.selected_path.as_deref() == Some(path.as_str());
-        let (row_rect, row_resp) = ui.allocate_exact_size(
-            egui::vec2(ui.available_width(), 14.0),
-            Sense::click(),
-        );
+        let (row_rect, row_resp) =
+            ui.allocate_exact_size(egui::vec2(ui.available_width(), 14.0), Sense::click());
         let hovered = row_resp.hovered();
         if hovered || is_selected {
-            let bg = if is_selected { tc.file_surface_spotlit } else { tc.file_surface };
-            ui.painter().rect_filled(row_rect, egui::CornerRadius::ZERO, bg);
+            let bg = if is_selected {
+                tc.file_surface_spotlit
+            } else {
+                tc.file_surface
+            };
+            ui.painter()
+                .rect_filled(row_rect, egui::CornerRadius::ZERO, bg);
         }
         if hovered {
             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
@@ -85,7 +90,11 @@ fn draw_connection_rows(
             egui::FontId::monospace(9.0),
             tc.text_secondary,
         );
-        let name_color = if is_selected { tc.selected_stroke } else { tc.file_label };
+        let name_color = if is_selected {
+            tc.selected_stroke
+        } else {
+            tc.file_label
+        };
         ui.painter().text(
             egui::pos2(left + 28.0, cy),
             egui::Align2::LEFT_CENTER,
@@ -121,34 +130,45 @@ struct ActivityDrawCtx {
 /// Draw the scrollable activity log. Returns true if a file was clicked.
 fn draw_activity_scroll(ui: &mut egui::Ui, state: &mut AppState, tc: &ThemeConfig) -> bool {
     let mut clicked = false;
-    egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-        ui.spacing_mut().item_spacing.y = 1.0;
-        let adctx = ActivityDrawCtx {
-            now: std::time::Instant::now(),
-            font10: egui::FontId::monospace(10.0),
-            font9: egui::FontId::monospace(9.0),
-        };
-        let mut clicked_path: Option<String> = None;
-        for i in 0..state.recent_activity.len() {
-            if let Some(p) = draw_activity_row(ui, state, tc, i, &adctx) {
-                clicked_path = Some(p);
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            ui.spacing_mut().item_spacing.y = 1.0;
+            let adctx = ActivityDrawCtx {
+                now: std::time::Instant::now(),
+                font10: egui::FontId::monospace(10.0),
+                font9: egui::FontId::monospace(9.0),
+            };
+            let mut clicked_path: Option<String> = None;
+            for i in 0..state.recent_activity.len() {
+                if let Some(p) = draw_activity_row(ui, state, tc, i, &adctx) {
+                    clicked_path = Some(p);
+                }
             }
-        }
-        clicked = apply_click_selection(state, clicked_path);
-    });
+            clicked = apply_click_selection(state, clicked_path);
+        });
     clicked
 }
 
 /// Format age in seconds to a human-readable short string.
 fn format_age(age_secs: u64) -> String {
-    if age_secs < 2 { "now".into() }
-    else if age_secs < 60 { format!("{}s", age_secs) }
-    else if age_secs < 3600 { format!("{}m", age_secs / 60) }
-    else { format!("{}h", age_secs / 3600) }
+    if age_secs < 2 {
+        "now".into()
+    } else if age_secs < 60 {
+        format!("{}s", age_secs)
+    } else if age_secs < 3600 {
+        format!("{}m", age_secs / 60)
+    } else {
+        format!("{}h", age_secs / 3600)
+    }
 }
 
 /// Map activity kind string to its display character and color.
-fn kind_indicator(kind: &str, tc: &ThemeConfig, fallback: egui::Color32) -> (&'static str, egui::Color32) {
+fn kind_indicator(
+    kind: &str,
+    tc: &ThemeConfig,
+    fallback: egui::Color32,
+) -> (&'static str, egui::Color32) {
     match kind {
         "create" => ("+", tc.diff_added),
         "remove" => ("-", tc.diff_removed),
@@ -158,7 +178,11 @@ fn kind_indicator(kind: &str, tc: &ThemeConfig, fallback: egui::Color32) -> (&'s
 }
 
 /// Build delta display parts (lines changed, functions changed).
-fn build_delta_parts(lines_delta: i32, funcs_delta: i32, tc: &ThemeConfig) -> Vec<(String, egui::Color32)> {
+fn build_delta_parts(
+    lines_delta: i32,
+    funcs_delta: i32,
+    tc: &ThemeConfig,
+) -> Vec<(String, egui::Color32)> {
     let mut parts = Vec::new();
     if lines_delta > 0 {
         parts.push((format!("+{}", lines_delta), tc.diff_added));
@@ -184,10 +208,13 @@ fn draw_delta_labels(
 ) {
     let mut dx = right_edge - 4.0 - age_width;
     for (text, color) in parts.iter().rev() {
-        let galley = ui.painter().layout_no_wrap(text.clone(), font.clone(), *color);
+        let galley = ui
+            .painter()
+            .layout_no_wrap(text.clone(), font.clone(), *color);
         let w = galley.size().x + 4.0;
         dx -= w;
-        ui.painter().galley(egui::pos2(dx, cy - galley.size().y / 2.0), galley, *color);
+        ui.painter()
+            .galley(egui::pos2(dx, cy - galley.size().y / 2.0), galley, *color);
     }
 }
 
@@ -207,26 +234,59 @@ fn draw_activity_row(
     let rh = 16.0;
     let (rr, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), rh), Sense::click());
     if resp.hovered() || is_selected {
-        let bg = if is_selected { tc.file_surface_spotlit } else { tc.file_surface };
+        let bg = if is_selected {
+            tc.file_surface_spotlit
+        } else {
+            tc.file_surface
+        };
         ui.painter().rect_filled(rr, egui::CornerRadius::ZERO, bg);
     }
     if is_selected {
         let bar = egui::Rect::from_min_size(rr.left_top(), egui::vec2(2.0, rh));
-        ui.painter().rect_filled(bar, egui::CornerRadius::ZERO, tc.selected_stroke);
+        ui.painter()
+            .rect_filled(bar, egui::CornerRadius::ZERO, tc.selected_stroke);
     }
-    if resp.hovered() { ui.ctx().set_cursor_icon(CursorIcon::PointingHand); }
-    let result = if resp.clicked() { Some(entry.path.clone()) } else { None };
+    if resp.hovered() {
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    let result = if resp.clicked() {
+        Some(entry.path.clone())
+    } else {
+        None
+    };
     resp.on_hover_text(egui::RichText::new(&entry.path).monospace().size(10.0));
     let left = rr.left() + 4.0;
     let cy = rr.center().y;
-    ui.painter().text(egui::pos2(left, cy), egui::Align2::LEFT_CENTER, kind_char, adctx.font10.clone(), kind_color);
-    let nc = if is_selected { tc.selected_stroke } else { tc.file_label };
-    ui.painter().text(egui::pos2(left + 14.0, cy), egui::Align2::LEFT_CENTER, filename, adctx.font10.clone(), nc);
+    ui.painter().text(
+        egui::pos2(left, cy),
+        egui::Align2::LEFT_CENTER,
+        kind_char,
+        adctx.font10.clone(),
+        kind_color,
+    );
+    let nc = if is_selected {
+        tc.selected_stroke
+    } else {
+        tc.file_label
+    };
+    ui.painter().text(
+        egui::pos2(left + 14.0, cy),
+        egui::Align2::LEFT_CENTER,
+        filename,
+        adctx.font10.clone(),
+        nc,
+    );
 
     let delta_parts = build_delta_parts(entry.lines_delta, entry.funcs_delta, tc);
     draw_delta_labels(ui, &delta_parts, rr.right(), cy, 24.0, &adctx.font9);
 
-    ui.painter().text(egui::pos2(rr.right() - 4.0, cy), egui::Align2::RIGHT_CENTER, &age_str, adctx.font9.clone(), tc.text_secondary);
+    ui.painter().text(
+        egui::pos2(rr.right() - 4.0, cy),
+        egui::Align2::RIGHT_CENTER,
+        &age_str,
+        adctx.font9.clone(),
+        tc.text_secondary,
+    );
     result
 }
 
@@ -240,7 +300,10 @@ fn draw_activity_row(
 fn ensure_top_connections_cache(state: &mut AppState) {
     let ver = state.rendered_version;
     let filter_key = state.edge_filter as u8;
-    let needs_rebuild = state.top_connections_cache.as_ref().is_none_or(|(v, f, _)| *v != ver || *f != filter_key);
+    let needs_rebuild = state
+        .top_connections_cache
+        .as_ref()
+        .is_none_or(|(v, f, _)| *v != ver || *f != filter_key);
     if needs_rebuild {
         let computed = top_connected_files(state, 10);
         state.top_connections_cache = Some((ver, filter_key, computed));
@@ -253,9 +316,11 @@ fn draw_update_indicator(ui: &mut egui::Ui, tc: &ThemeConfig) {
         ui.horizontal(|ui| {
             ui.label(
                 egui::RichText::new(format!("  v{} available", latest))
-                    .monospace().size(9.0)
+                    .monospace()
+                    .size(9.0)
                     .color(tc.diff_added),
-            ).on_hover_text("brew upgrade sentrux");
+            )
+            .on_hover_text("brew upgrade sentrux");
         });
         draw_sep(ui, tc, 2.0);
         ui.ctx().request_repaint();
@@ -264,19 +329,33 @@ fn draw_update_indicator(ui: &mut egui::Ui, tc: &ThemeConfig) {
 
 /// Draw the file detail header with deselect button, and the detail content.
 fn draw_file_detail_section(ui: &mut egui::Ui, state: &mut AppState, tc: &ThemeConfig) {
-    if state.selected_path.is_none() { return; }
+    if state.selected_path.is_none() {
+        return;
+    }
     draw_sep(ui, tc, 4.0);
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("┌ FILE DETAIL")
-            .monospace().size(10.0).color(tc.section_label));
+        ui.label(
+            egui::RichText::new("┌ FILE DETAIL")
+                .monospace()
+                .size(10.0)
+                .color(tc.section_label),
+        );
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let deselect = ui.add(
-                egui::Button::new(egui::RichText::new("×")
-                    .monospace().size(11.0).color(tc.text_secondary))
+                egui::Button::new(
+                    egui::RichText::new("×")
+                        .monospace()
+                        .size(11.0)
+                        .color(tc.text_secondary),
+                )
                 .fill(egui::Color32::TRANSPARENT)
-                .stroke(egui::Stroke::NONE));
-            if deselect.clicked() { state.selected_path = None; }
-            deselect.on_hover_cursor(CursorIcon::PointingHand)
+                .stroke(egui::Stroke::NONE),
+            );
+            if deselect.clicked() {
+                state.selected_path = None;
+            }
+            deselect
+                .on_hover_cursor(CursorIcon::PointingHand)
                 .on_hover_text("Deselect file");
         });
     });
@@ -295,10 +374,12 @@ pub fn draw_activity_panel(ctx: &egui::Context, state: &mut AppState) -> bool {
         .default_width(200.0)
         .min_width(140.0)
         .max_width(320.0)
-        .frame(egui::Frame::NONE
-            .fill(tc.canvas_bg)
-            .inner_margin(egui::Margin::same(4))
-            .stroke(egui::Stroke::new(1.0, tc.section_border)))
+        .frame(
+            egui::Frame::NONE
+                .fill(tc.canvas_bg)
+                .inner_margin(egui::Margin::same(4))
+                .stroke(egui::Stroke::new(1.0_f32, tc.section_border)),
+        )
         .show(ctx, |ui| {
             draw_update_indicator(ui, &tc);
 
@@ -307,7 +388,11 @@ pub fn draw_activity_panel(ctx: &egui::Context, state: &mut AppState) -> bool {
                 .show(ui, |ui| {
                     if let Some(snap) = &state.snapshot {
                         super::language_summary::draw_language_summary(
-                            ui, snap, &state.lang_stats, &tc);
+                            ui,
+                            snap,
+                            &state.lang_stats,
+                            &tc,
+                        );
                         draw_sep(ui, &tc, 4.0);
                     }
 
@@ -317,11 +402,13 @@ pub fn draw_activity_panel(ctx: &egui::Context, state: &mut AppState) -> bool {
                         Some((_, _, v)) => v.as_slice(),
                         None => &[],
                     };
-                    if draw_top_connections(ui, top, state, &tc) { clicked = true; }
+                    if draw_top_connections(ui, top, state, &tc) {
+                        clicked = true;
+                    }
                     state.top_connections_cache = top_cache;
 
-                    if !state.recent_activity.is_empty() {
-                        if draw_activity_scroll(ui, state, &tc) { clicked = true; }
+                    if !state.recent_activity.is_empty() && draw_activity_scroll(ui, state, &tc) {
+                        clicked = true;
                     }
 
                     draw_file_detail_section(ui, state, &tc);
@@ -330,7 +417,6 @@ pub fn draw_activity_panel(ctx: &egui::Context, state: &mut AppState) -> bool {
 
     clicked
 }
-
 
 /// Compute top N most-connected files from render_data edge paths.
 /// Respects the active edge_filter so counts match what's visible on canvas.
@@ -353,7 +439,7 @@ pub fn top_connected_files(state: &AppState, n: usize) -> Vec<(String, usize)> {
         .into_iter()
         .map(|(k, v)| (k.to_string(), v))
         .collect();
-    sorted.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+    sorted.sort_unstable_by_key(|b| std::cmp::Reverse(b.1));
     sorted.truncate(n);
     sorted
 }

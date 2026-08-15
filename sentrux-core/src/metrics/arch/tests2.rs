@@ -1,10 +1,10 @@
-use super::*;
 use super::distance::compute_distance_from_main_seq;
-use crate::metrics::test_helpers::edge;
-use crate::core::types::ImportEdge;
-use crate::core::snapshot::Snapshot;
-use crate::core::types::{FileNode, ClassInfo, StructuralAnalysis};
+use super::*;
 use crate::core::path_utils;
+use crate::core::snapshot::Snapshot;
+use crate::core::types::ImportEdge;
+use crate::core::types::{ClassInfo, FileNode, StructuralAnalysis};
+use crate::metrics::test_helpers::edge;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -33,14 +33,17 @@ fn baseline_stable_no_degradation() {
         entropy_bits: 1.0,
         avg_cohesion: Some(0.5),
         max_depth: 4,
-        god_files: vec![
-            crate::metrics::FileMetric { path: "app.rs".into(), value: 16 },
-        ],
+        god_files: vec![crate::metrics::FileMetric {
+            path: "app.rs".into(),
+            value: 16,
+        }],
         hotspot_files: vec![],
         most_unstable: vec![],
-        complex_functions: vec![
-            crate::metrics::FuncMetric { file: "a.rs".into(), func: "f".into(), value: 16 },
-        ],
+        complex_functions: vec![crate::metrics::FuncMetric {
+            file: "a.rs".into(),
+            func: "f".into(),
+            value: 16,
+        }],
         long_functions: vec![],
         cog_complex_functions: vec![],
         high_param_functions: vec![],
@@ -63,12 +66,18 @@ fn baseline_stable_no_degradation() {
         cog_complex_ratio: 0.0,
         quality_signal: 0.7,
         root_cause_raw: crate::metrics::root_causes::RootCauseRaw {
-            modularity_q: 0.4, cycle_count: 1, max_depth: 4,
-            complexity_gini: 0.25, redundancy_ratio: 0.05,
+            modularity_q: 0.4,
+            cycle_count: 1,
+            max_depth: 4,
+            complexity_gini: 0.25,
+            redundancy_ratio: 0.05,
         },
         root_cause_scores: crate::metrics::root_causes::RootCauseScores {
-            modularity: 0.6, acyclicity: 0.5, depth: 0.67,
-            equality: 0.75, redundancy: 0.95,
+            modularity: 0.6,
+            acyclicity: 0.5,
+            depth: 0.67,
+            equality: 0.75,
+            redundancy: 0.95,
         },
     };
 
@@ -81,14 +90,13 @@ fn baseline_stable_no_degradation() {
 #[test]
 fn blast_radius_monotonic() {
     let edges_small = vec![edge("a.rs", "b.rs")];
-    let edges_large = vec![
-        edge("a.rs", "b.rs"),
-        edge("b.rs", "c.rs"),
-    ];
+    let edges_large = vec![edge("a.rs", "b.rs"), edge("b.rs", "c.rs")];
     let r1 = compute_blast_radius(&edges_small);
     let r2 = compute_blast_radius(&edges_large);
-    assert!(r2["b.rs"] >= r1["b.rs"],
-        "adding edges should not decrease blast radius");
+    assert!(
+        r2["b.rs"] >= r1["b.rs"],
+        "adding edges should not decrease blast radius"
+    );
 }
 
 // ── Idempotency: computing twice gives same result ──
@@ -112,14 +120,21 @@ fn make_file_with_classes(path: &str, classes: Vec<ClassInfo>) -> FileNode {
         path: path.to_string(),
         name: path.rsplit('/').next().unwrap_or(path).to_string(),
         is_dir: false,
-        lines: 100, logic: 80, comments: 10, blanks: 10, funcs: 5,
-        mtime: 0.0, gs: String::new(), lang: "rust".to_string(),
+        lines: 100,
+        logic: 80,
+        comments: 10,
+        blanks: 10,
+        funcs: 5,
+        mtime: 0.0,
+        gs: String::new(),
+        lang: "rust".to_string(),
         sa: Some(StructuralAnalysis {
             functions: None,
             cls: Some(classes),
             imp: None,
             co: None,
-            tags: None, comment_lines: None,
+            tags: None,
+            comment_lines: None,
         }),
         children: None,
     }
@@ -128,15 +143,27 @@ fn make_file_with_classes(path: &str, classes: Vec<ClassInfo>) -> FileNode {
 fn make_snapshot_with_files(edges: Vec<ImportEdge>, files: Vec<FileNode>) -> Snapshot {
     Snapshot {
         root: Arc::new(FileNode {
-            path: ".".into(), name: ".".into(), is_dir: true,
-            lines: 0, logic: 0, comments: 0, blanks: 0, funcs: 0,
-            mtime: 0.0, gs: String::new(), lang: String::new(),
+            path: ".".into(),
+            name: ".".into(),
+            is_dir: true,
+            lines: 0,
+            logic: 0,
+            comments: 0,
+            blanks: 0,
+            funcs: 0,
+            mtime: 0.0,
+            gs: String::new(),
+            lang: String::new(),
             sa: None,
             children: Some(files),
         }),
-        total_files: 0, total_lines: 0, total_dirs: 0,
-        call_graph: vec![], import_graph: edges.clone(),
-        inherit_graph: vec![], entry_points: vec![],
+        total_files: 0,
+        total_lines: 0,
+        total_dirs: 0,
+        call_graph: vec![],
+        import_graph: edges.clone(),
+        inherit_graph: vec![],
+        entry_points: vec![],
         exec_depth: HashMap::new(),
     }
 }
@@ -155,21 +182,26 @@ fn distance_pure_interface_module() {
     let api_file = "api/src/traits.rs";
     let impl_file = "impl/src/renderer.rs";
     let api_mod = path_utils::module_of(api_file);
-    let files = vec![
-        make_file_with_classes(api_file, vec![
+    let files = vec![make_file_with_classes(
+        api_file,
+        vec![
             cls("Drawable", "interface"),
             cls("Serializable", "interface"),
-        ]),
-    ];
-    let edges = vec![
-        edge(impl_file, api_file),
-    ];
+        ],
+    )];
+    let edges = vec![edge(impl_file, api_file)];
     let snap = make_snapshot_with_files(edges.clone(), files);
     let results = compute_distance_from_main_seq(&snap, &edges);
     let api = results.iter().find(|m| m.module == api_mod).unwrap();
-    assert!((api.abstractness - 1.0).abs() < f64::EPSILON, "all interfaces → A=1.0");
+    assert!(
+        (api.abstractness - 1.0).abs() < f64::EPSILON,
+        "all interfaces → A=1.0"
+    );
     assert!(api.instability < f64::EPSILON, "no fan-out → I=0");
-    assert!(api.distance < f64::EPSILON, "pure interface + stable = on main sequence");
+    assert!(
+        api.distance < f64::EPSILON,
+        "pure interface + stable = on main sequence"
+    );
 }
 
 #[test]
@@ -177,39 +209,45 @@ fn distance_pure_concrete_module() {
     let api_file = "api/src/traits.rs";
     let impl_file = "impl/src/renderer.rs";
     let impl_mod = path_utils::module_of(impl_file);
-    let files = vec![
-        make_file_with_classes(impl_file, vec![
+    let files = vec![make_file_with_classes(
+        impl_file,
+        vec![
             cls("OpenGLRenderer", "class"),
             cls("VulkanRenderer", "class"),
-        ]),
-    ];
-    let edges = vec![
-        edge(impl_file, api_file),
-    ];
+        ],
+    )];
+    let edges = vec![edge(impl_file, api_file)];
     let snap = make_snapshot_with_files(edges.clone(), files);
     let results = compute_distance_from_main_seq(&snap, &edges);
     let imp = results.iter().find(|m| m.module == impl_mod).unwrap();
     assert!(imp.abstractness < f64::EPSILON, "all classes → A=0.0");
-    assert!((imp.instability - 1.0).abs() < f64::EPSILON, "pure fan-out → I=1.0");
-    assert!(imp.distance < f64::EPSILON, "concrete + unstable = on main sequence");
+    assert!(
+        (imp.instability - 1.0).abs() < f64::EPSILON,
+        "pure fan-out → I=1.0"
+    );
+    assert!(
+        imp.distance < f64::EPSILON,
+        "concrete + unstable = on main sequence"
+    );
 }
 
 #[test]
 fn distance_zone_of_pain() {
     let core_file = "core/src/engine.rs";
     let core_mod = path_utils::module_of(core_file);
-    let files = vec![
-        make_file_with_classes(core_file, vec![
-            cls("Engine", "class"),
-        ]),
-    ];
+    let files = vec![make_file_with_classes(
+        core_file,
+        vec![cls("Engine", "class")],
+    )];
     let edges: Vec<ImportEdge> = vec![];
     let snap = make_snapshot_with_files(edges.clone(), files);
     let results = compute_distance_from_main_seq(&snap, &edges);
     let core = results.iter().find(|m| m.module == core_mod).unwrap();
     assert!(core.abstractness < f64::EPSILON);
-    assert!((core.distance - 0.5).abs() < f64::EPSILON,
-        "isolated concrete module gets moderate distance");
+    assert!(
+        (core.distance - 0.5).abs() < f64::EPSILON,
+        "isolated concrete module gets moderate distance"
+    );
 }
 
 #[test]
@@ -224,7 +262,10 @@ fn distance_empty_graph() {
 fn distance_symmetry() {
     let d1 = (0.8_f64 + 0.0 - 1.0).abs();
     let d2 = (0.0_f64 + 0.8 - 1.0).abs();
-    assert!((d1 - d2).abs() < f64::EPSILON, "D is symmetric around main sequence");
+    assert!(
+        (d1 - d2).abs() < f64::EPSILON,
+        "D is symmetric around main sequence"
+    );
 }
 
 // ── Invariance: D of a point on the main sequence is always 0 ──
@@ -234,7 +275,10 @@ fn distance_main_sequence_invariant() {
         let a = i as f64 / 10.0;
         let instab = 1.0 - a;
         let d = (a + instab - 1.0).abs();
-        assert!(d < f64::EPSILON, "point ({a}, {instab}) should be on main sequence");
+        assert!(
+            d < f64::EPSILON,
+            "point ({a}, {instab}) should be on main sequence"
+        );
     }
 }
 
@@ -242,7 +286,10 @@ fn distance_main_sequence_invariant() {
 #[test]
 fn distance_idempotent() {
     let files = vec![
-        make_file_with_classes("mod1/a.rs", vec![cls("Foo", "class"), cls("Bar", "interface")]),
+        make_file_with_classes(
+            "mod1/a.rs",
+            vec![cls("Foo", "class"), cls("Bar", "interface")],
+        ),
         make_file_with_classes("mod2/b.rs", vec![cls("Baz", "class")]),
     ];
     let edges = vec![edge("mod1/a.rs", "mod2/b.rs")];
@@ -271,8 +318,12 @@ fn distance_bounded() {
     let snap = make_snapshot_with_files(edges.clone(), files);
     let results = compute_distance_from_main_seq(&snap, &edges);
     for m in &results {
-        assert!(m.distance >= 0.0 && m.distance <= 1.0,
-            "distance must be in [0,1], got {} for module {}", m.distance, m.module);
+        assert!(
+            m.distance >= 0.0 && m.distance <= 1.0,
+            "distance must be in [0,1], got {} for module {}",
+            m.distance,
+            m.module
+        );
         assert!(m.abstractness >= 0.0 && m.abstractness <= 1.0);
         assert!(m.instability >= 0.0 && m.instability <= 1.0);
     }
@@ -287,11 +338,13 @@ fn blast_grade_real_repo() {
         max_parse_size_kb: 512 * 1024,
         max_call_targets: 64,
     };
-    let result = crate::analysis::scanner::scan_directory(
-        path.to_str().unwrap(), None, None, &limits, None);
+    let result =
+        crate::analysis::scanner::scan_directory(path.to_str().unwrap(), None, None, &limits, None);
     let snap = result.unwrap().snapshot;
     let arch = compute_arch(&snap);
     // Blast radius should be populated — diagnostic data still works.
-    assert!(!arch.blast_radius.is_empty(),
-        "blast_radius should have entries for real repo");
+    assert!(
+        !arch.blast_radius.is_empty(),
+        "blast_radius should have entries for real repo"
+    );
 }

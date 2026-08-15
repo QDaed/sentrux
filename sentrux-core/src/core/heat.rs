@@ -44,6 +44,12 @@ pub struct HeatConfig {
     pub trail_max_age: f64,
 }
 
+impl Default for HeatTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HeatTracker {
     /// Create an empty heat tracker with no entries.
     pub fn new() -> Self {
@@ -190,14 +196,14 @@ pub fn heat_color(heat: f64) -> Color32 {
         let u = (t - 0.33) / 0.33;
         let r = 255;
         let g = (160.0 + u * 60.0) as u8; // 160 → 220
-        let b = (0.0 + u * 20.0) as u8;   // 0 → 20
+        let b = (0.0 + u * 20.0) as u8; // 0 → 20
         Color32::from_rgb(r, g, b)
     } else {
         // yellow → deep red
         let u = (t - 0.66) / 0.34;
         let r = 255;
         let g = (220.0 - u * 190.0) as u8; // 220 → 30
-        let b = (20.0 - u * 20.0) as u8;   // 20 → 0
+        let b = (20.0 - u * 20.0) as u8; // 20 → 0
         Color32::from_rgb(r, g, b)
     }
 }

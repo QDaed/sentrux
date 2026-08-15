@@ -74,7 +74,9 @@ pub(crate) fn draw_dashed_polyline(
             let vis_start = d.max(0.0);
             let vis_end = d_end;
             if vis_end > vis_start + 0.01 {
-                emit_dash_segments(painter, pts, seg_starts, total_len, vis_start, vis_end, stroke);
+                emit_dash_segments(
+                    painter, pts, seg_starts, total_len, vis_start, vis_end, stroke,
+                );
             }
         }
 
@@ -128,11 +130,16 @@ fn emit_dash_segments(
 #[inline]
 fn segment_at(seg_starts: &[f32], dist: f32) -> usize {
     let n = seg_starts.len();
-    match seg_starts.binary_search_by(|s| {
-        s.partial_cmp(&dist).unwrap_or(std::cmp::Ordering::Equal)
-    }) {
+    match seg_starts.binary_search_by(|s| s.partial_cmp(&dist).unwrap_or(std::cmp::Ordering::Equal))
+    {
         Ok(i) => i.min(n - 1),
-        Err(i) => if i > 0 { i - 1 } else { 0 },
+        Err(i) => {
+            if i > 0 {
+                i - 1
+            } else {
+                0
+            }
+        }
     }
 }
 
@@ -142,11 +149,17 @@ fn segment_at(seg_starts: &[f32], dist: f32) -> usize {
 fn point_at_distance(pts: &[Pos2], seg_starts: &[f32], dist: f32) -> Pos2 {
     let n = seg_starts.len();
     // Find which segment contains this distance via binary search
-    let seg = match seg_starts.binary_search_by(|s| {
-        s.partial_cmp(&dist).unwrap_or(std::cmp::Ordering::Equal)
-    }) {
+    let seg = match seg_starts
+        .binary_search_by(|s| s.partial_cmp(&dist).unwrap_or(std::cmp::Ordering::Equal))
+    {
         Ok(i) => i.min(n - 1),
-        Err(i) => if i > 0 { i - 1 } else { 0 },
+        Err(i) => {
+            if i > 0 {
+                i - 1
+            } else {
+                0
+            }
+        }
     };
     let seg_start_d = seg_starts[seg];
     let dx = pts[seg + 1].x - pts[seg].x;

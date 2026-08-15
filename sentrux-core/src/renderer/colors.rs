@@ -35,13 +35,13 @@ pub fn language_color(lang: &str) -> Color32 {
 /// Git status → color from ThemeConfig semantic palette.
 pub fn git_color(gs: &str, tc: &ThemeConfig) -> Color32 {
     match gs {
-        "A"  => tc.diff_added,     // green — new/added
-        "M"  => tc.diff_modified,  // blue — modified
+        "A" => tc.diff_added,                           // green — new/added
+        "M" => tc.diff_modified,                        // blue — modified
         "MM" => tc.diff_modified.linear_multiply(1.15), // slightly brighter — staged+working
-        "D"  => tc.diff_removed,   // red — deleted
-        "R"  => tc.status_warning, // amber — renamed
-        "?"  => tc.diff_added,     // green — untracked (new to git)
-        _    => tc.text_muted,     // fallback — muted
+        "D" => tc.diff_removed,                         // red — deleted
+        "R" => tc.status_warning,                       // amber — renamed
+        "?" => tc.diff_added,                           // green — untracked (new to git)
+        _ => tc.text_muted,                             // fallback — muted
     }
 }
 
@@ -54,4 +54,3 @@ pub fn exec_depth_color(depth: u32) -> Color32 {
     let b = (180.0 + t * 75.0) as u8;
     Color32::from_rgb(r, g, b)
 }
-

@@ -152,7 +152,8 @@ pub fn build_dsm(edges: &[ImportEdge]) -> DesignStructureMatrix {
 
     // Filter mod-declaration edges before computing levels, consistent with arch report.
     // Previously used raw edges, causing DSM level assignments to disagree with arch report.
-    let dep_edges: Vec<ImportEdge> = edges.iter()
+    let dep_edges: Vec<ImportEdge> = edges
+        .iter()
         .filter(|e| !crate::metrics::types::is_mod_declaration_edge(e))
         .cloned()
         .collect();
@@ -179,9 +180,19 @@ pub fn build_dsm(edges: &[ImportEdge]) -> DesignStructureMatrix {
     let level_breaks = find_level_breaks(&files, &levels);
 
     DesignStructureMatrix {
-        files, index, matrix, levels,
-        edge_count, above_diagonal, below_diagonal, same_level,
-        adj, level_breaks, size, total_files, dropped_level_range,
+        files,
+        index,
+        matrix,
+        levels,
+        edge_count,
+        above_diagonal,
+        below_diagonal,
+        same_level,
+        adj,
+        level_breaks,
+        size,
+        total_files,
+        dropped_level_range,
     }
 }
 
@@ -271,7 +282,14 @@ fn populate_matrix(
         }
     }
 
-    (matrix, adj, edge_count, above_diagonal, below_diagonal, same_level)
+    (
+        matrix,
+        adj,
+        edge_count,
+        above_diagonal,
+        below_diagonal,
+        same_level,
+    )
 }
 
 /// Find indices where the level number changes (for visual grouping).
@@ -365,13 +383,21 @@ fn render_rows(
 
         let cells: String = (0..display_size)
             .map(|col| {
-                if row == col { " \u{25a0}" }
-                else if dsm.matrix[row][col] { " \u{00d7}" }
-                else { " \u{00b7}" }
+                if row == col {
+                    " \u{25a0}"
+                } else if dsm.matrix[row][col] {
+                    " \u{00d7}"
+                } else {
+                    " \u{00b7}"
+                }
             })
             .collect();
 
-        lines.push(format!("{:>width$} \u{2502}{cells}", short, width = max_label_width));
+        lines.push(format!(
+            "{:>width$} \u{2502}{cells}",
+            short,
+            width = max_label_width
+        ));
     }
 }
 
@@ -492,7 +518,7 @@ fn detect_clusters(dsm: &DesignStructureMatrix) -> Vec<DsmCluster> {
         .map(|indices| build_cluster(dsm, &indices))
         .collect();
 
-    clusters.sort_by(|a, b| b.internal_edges.cmp(&a.internal_edges));
+    clusters.sort_by_key(|b| std::cmp::Reverse(b.internal_edges));
     clusters
 }
 
@@ -570,7 +596,8 @@ fn build_cluster(dsm: &DesignStructureMatrix, indices: &[usize]) -> DsmCluster {
             }
         }
     }
-    let level = indices.iter()
+    let level = indices
+        .iter()
         .filter_map(|&i| dsm.levels.get(&dsm.files[i]).copied())
         .min()
         .unwrap_or(0);

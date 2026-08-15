@@ -113,15 +113,24 @@ pub fn compute_all_edge_paths(
 ) -> (Vec<EdgePath>, EdgeAdjacency) {
     // Aggregate directly from snapshot edge structs — zero intermediate clones.
     let import_agg = aggregate_edges(
-        snapshot.import_graph.iter().map(|e| (e.from_file.as_str(), e.to_file.as_str())),
+        snapshot
+            .import_graph
+            .iter()
+            .map(|e| (e.from_file.as_str(), e.to_file.as_str())),
         anchors,
     );
     let call_agg = aggregate_edges(
-        snapshot.call_graph.iter().map(|e| (e.from_file.as_str(), e.to_file.as_str())),
+        snapshot
+            .call_graph
+            .iter()
+            .map(|e| (e.from_file.as_str(), e.to_file.as_str())),
         anchors,
     );
     let inherit_agg = aggregate_edges(
-        snapshot.inherit_graph.iter().map(|e| (e.child_file.as_str(), e.parent_file.as_str())),
+        snapshot
+            .inherit_graph
+            .iter()
+            .map(|e| (e.child_file.as_str(), e.parent_file.as_str())),
         anchors,
     );
 
@@ -148,27 +157,44 @@ fn route_all_parallel(
     let lm = settings.edge_line_w_max;
 
     let import_style = EdgeStyleParams {
-        color: settings.import_color, edge_type: "import",
-        alpha_base: ab, alpha_step: 0.10, alpha_max: am,
-        lw_base: lb, lw_step: 0.3, lw_max: lm,
+        color: settings.import_color,
+        edge_type: "import",
+        alpha_base: ab,
+        alpha_step: 0.10,
+        alpha_max: am,
+        lw_base: lb,
+        lw_step: 0.3,
+        lw_max: lm,
     };
     let call_style = EdgeStyleParams {
-        color: settings.call_color, edge_type: "call",
-        alpha_base: ab, alpha_step: 0.12, alpha_max: am,
-        lw_base: lb, lw_step: 0.3, lw_max: lm,
+        color: settings.call_color,
+        edge_type: "call",
+        alpha_base: ab,
+        alpha_step: 0.12,
+        alpha_max: am,
+        lw_base: lb,
+        lw_step: 0.3,
+        lw_max: lm,
     };
     let inherit_style = EdgeStyleParams {
-        color: settings.inherit_color, edge_type: "inherit",
-        alpha_base: ab, alpha_step: 0.10, alpha_max: am,
-        lw_base: lb, lw_step: 0.3, lw_max: lm,
+        color: settings.inherit_color,
+        edge_type: "inherit",
+        alpha_base: ab,
+        alpha_step: 0.10,
+        alpha_max: am,
+        lw_base: lb,
+        lw_step: 0.3,
+        lw_max: lm,
     };
 
     let (import_paths, (call_paths, inherit_paths)) = rayon::join(
         || route_edges(import_agg, anchors, &import_style, settings),
-        || rayon::join(
-            || route_edges(call_agg, anchors, &call_style, settings),
-            || route_edges(inherit_agg, anchors, &inherit_style, settings),
-        ),
+        || {
+            rayon::join(
+                || route_edges(call_agg, anchors, &call_style, settings),
+                || route_edges(inherit_agg, anchors, &inherit_style, settings),
+            )
+        },
     );
 
     let total = import_paths.len() + call_paths.len() + inherit_paths.len();
@@ -190,8 +216,12 @@ fn build_adjacency(
 ) -> EdgeAdjacency {
     fn build_adj(agg: &[AggEdge<'_>], map: &mut HashMap<String, HashSet<String>>) {
         for e in agg {
-            map.entry(e.from.to_string()).or_default().insert(e.to.to_string());
-            map.entry(e.to.to_string()).or_default().insert(e.from.to_string());
+            map.entry(e.from.to_string())
+                .or_default()
+                .insert(e.to.to_string());
+            map.entry(e.to.to_string())
+                .or_default()
+                .insert(e.from.to_string());
         }
     }
     let mut adjacency = EdgeAdjacency::default();

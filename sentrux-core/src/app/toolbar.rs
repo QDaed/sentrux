@@ -3,10 +3,9 @@
 //! Returns `(layout_changed, visual_changed)` so the caller knows whether
 //! to trigger a re-layout or just a repaint.
 
-use crate::layout::types::{ColorMode, EdgeFilter, FocusMode, LayoutMode, ScaleMode, SizeMode};
-use crate::core::settings::Theme;
-use crate::license;
 use super::state::AppState;
+use crate::core::settings::Theme;
+use crate::layout::types::{ColorMode, EdgeFilter, FocusMode, LayoutMode, ScaleMode, SizeMode};
 
 /// Draw the toolbar panel. Returns (layout_changed, visual_changed).
 /// layout_changed = size/scale/layout mode changed (needs re-layout).
@@ -41,7 +40,7 @@ pub fn draw_toolbar(ui: &mut egui::Ui, state: &mut AppState) -> (bool, bool) {
             egui::TextEdit::singleline(&mut state.search_query)
                 .desired_width(120.0)
                 .hint_text("Search files...")
-                .font(egui::FontId::monospace(9.0))
+                .font(egui::FontId::monospace(9.0)),
         );
         if search_response.changed() {
             visual_changed = true;
@@ -61,14 +60,22 @@ pub fn draw_toolbar(ui: &mut egui::Ui, state: &mut AppState) -> (bool, bool) {
 
 /// Primary actions: Open Folder + Rescan.
 fn draw_open_folder(ui: &mut egui::Ui, state: &mut AppState) {
-    if ui.button("Open Folder").on_hover_text("Open a project folder to scan").clicked() {
+    if ui
+        .button("Open Folder")
+        .on_hover_text("Open a project folder to scan")
+        .clicked()
+    {
         state.folder_picker_requested = true;
     }
     // Rescan button — manual trigger for re-scanning current project
-    if state.root_path.is_some() && !state.scanning {
-        if ui.button("\u{21bb}").on_hover_text("Rescan (Cmd+R)").clicked() {
-            state.rescan_requested = true;
-        }
+    if state.root_path.is_some()
+        && !state.scanning
+        && ui
+            .button("\u{21bb}")
+            .on_hover_text("Rescan (Cmd+R)")
+            .clicked()
+    {
+        state.rescan_requested = true;
     }
 }
 
@@ -120,8 +127,12 @@ fn size_mode_label(mode: SizeMode) -> &'static str {
 
 /// All SizeMode variants in display order.
 const SIZE_MODES: &[SizeMode] = &[
-    SizeMode::Lines, SizeMode::Logic, SizeMode::Funcs,
-    SizeMode::Comments, SizeMode::Blanks, SizeMode::Heat,
+    SizeMode::Lines,
+    SizeMode::Logic,
+    SizeMode::Funcs,
+    SizeMode::Comments,
+    SizeMode::Blanks,
+    SizeMode::Heat,
     SizeMode::Uniform,
 ];
 
@@ -133,7 +144,10 @@ fn draw_size_mode_combo(ui: &mut egui::Ui, state: &mut AppState, layout_changed:
         .width(70.0)
         .show_ui(ui, |ui| {
             for &mode in SIZE_MODES {
-                if ui.selectable_value(&mut state.size_mode, mode, size_mode_label(mode)).changed() {
+                if ui
+                    .selectable_value(&mut state.size_mode, mode, size_mode_label(mode))
+                    .changed()
+                {
                     *layout_changed = true;
                 }
             }
@@ -152,14 +166,22 @@ fn draw_scale_mode_combo(ui: &mut egui::Ui, state: &mut AppState, layout_changed
         .selected_text(scale_label)
         .width(50.0)
         .show_ui(ui, |ui| {
-            for mode in [ScaleMode::Linear, ScaleMode::Sqrt, ScaleMode::Log, ScaleMode::Smooth] {
+            for mode in [
+                ScaleMode::Linear,
+                ScaleMode::Sqrt,
+                ScaleMode::Log,
+                ScaleMode::Smooth,
+            ] {
                 let label = match mode {
                     ScaleMode::Linear => "Linear",
                     ScaleMode::Sqrt => "Sqrt",
                     ScaleMode::Log => "Log",
                     ScaleMode::Smooth => "Smooth",
                 };
-                if ui.selectable_value(&mut state.scale_mode, mode, label).changed() {
+                if ui
+                    .selectable_value(&mut state.scale_mode, mode, label)
+                    .changed()
+                {
                     *layout_changed = true;
                 }
             }
@@ -170,17 +192,21 @@ fn draw_scale_mode_combo(ui: &mut egui::Ui, state: &mut AppState, layout_changed
 fn draw_visual_group(ui: &mut egui::Ui, state: &mut AppState, visual_changed: &mut bool) {
     ui.label(egui::RichText::new("color:").small().weak());
     let color_label = state.color_mode.label();
-    let available_modes: &[ColorMode] = if crate::pro_registry::has(crate::pro_registry::ProFeature::ExtraColorModes) {
-        ColorMode::ALL
-    } else {
-        ColorMode::FREE
-    };
+    let available_modes: &[ColorMode] =
+        if crate::pro_registry::has(crate::pro_registry::ProFeature::ExtraColorModes) {
+            ColorMode::ALL
+        } else {
+            ColorMode::FREE
+        };
     egui::ComboBox::from_id_salt("color_mode")
         .selected_text(color_label)
         .width(80.0)
         .show_ui(ui, |ui| {
             for &mode in available_modes {
-                if ui.selectable_value(&mut state.color_mode, mode, mode.label()).changed() {
+                if ui
+                    .selectable_value(&mut state.color_mode, mode, mode.label())
+                    .changed()
+                {
                     *visual_changed = true;
                 }
             }
@@ -295,7 +321,10 @@ fn draw_edge_filter_combo(ui: &mut egui::Ui, state: &mut AppState, visual_change
         .width(75.0)
         .show_ui(ui, |ui| {
             for &filter in EdgeFilter::ALL {
-                if ui.selectable_value(&mut state.edge_filter, filter, filter.label()).changed() {
+                if ui
+                    .selectable_value(&mut state.edge_filter, filter, filter.label())
+                    .changed()
+                {
                     *visual_changed = true;
                 }
             }
@@ -303,22 +332,39 @@ fn draw_edge_filter_combo(ui: &mut egui::Ui, state: &mut AppState, visual_change
 }
 
 /// Color for an active/inactive toggle state.
-fn toggle_color(active: bool, active_color: egui::Color32, inactive_color: egui::Color32) -> egui::Color32 {
-    if active { active_color } else { inactive_color }
+fn toggle_color(
+    active: bool,
+    active_color: egui::Color32,
+    inactive_color: egui::Color32,
+) -> egui::Color32 {
+    if active {
+        active_color
+    } else {
+        inactive_color
+    }
 }
 
 /// Draw the show-all-edges toggle button.
 fn draw_edge_toggle(ui: &mut egui::Ui, state: &mut AppState) {
     let tc = crate::core::settings::ThemeConfig::from_theme(state.theme);
-    let edge_icon = if state.show_all_edges { "\u{26A1}" } else { "\u{25C7}" };
+    let edge_icon = if state.show_all_edges {
+        "\u{26A1}"
+    } else {
+        "\u{25C7}"
+    };
     let color = toggle_color(state.show_all_edges, tc.toggle_edge, tc.toggle_inactive);
     let edge_btn = ui.add(
         egui::Button::new(egui::RichText::new(edge_icon).monospace().color(color))
             .fill(egui::Color32::TRANSPARENT),
     );
-    if edge_btn.clicked() { state.show_all_edges = !state.show_all_edges; }
-    let tip = if state.show_all_edges { "Showing all edges \u{2014} click to show only on hover" }
-        else { "Edges shown on hover \u{2014} click to show all" };
+    if edge_btn.clicked() {
+        state.show_all_edges = !state.show_all_edges;
+    }
+    let tip = if state.show_all_edges {
+        "Showing all edges \u{2014} click to show only on hover"
+    } else {
+        "Edges shown on hover \u{2014} click to show all"
+    };
     edge_btn.on_hover_text(tip);
 }
 
@@ -326,10 +372,16 @@ fn draw_edge_toggle(ui: &mut egui::Ui, state: &mut AppState) {
 fn draw_dsm_toggle(ui: &mut egui::Ui, state: &mut AppState) {
     let tc = crate::core::settings::ThemeConfig::from_theme(state.theme);
     let color = toggle_color(state.dsm_panel_open, tc.toggle_dsm, tc.toggle_inactive);
-    let dsm_btn = ui.add(egui::Button::new(egui::RichText::new("DSM").monospace().size(9.0).color(color)));
-    if dsm_btn.on_hover_text("Design Structure Matrix").clicked() { state.dsm_panel_open = !state.dsm_panel_open; }
+    let dsm_btn = ui.add(egui::Button::new(
+        egui::RichText::new("DSM")
+            .monospace()
+            .size(9.0)
+            .color(color),
+    ));
+    if dsm_btn.on_hover_text("Design Structure Matrix").clicked() {
+        state.dsm_panel_open = !state.dsm_panel_open;
+    }
 }
-
 
 /// Toggle buttons for show-all-edges, DSM panel, and activity panel.
 fn draw_toggle_buttons(ui: &mut egui::Ui, state: &mut AppState) {
@@ -341,7 +393,11 @@ fn draw_toggle_buttons(ui: &mut egui::Ui, state: &mut AppState) {
     // Export button — Free: score only, Pro: full detail
     if state.health_report.is_some() {
         let has_pro = crate::pro_registry::is_loaded();
-        let tip = if has_pro { "Export full report" } else { "Export quality summary" };
+        let tip = if has_pro {
+            "Export full report"
+        } else {
+            "Export quality summary"
+        };
         if ui.button("\u{2913}").on_hover_text(tip).clicked() {
             if let Some(report) = &state.health_report {
                 let rc = &report.root_cause_scores;

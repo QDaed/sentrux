@@ -4,7 +4,7 @@
 //! Both modules import from here instead of from each other.
 
 use crate::core::snapshot::Snapshot;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub(crate) const MAX_FILES: usize = 100_000;
 
@@ -23,7 +23,12 @@ pub(crate) fn normalize_path(path: std::borrow::Cow<'_, str>) -> String {
 /// Enables alternative implementations for testing or cached scanning.
 pub trait DirectoryScanner {
     /// Scan a directory and produce a snapshot of its structure and dependencies.
-    fn scan(&self, root: &Path, max_file_size_kb: u64, max_parse_size_kb: u64) -> Result<ScanResult, crate::core::types::AppError>;
+    fn scan(
+        &self,
+        root: &Path,
+        max_file_size_kb: u64,
+        max_parse_size_kb: u64,
+    ) -> Result<ScanResult, crate::core::types::AppError>;
 }
 
 /// Return type that bundles the scan result.
@@ -62,15 +67,20 @@ pub(crate) fn detect_lang(path: &Path) -> String {
 /// Global ignored dirs (OS/tool artifacts, not language-specific).
 /// Language-specific ignored dirs come from plugin.toml [semantics.project].
 const GLOBAL_IGNORED_DIRS: &[&str] = &[
-    ".git", ".DS_Store", ".claude", ".cognitive", ".beemem",
-    "lib64", "include",
+    ".git",
+    ".DS_Store",
+    ".claude",
+    ".cognitive",
+    ".beemem",
+    "lib64",
+    "include",
 ];
 
 /// Merged ignored dirs: global + all plugins. Cached at first access.
 static ALL_IGNORED_DIRS: std::sync::LazyLock<std::collections::HashSet<String>> =
     std::sync::LazyLock::new(|| {
-        let mut set: std::collections::HashSet<String> = GLOBAL_IGNORED_DIRS.iter()
-            .map(|s| s.to_string()).collect();
+        let mut set: std::collections::HashSet<String> =
+            GLOBAL_IGNORED_DIRS.iter().map(|s| s.to_string()).collect();
         for dir in crate::analysis::lang_registry::all_ignored_dirs() {
             set.insert(dir.to_string());
         }
@@ -79,11 +89,64 @@ static ALL_IGNORED_DIRS: std::sync::LazyLock<std::collections::HashSet<String>> 
 
 /// Extensions to ignore
 const IGNORED_EXTENSIONS: &[&str] = &[
-    "pyc", "pyo", "swp", "swo", "tmp", "bak", "orig", "db", "sqlite", "sqlite3", "o", "so",
-    "dylib", "a", "dll", "exe", "wasm", "class", "jar", "png", "jpg", "jpeg", "gif", "ico",
-    "svg", "mp3", "mp4", "wav", "webp", "zip", "tar", "gz", "bz2", "xz", "7z", "rar", "lock",
-    "parquet", "csv", "tsv", "h5", "hdf5", "pkl", "pickle", "npy", "npz", "bin", "dat", "pack",
-    "idx", "onnx", "pt", "pth", "safetensors", "gguf", "log", "pdf", "dmg",
+    "pyc",
+    "pyo",
+    "swp",
+    "swo",
+    "tmp",
+    "bak",
+    "orig",
+    "db",
+    "sqlite",
+    "sqlite3",
+    "o",
+    "so",
+    "dylib",
+    "a",
+    "dll",
+    "exe",
+    "wasm",
+    "class",
+    "jar",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "ico",
+    "svg",
+    "mp3",
+    "mp4",
+    "wav",
+    "webp",
+    "zip",
+    "tar",
+    "gz",
+    "bz2",
+    "xz",
+    "7z",
+    "rar",
+    "lock",
+    "parquet",
+    "csv",
+    "tsv",
+    "h5",
+    "hdf5",
+    "pkl",
+    "pickle",
+    "npy",
+    "npz",
+    "bin",
+    "dat",
+    "pack",
+    "idx",
+    "onnx",
+    "pt",
+    "pth",
+    "safetensors",
+    "gguf",
+    "log",
+    "pdf",
+    "dmg",
 ];
 
 /// Check if a directory name should be ignored during scanning.
@@ -113,7 +176,10 @@ pub(crate) struct LineCounts {
 /// Replaces the entire tokei dependency.
 pub(crate) fn count_lines_from_bytes(content: &[u8]) -> LineCounts {
     if content.is_empty() {
-        return LineCounts { total: 0, blanks: 0 };
+        return LineCounts {
+            total: 0,
+            blanks: 0,
+        };
     }
     let mut total: u32 = 0;
     let mut blanks: u32 = 0;

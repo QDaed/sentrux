@@ -94,7 +94,11 @@ pub fn apply_scale(value: f64, mode: ScaleMode) -> f64 {
 /// Extract weight from FileNode based on size mode.
 /// `heat_map` provides live heat values from HeatTracker (keyed by file path).
 /// Required for SizeMode::Heat — without it, Heat falls back to Uniform.
-pub fn get_size_weight(node: &FileNode, mode: SizeMode, heat_map: Option<&std::collections::HashMap<String, f64>>) -> f64 {
+pub fn get_size_weight(
+    node: &FileNode,
+    mode: SizeMode,
+    heat_map: Option<&std::collections::HashMap<String, f64>>,
+) -> f64 {
     match mode {
         SizeMode::Lines => (node.lines as f64).max(1.0),
         SizeMode::Logic => (node.logic as f64).max(1.0),
@@ -167,16 +171,18 @@ fn precompute_dir_weight(
         for c in children {
             precompute_weights_inner(c, wc, cache, sorted_hidden, depth + 1);
         }
-        let mut sum: f64 = children.iter().map(|c| {
-            cache.get(&c.path).copied().unwrap_or(0.0)
-        }).sum();
+        let mut sum: f64 = children
+            .iter()
+            .map(|c| cache.get(&c.path).copied().unwrap_or(0.0))
+            .sum();
         // Ensure directory has minimum weight based on children with non-zero content.
         // If all children are hidden/filtered (non_zero == 0 && sum == 0.0), keep sum = 0.0
         // to avoid phantom empty directories appearing in layout.
         if !children.is_empty() {
-            let non_zero = children.iter().filter(|c| {
-                cache.get(&c.path).copied().unwrap_or(0.0) > 0.0
-            }).count();
+            let non_zero = children
+                .iter()
+                .filter(|c| cache.get(&c.path).copied().unwrap_or(0.0) > 0.0)
+                .count();
             if non_zero > 0 {
                 let min_w = non_zero as f64 * wc.min_child_weight;
                 if sum < min_w {
@@ -197,7 +203,10 @@ fn precompute_file_weight(
     cache: &mut HashMap<String, f64>,
 ) {
     let is_entry = wc.entry_point_files.contains(&node.path);
-    if !wc.focus_mode.includes_with_impact(&node.path, &node.lang, is_entry, wc.impact_files) {
+    if !wc
+        .focus_mode
+        .includes_with_impact(&node.path, &node.lang, is_entry, wc.impact_files)
+    {
         cache.insert(node.path.clone(), 0.0);
         return;
     }
@@ -236,7 +245,12 @@ mod tests {
     #[test]
     fn test_monotonicity_scale() {
         // More input → more output for all modes
-        for mode in [ScaleMode::Linear, ScaleMode::Sqrt, ScaleMode::Log, ScaleMode::Smooth] {
+        for mode in [
+            ScaleMode::Linear,
+            ScaleMode::Sqrt,
+            ScaleMode::Log,
+            ScaleMode::Smooth,
+        ] {
             let a = apply_scale(10.0, mode);
             let b = apply_scale(100.0, mode);
             let c = apply_scale(1000.0, mode);

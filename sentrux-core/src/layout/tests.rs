@@ -1,12 +1,10 @@
 use super::*;
 use crate::core::settings::Settings;
-use crate::layout::test_helpers::{
-    default_focus, empty_entry_points, no_hidden,
-    make_file, make_dir, simple_snapshot,
-};
-use crate::core::types::{CallEdge, ImportEdge};
 use crate::core::snapshot::Snapshot;
 use crate::core::types::FileNode;
+use crate::layout::test_helpers::{
+    default_focus, empty_entry_points, make_dir, make_file, no_hidden, simple_snapshot,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use types::{LayoutMode, RectKind, ScaleMode, SizeMode};
@@ -25,9 +23,15 @@ fn layout(
     let entry = empty_entry_points();
     let hidden = no_hidden();
     let cfg = LayoutConfig {
-        size_mode, scale_mode, layout_mode,
-        heat_map: None, settings: &settings, focus_mode: &focus,
-        entry_point_files: &entry, hidden_paths: &hidden, impact_files: None,
+        size_mode,
+        scale_mode,
+        layout_mode,
+        heat_map: None,
+        settings: &settings,
+        focus_mode: &focus,
+        entry_point_files: &entry,
+        hidden_paths: &hidden,
+        impact_files: None,
     };
     compute_layout_from_snapshot(snap, vw, vh, None, &cfg)
 }
@@ -37,8 +41,22 @@ fn layout(
 #[test]
 fn test_invariance_layout_ignores_color_mode() {
     let snap = simple_snapshot();
-    let r1 = layout(&snap, SizeMode::Lines, ScaleMode::Linear, LayoutMode::Treemap, 800.0, 600.0);
-    let r2 = layout(&snap, SizeMode::Lines, ScaleMode::Linear, LayoutMode::Treemap, 800.0, 600.0);
+    let r1 = layout(
+        &snap,
+        SizeMode::Lines,
+        ScaleMode::Linear,
+        LayoutMode::Treemap,
+        800.0,
+        600.0,
+    );
+    let r2 = layout(
+        &snap,
+        SizeMode::Lines,
+        ScaleMode::Linear,
+        LayoutMode::Treemap,
+        800.0,
+        600.0,
+    );
     // Layout should be identical — color mode is not an input
     assert_eq!(r1.rects.len(), r2.rects.len());
     for i in 0..r1.rects.len() {
@@ -60,10 +78,21 @@ fn test_invariance_layout_ignores_color_mode() {
 #[test]
 fn test_conservation_child_area_le_parent() {
     let snap = simple_snapshot();
-    let rd = layout(&snap, SizeMode::Lines, ScaleMode::Linear, LayoutMode::Treemap, 800.0, 600.0);
+    let rd = layout(
+        &snap,
+        SizeMode::Lines,
+        ScaleMode::Linear,
+        LayoutMode::Treemap,
+        800.0,
+        600.0,
+    );
 
     // Find sections and their children
-    let sections: Vec<&_> = rd.rects.iter().filter(|r| r.kind == RectKind::Section).collect();
+    let sections: Vec<&_> = rd
+        .rects
+        .iter()
+        .filter(|r| r.kind == RectKind::Section)
+        .collect();
     for sec in &sections {
         let parent_area = sec.w * sec.h;
         let child_area: f64 = rd
@@ -112,7 +141,14 @@ fn test_boundary_empty_tree() {
         exec_depth: HashMap::new(),
     };
 
-    let rd = layout(&snap, SizeMode::Lines, ScaleMode::Linear, LayoutMode::Treemap, 800.0, 600.0);
+    let rd = layout(
+        &snap,
+        SizeMode::Lines,
+        ScaleMode::Linear,
+        LayoutMode::Treemap,
+        800.0,
+        600.0,
+    );
     // Empty dir → at most one section rect (the root)
     assert!(rd.rects.len() <= 1);
     assert!(rd.edge_paths.is_empty());
@@ -138,8 +174,19 @@ fn test_boundary_single_file() {
         exec_depth: HashMap::new(),
     };
 
-    let rd = layout(&snap, SizeMode::Lines, ScaleMode::Linear, LayoutMode::Treemap, 800.0, 600.0);
-    let files: Vec<_> = rd.rects.iter().filter(|r| r.kind == RectKind::File).collect();
+    let rd = layout(
+        &snap,
+        SizeMode::Lines,
+        ScaleMode::Linear,
+        LayoutMode::Treemap,
+        800.0,
+        600.0,
+    );
+    let files: Vec<_> = rd
+        .rects
+        .iter()
+        .filter(|r| r.kind == RectKind::File)
+        .collect();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].path, "proj/main.rs");
 }
@@ -168,8 +215,19 @@ fn test_oracle_three_files() {
         exec_depth: HashMap::new(),
     };
 
-    let rd = layout(&snap, SizeMode::Lines, ScaleMode::Linear, LayoutMode::Treemap, 300.0, 300.0);
-    let files: Vec<_> = rd.rects.iter().filter(|r| r.kind == RectKind::File).collect();
+    let rd = layout(
+        &snap,
+        SizeMode::Lines,
+        ScaleMode::Linear,
+        LayoutMode::Treemap,
+        300.0,
+        300.0,
+    );
+    let files: Vec<_> = rd
+        .rects
+        .iter()
+        .filter(|r| r.kind == RectKind::File)
+        .collect();
     assert_eq!(files.len(), 3, "should have 3 file rects");
 
     // BUG 19 fix: tighten tolerance from 15% to 5%. Equal-weight files
@@ -192,8 +250,22 @@ fn test_oracle_three_files() {
 #[test]
 fn test_idempotency() {
     let snap = simple_snapshot();
-    let r1 = layout(&snap, SizeMode::Logic, ScaleMode::Sqrt, LayoutMode::Blueprint, 0.0, 0.0);
-    let r2 = layout(&snap, SizeMode::Logic, ScaleMode::Sqrt, LayoutMode::Blueprint, 0.0, 0.0);
+    let r1 = layout(
+        &snap,
+        SizeMode::Logic,
+        ScaleMode::Sqrt,
+        LayoutMode::Blueprint,
+        0.0,
+        0.0,
+    );
+    let r2 = layout(
+        &snap,
+        SizeMode::Logic,
+        ScaleMode::Sqrt,
+        LayoutMode::Blueprint,
+        0.0,
+        0.0,
+    );
     assert_eq!(r1.rects.len(), r2.rects.len());
     assert_eq!(r1.edge_paths.len(), r2.edge_paths.len());
     for i in 0..r1.rects.len() {

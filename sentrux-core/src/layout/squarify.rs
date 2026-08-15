@@ -31,7 +31,11 @@ pub struct SquarifyConfig {
 
 /// Compute the worst aspect ratio for a row candidate using min/max weight tracking.
 fn worst_aspect_ratio(
-    new_min: f64, new_max: f64, new_weight: f64, row_area: f64, row_side: f64,
+    new_min: f64,
+    new_max: f64,
+    new_weight: f64,
+    row_area: f64,
+    row_side: f64,
 ) -> f64 {
     let area_max = (new_max / new_weight) * row_area;
     let side_max = area_max / row_side;
@@ -42,15 +46,27 @@ fn worst_aspect_ratio(
     let asp_min = (side_min / row_side).max(row_side / side_min);
 
     let w = asp_max.max(asp_min);
-    if w.is_finite() { w } else { f64::INFINITY }
+    if w.is_finite() {
+        w
+    } else {
+        f64::INFINITY
+    }
 }
 
 /// Result of building one squarified row.
-struct RowResult { count: usize, weight: f64 }
+struct RowResult {
+    count: usize,
+    weight: f64,
+}
 
 /// Build one row: find optimal number of items starting at `start_idx`.
 fn build_row(
-    items: &[WeightedItem], start_idx: usize, rem_weight: f64, cw: f64, ch: f64, side: f64,
+    items: &[WeightedItem],
+    start_idx: usize,
+    rem_weight: f64,
+    cw: f64,
+    ch: f64,
+    side: f64,
 ) -> RowResult {
     let mut row_count = 0usize;
     let mut row_weight = 0.0_f64;
@@ -60,10 +76,14 @@ fn build_row(
 
     for (offset, item) in items[start_idx..].iter().enumerate() {
         let new_weight = row_weight + item.weight;
-        if new_weight < 1e-12 { break; }
+        if new_weight < 1e-12 {
+            break;
+        }
         let row_area = (new_weight / rem_weight) * cw * ch;
         let row_side = row_area / side;
-        if row_side < 1e-6 { break; }
+        if row_side < 1e-6 {
+            break;
+        }
 
         let iw = item.weight;
         let new_min = row_min_w.min(iw);
@@ -80,7 +100,10 @@ fn build_row(
             break;
         }
     }
-    RowResult { count: row_count, weight: row_weight }
+    RowResult {
+        count: row_count,
+        weight: row_weight,
+    }
 }
 
 /// Current remaining viewport during squarification — tracks the cursor position
@@ -94,9 +117,16 @@ struct Viewport {
 
 /// Emit a single item rect, applying gutter inset if applicable.
 fn emit_item<F>(
-    callback: &mut F, index: usize, rx: f64, ry: f64, rw: f64, rh: f64,
+    callback: &mut F,
+    index: usize,
+    rx: f64,
+    ry: f64,
+    rw: f64,
+    rh: f64,
     sc: &SquarifyConfig,
-) where F: FnMut(usize, f64, f64, f64, f64) {
+) where
+    F: FnMut(usize, f64, f64, f64, f64),
+{
     if sc.gutter > 0.0 {
         let g = sc.gutter / 2.0;
         let gw = rw - sc.gutter;
@@ -113,10 +143,17 @@ fn emit_item<F>(
 
 /// Emit remaining items at minimum size in a grid pattern.
 fn emit_tail<F>(
-    items: &[WeightedItem], mut start_idx: usize,
-    vp: &Viewport, sc: &SquarifyConfig, callback: &mut F,
-) where F: FnMut(usize, f64, f64, f64, f64) {
-    if vp.cw < sc.min_rect || vp.ch < sc.min_rect { return; }
+    items: &[WeightedItem],
+    mut start_idx: usize,
+    vp: &Viewport,
+    sc: &SquarifyConfig,
+    callback: &mut F,
+) where
+    F: FnMut(usize, f64, f64, f64, f64),
+{
+    if vp.cw < sc.min_rect || vp.ch < sc.min_rect {
+        return;
+    }
     let mut cx = vp.cx;
     let mut cy = vp.cy;
     let rem_x = cx;
@@ -124,27 +161,44 @@ fn emit_tail<F>(
     let y_end = cy + vp.ch;
     let step = sc.min_rect + sc.gutter;
     while start_idx < items.len() {
-        if cy + sc.min_rect > y_end { break; }
+        if cy + sc.min_rect > y_end {
+            break;
+        }
         let rw = sc.min_rect.min(x_end - cx);
         let rh = sc.min_rect.min(y_end - cy);
         if rw >= 1.0 && rh >= 1.0 {
             callback(items[start_idx].index, cx, cy, rw, rh);
         }
         cx += step;
-        if cx + sc.min_rect > x_end { cx = rem_x; cy += step; }
+        if cx + sc.min_rect > x_end {
+            cx = rem_x;
+            cy += step;
+        }
         start_idx += 1;
     }
 }
 
 /// Emit all items in a single row, computing per-item position and size.
+#[allow(clippy::too_many_arguments)]
 fn emit_row<F>(
-    items: &[WeightedItem], start_idx: usize, row: &RowResult,
-    vp: &Viewport, is_wide: bool,
-    row_extent: f64, sc: &SquarifyConfig, callback: &mut F,
-) where F: FnMut(usize, f64, f64, f64, f64) {
+    items: &[WeightedItem],
+    start_idx: usize,
+    row: &RowResult,
+    vp: &Viewport,
+    is_wide: bool,
+    row_extent: f64,
+    sc: &SquarifyConfig,
+    callback: &mut F,
+) where
+    F: FnMut(usize, f64, f64, f64, f64),
+{
     let mut offset = 0.0;
     for item in &items[start_idx..(start_idx + row.count)] {
-        let frac = if row.weight > 0.0 { item.weight / row.weight } else { 1.0 / row.count as f64 };
+        let frac = if row.weight > 0.0 {
+            item.weight / row.weight
+        } else {
+            1.0 / row.count as f64
+        };
         let item_extent = if is_wide { vp.ch } else { vp.cw } * frac;
         let (rx, ry, rw, rh) = if is_wide {
             (vp.cx, vp.cy + offset, row_extent, item_extent)
@@ -164,11 +218,18 @@ fn prepare_items(items: &[WeightedItem]) -> Option<Vec<WeightedItem>> {
     let mut clean: Vec<WeightedItem> = items
         .iter()
         .filter(|i| i.weight.is_finite() && i.weight >= 0.0)
-        .map(|i| WeightedItem { weight: i.weight, index: i.index })
+        .map(|i| WeightedItem {
+            weight: i.weight,
+            index: i.index,
+        })
         .collect();
     clean.sort_by(|a, b| b.weight.total_cmp(&a.weight));
     let total: f64 = clean.iter().map(|i| i.weight).sum();
-    if clean.is_empty() || total <= 0.0 { None } else { Some(clean) }
+    if clean.is_empty() || total <= 0.0 {
+        None
+    } else {
+        Some(clean)
+    }
 }
 
 /// Process one row of the squarify layout, returning consumed extent.
@@ -180,24 +241,35 @@ fn process_row<F>(
     sc: &SquarifyConfig,
     callback: &mut F,
 ) -> Option<(usize, f64, bool)>
-where F: FnMut(usize, f64, f64, f64, f64) {
+where
+    F: FnMut(usize, f64, f64, f64, f64),
+{
     let is_wide = vp.cw >= vp.ch;
     let side = if is_wide { vp.ch } else { vp.cw };
     let row = build_row(items, start_idx, rem_weight, vp.cw, vp.ch, side);
-    if row.count == 0 { return None; }
+    if row.count == 0 {
+        return None;
+    }
     let row_frac = row.weight / rem_weight;
-    let row_extent = if is_wide { vp.cw * row_frac } else { vp.ch * row_frac };
-    emit_row(items, start_idx, &row, vp, is_wide, row_extent, sc, callback);
+    let row_extent = if is_wide {
+        vp.cw * row_frac
+    } else {
+        vp.ch * row_frac
+    };
+    emit_row(
+        items, start_idx, &row, vp, is_wide, row_extent, sc, callback,
+    );
     Some((row.count, row_extent, is_wide))
 }
 
-pub fn squarify<F>(
-    items: &[WeightedItem],
-    sc: &SquarifyConfig,
-    mut callback: F,
-) where F: FnMut(usize, f64, f64, f64, f64) {
+pub fn squarify<F>(items: &[WeightedItem], sc: &SquarifyConfig, mut callback: F)
+where
+    F: FnMut(usize, f64, f64, f64, f64),
+{
     let (x, y, w, h) = (sc.x, sc.y, sc.w, sc.h);
-    if w < sc.min_rect || h < sc.min_rect { return; }
+    if w < sc.min_rect || h < sc.min_rect {
+        return;
+    }
     let items = match prepare_items(items) {
         Some(v) => v,
         None => return,
@@ -210,14 +282,22 @@ pub fn squarify<F>(
 
     while start_idx < items.len() {
         let vp = Viewport {
-            cx: x + total_x_consumed, cy: y + total_y_consumed,
-            cw: w - total_x_consumed, ch: h - total_y_consumed,
+            cx: x + total_x_consumed,
+            cy: y + total_y_consumed,
+            cw: w - total_x_consumed,
+            ch: h - total_y_consumed,
         };
-        if vp.cw < sc.min_rect || vp.ch < sc.min_rect || rem_weight <= 0.0 { break; }
+        if vp.cw < sc.min_rect || vp.ch < sc.min_rect || rem_weight <= 0.0 {
+            break;
+        }
 
         match process_row(&items, start_idx, rem_weight, &vp, sc, &mut callback) {
             Some((count, extent, is_wide)) => {
-                if is_wide { total_x_consumed += extent; } else { total_y_consumed += extent; }
+                if is_wide {
+                    total_x_consumed += extent;
+                } else {
+                    total_y_consumed += extent;
+                }
                 rem_weight = items[start_idx + count..].iter().map(|i| i.weight).sum();
                 start_idx += count;
             }
@@ -226,8 +306,10 @@ pub fn squarify<F>(
     }
 
     let tail_vp = Viewport {
-        cx: x + total_x_consumed, cy: y + total_y_consumed,
-        cw: w - total_x_consumed, ch: h - total_y_consumed,
+        cx: x + total_x_consumed,
+        cy: y + total_y_consumed,
+        cw: w - total_x_consumed,
+        ch: h - total_y_consumed,
     };
     emit_tail(&items, start_idx, &tail_vp, sc, &mut callback);
 }
@@ -237,23 +319,41 @@ mod tests {
     use super::*;
 
     fn sc(x: f64, y: f64, w: f64, h: f64, gutter: f64, min_rect: f64) -> SquarifyConfig {
-        SquarifyConfig { x, y, w, h, gutter, min_rect }
+        SquarifyConfig {
+            x,
+            y,
+            w,
+            h,
+            gutter,
+            min_rect,
+        }
     }
 
     #[test]
     fn test_empty_items() {
         let mut calls = 0;
-        squarify(&[], &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0), |_, _, _, _, _| calls += 1);
+        squarify(
+            &[],
+            &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0),
+            |_, _, _, _, _| calls += 1,
+        );
         assert_eq!(calls, 0);
     }
 
     #[test]
     fn test_single_item() {
-        let items = vec![WeightedItem { weight: 10.0, index: 0 }];
+        let items = vec![WeightedItem {
+            weight: 10.0,
+            index: 0,
+        }];
         let mut rects = Vec::new();
-        squarify(&items, &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0), |idx, x, y, w, h| {
-            rects.push((idx, x, y, w, h));
-        });
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0),
+            |idx, x, y, w, h| {
+                rects.push((idx, x, y, w, h));
+            },
+        );
         assert_eq!(rects.len(), 1);
         let (idx, x, y, w, h) = rects[0];
         assert_eq!(idx, 0);
@@ -275,9 +375,13 @@ mod tests {
             .collect();
         let parent_area = 200.0 * 150.0;
         let mut total_child_area = 0.0;
-        squarify(&items, &sc(0.0, 0.0, 200.0, 150.0, 0.0, 3.0), |_, _, _, w, h| {
-            total_child_area += w * h;
-        });
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 200.0, 150.0, 0.0, 3.0),
+            |_, _, _, w, h| {
+                total_child_area += w * h;
+            },
+        );
         assert!(
             total_child_area <= parent_area + 1e-6,
             "child area {} > parent area {}",
@@ -296,9 +400,13 @@ mod tests {
             .collect();
         let parent_area = 200.0 * 150.0;
         let mut total_child_area = 0.0;
-        squarify(&items, &sc(0.0, 0.0, 200.0, 150.0, 4.0, 3.0), |_, _, _, w, h| {
-            total_child_area += w * h;
-        });
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 200.0, 150.0, 4.0, 3.0),
+            |_, _, _, w, h| {
+                total_child_area += w * h;
+            },
+        );
         assert!(total_child_area <= parent_area);
         // With gutter, area should be strictly less
         assert!(total_child_area < parent_area);
@@ -338,31 +446,58 @@ mod tests {
         // Bug fix: zero-weight items must not produce NaN coordinates.
         // Previously 0.0/0.0 in aspect ratio calculation caused NaN propagation.
         let items = vec![
-            WeightedItem { weight: 0.0, index: 0 },
-            WeightedItem { weight: 10.0, index: 1 },
-            WeightedItem { weight: 5.0, index: 2 },
+            WeightedItem {
+                weight: 0.0,
+                index: 0,
+            },
+            WeightedItem {
+                weight: 10.0,
+                index: 1,
+            },
+            WeightedItem {
+                weight: 5.0,
+                index: 2,
+            },
         ];
         let mut rects = Vec::new();
-        squarify(&items, &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0), |idx, x, y, w, h| {
-            assert!(x.is_finite(), "x is NaN/Inf for item {}", idx);
-            assert!(y.is_finite(), "y is NaN/Inf for item {}", idx);
-            assert!(w.is_finite(), "w is NaN/Inf for item {}", idx);
-            assert!(h.is_finite(), "h is NaN/Inf for item {}", idx);
-            rects.push((idx, x, y, w, h));
-        });
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0),
+            |idx, x, y, w, h| {
+                assert!(x.is_finite(), "x is NaN/Inf for item {}", idx);
+                assert!(y.is_finite(), "y is NaN/Inf for item {}", idx);
+                assert!(w.is_finite(), "w is NaN/Inf for item {}", idx);
+                assert!(h.is_finite(), "h is NaN/Inf for item {}", idx);
+                rects.push((idx, x, y, w, h));
+            },
+        );
         // Non-zero items should be placed; zero-weight item may or may not be placed
         // but must never produce NaN
-        assert!(rects.len() >= 2, "expected at least 2 rects, got {}", rects.len());
+        assert!(
+            rects.len() >= 2,
+            "expected at least 2 rects, got {}",
+            rects.len()
+        );
     }
 
     #[test]
     fn test_all_zero_weight_items() {
         let items = vec![
-            WeightedItem { weight: 0.0, index: 0 },
-            WeightedItem { weight: 0.0, index: 1 },
+            WeightedItem {
+                weight: 0.0,
+                index: 0,
+            },
+            WeightedItem {
+                weight: 0.0,
+                index: 1,
+            },
         ];
         let mut calls = 0;
-        squarify(&items, &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0), |_, _, _, _, _| calls += 1);
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0),
+            |_, _, _, _, _| calls += 1,
+        );
         // All-zero weights: rem_weight=0 → early return, no rects
         assert_eq!(calls, 0);
     }
@@ -372,18 +507,36 @@ mod tests {
         // Many small items — verify none are silently dropped by float drift.
         let n = 100;
         let items: Vec<WeightedItem> = (0..n)
-            .map(|i| WeightedItem { weight: 1.0, index: i })
+            .map(|i| WeightedItem {
+                weight: 1.0,
+                index: i,
+            })
             .collect();
         let mut placed = 0;
-        squarify(&items, &sc(0.0, 0.0, 500.0, 500.0, 0.0, 3.0), |_, _, _, _, _| placed += 1);
-        assert_eq!(placed, n, "all {} items should be placed, got {}", n, placed);
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 500.0, 500.0, 0.0, 3.0),
+            |_, _, _, _, _| placed += 1,
+        );
+        assert_eq!(
+            placed, n,
+            "all {} items should be placed, got {}",
+            n, placed
+        );
     }
 
     #[test]
     fn test_too_small_viewport() {
-        let items = vec![WeightedItem { weight: 10.0, index: 0 }];
+        let items = vec![WeightedItem {
+            weight: 10.0,
+            index: 0,
+        }];
         let mut calls = 0;
-        squarify(&items, &sc(0.0, 0.0, 2.0, 2.0, 0.0, 3.0), |_, _, _, _, _| calls += 1);
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 2.0, 2.0, 0.0, 3.0),
+            |_, _, _, _, _| calls += 1,
+        );
         assert_eq!(calls, 0, "viewport < min_rect should produce zero rects");
     }
 
@@ -391,29 +544,52 @@ mod tests {
     fn test_nan_weight_no_nan_coords() {
         // NaN weights must be treated as zero, never producing NaN coordinates.
         let items = vec![
-            WeightedItem { weight: f64::NAN, index: 0 },
-            WeightedItem { weight: 10.0, index: 1 },
-            WeightedItem { weight: 5.0, index: 2 },
+            WeightedItem {
+                weight: f64::NAN,
+                index: 0,
+            },
+            WeightedItem {
+                weight: 10.0,
+                index: 1,
+            },
+            WeightedItem {
+                weight: 5.0,
+                index: 2,
+            },
         ];
         let mut rects = Vec::new();
-        squarify(&items, &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0), |idx, x, y, w, h| {
-            assert!(x.is_finite(), "x is NaN/Inf for item {}", idx);
-            assert!(y.is_finite(), "y is NaN/Inf for item {}", idx);
-            assert!(w.is_finite(), "w is NaN/Inf for item {}", idx);
-            assert!(h.is_finite(), "h is NaN/Inf for item {}", idx);
-            rects.push((idx, x, y, w, h));
-        });
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0),
+            |idx, x, y, w, h| {
+                assert!(x.is_finite(), "x is NaN/Inf for item {}", idx);
+                assert!(y.is_finite(), "y is NaN/Inf for item {}", idx);
+                assert!(w.is_finite(), "w is NaN/Inf for item {}", idx);
+                assert!(h.is_finite(), "h is NaN/Inf for item {}", idx);
+                rects.push((idx, x, y, w, h));
+            },
+        );
         assert!(rects.len() >= 2, "finite-weight items must be placed");
     }
 
     #[test]
     fn test_all_nan_weights() {
         let items = vec![
-            WeightedItem { weight: f64::NAN, index: 0 },
-            WeightedItem { weight: f64::NAN, index: 1 },
+            WeightedItem {
+                weight: f64::NAN,
+                index: 0,
+            },
+            WeightedItem {
+                weight: f64::NAN,
+                index: 1,
+            },
         ];
         let mut calls = 0;
-        squarify(&items, &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0), |_, _, _, _, _| calls += 1);
+        squarify(
+            &items,
+            &sc(0.0, 0.0, 100.0, 100.0, 0.0, 3.0),
+            |_, _, _, _, _| calls += 1,
+        );
         assert_eq!(calls, 0, "all-NaN weights should produce zero rects");
     }
 }

@@ -14,15 +14,26 @@ fn clip_ray_to_border(outside: &Point, target: &Anchor, border_pad: f64) -> Poin
     let dy = target.cy - outside.y;
 
     if dx.abs() < 0.01 && dy.abs() < 0.01 {
-        return Point { x: target.cx, y: target.cy };
+        return Point {
+            x: target.cx,
+            y: target.cy,
+        };
     }
 
     let half_w = (target.bw / 2.0).max(1.0);
     let half_h = (target.bh / 2.0).max(1.0);
 
     // Find where the ray from outside→center crosses the rect border.
-    let sx = if dx.abs() > 0.01 { half_w / dx.abs() } else { f64::MAX };
-    let sy = if dy.abs() > 0.01 { half_h / dy.abs() } else { f64::MAX };
+    let sx = if dx.abs() > 0.01 {
+        half_w / dx.abs()
+    } else {
+        f64::MAX
+    };
+    let sy = if dy.abs() > 0.01 {
+        half_h / dy.abs()
+    } else {
+        f64::MAX
+    };
     let s = sx.min(sy);
 
     // Clamp s to [0, 1] so the border point is always on the NEAR side of
@@ -35,10 +46,21 @@ fn clip_ray_to_border(outside: &Point, target: &Anchor, border_pad: f64) -> Poin
     let by = target.cy - dy * s;
 
     // Nudge inward slightly so arrowhead doesn't overlap the edge
-    let pad_x = if dx.abs() > 0.01 { border_pad * dx.signum() } else { 0.0 };
-    let pad_y = if dy.abs() > 0.01 { border_pad * dy.signum() } else { 0.0 };
+    let pad_x = if dx.abs() > 0.01 {
+        border_pad * dx.signum()
+    } else {
+        0.0
+    };
+    let pad_y = if dy.abs() > 0.01 {
+        border_pad * dy.signum()
+    } else {
+        0.0
+    };
 
-    Point { x: bx + pad_x, y: by + pad_y }
+    Point {
+        x: bx + pad_x,
+        y: by + pad_y,
+    }
 }
 
 /// For an orthogonal last-segment approaching the target from directly
@@ -51,25 +73,34 @@ fn clip_ortho_to_border(pre: &Point, target: &Anchor, border_pad: f64) -> Point 
     // Vertical approach (same x as center)
     if dx.abs() < 0.01 {
         if dy.abs() < 0.01 {
-            return Point { x: target.cx, y: target.cy };
+            return Point {
+                x: target.cx,
+                y: target.cy,
+            };
         }
         // Hit top or bottom border
         let border_y = if dy > 0.0 {
-            target.by + border_pad           // approaching from above → top border
+            target.by + border_pad // approaching from above → top border
         } else {
-            target.by + target.bh - border_pad  // approaching from below → bottom border
+            target.by + target.bh - border_pad // approaching from below → bottom border
         };
-        return Point { x: target.cx, y: border_y };
+        return Point {
+            x: target.cx,
+            y: border_y,
+        };
     }
 
     // Horizontal approach (same y as center)
     if dy.abs() < 0.01 {
         let border_x = if dx > 0.0 {
-            target.bx + border_pad           // approaching from left → left border
+            target.bx + border_pad // approaching from left → left border
         } else {
-            target.bx + target.bw - border_pad  // approaching from right → right border
+            target.bx + target.bw - border_pad // approaching from right → right border
         };
-        return Point { x: border_x, y: target.cy };
+        return Point {
+            x: border_x,
+            y: target.cy,
+        };
     }
 
     // Fallback: diagonal (shouldn't happen for L-path last segment, but safe)
@@ -79,9 +110,20 @@ fn clip_ortho_to_border(pre: &Point, target: &Anchor, border_pad: f64) -> Point 
 /// Clip source center OUTWARD to the source rect border based on exit direction.
 /// `exit_dir` is the first meaningful movement point after the source center.
 /// Returns (point_on_border, side_char) where side_char is 'l','r','t','b'.
-fn clip_source_to_border(from: &Anchor, exit_dx: f64, exit_dy: f64, border_pad: f64) -> (Point, char) {
+fn clip_source_to_border(
+    from: &Anchor,
+    exit_dx: f64,
+    exit_dy: f64,
+    border_pad: f64,
+) -> (Point, char) {
     if exit_dx.abs() < 0.01 && exit_dy.abs() < 0.01 {
-        return (Point { x: from.cx, y: from.cy }, 'r');
+        return (
+            Point {
+                x: from.cx,
+                y: from.cy,
+            },
+            'r',
+        );
     }
     // Clamp border_pad so the clipped point never crosses the center.
     // On small rects (e.g. 4×4 in blueprint), border_pad=1.5 > bw/2=2.0
@@ -91,16 +133,40 @@ fn clip_source_to_border(from: &Anchor, exit_dx: f64, exit_dy: f64, border_pad: 
     if exit_dx.abs() >= exit_dy.abs() {
         // Primarily horizontal exit → clip to left/right border
         if exit_dx > 0.0 {
-            (Point { x: from.bx + from.bw - pad_x, y: from.cy }, 'r')
+            (
+                Point {
+                    x: from.bx + from.bw - pad_x,
+                    y: from.cy,
+                },
+                'r',
+            )
         } else {
-            (Point { x: from.bx + pad_x, y: from.cy }, 'l')
+            (
+                Point {
+                    x: from.bx + pad_x,
+                    y: from.cy,
+                },
+                'l',
+            )
         }
     } else {
         // Primarily vertical exit → clip to top/bottom border
         if exit_dy > 0.0 {
-            (Point { x: from.cx, y: from.by + from.bh - pad_y }, 'b')
+            (
+                Point {
+                    x: from.cx,
+                    y: from.by + from.bh - pad_y,
+                },
+                'b',
+            )
         } else {
-            (Point { x: from.cx, y: from.by + pad_y }, 't')
+            (
+                Point {
+                    x: from.cx,
+                    y: from.by + pad_y,
+                },
+                't',
+            )
         }
     }
 }
@@ -151,7 +217,11 @@ pub fn compute_edge_path(
 /// Clamp a bend coordinate outside the source rect to prevent edges passing through it.
 fn clamp_bend_outside(raw: f64, rect_min: f64, rect_size: f64, positive: bool) -> f64 {
     if raw > rect_min && raw < rect_min + rect_size {
-        if positive { rect_min + rect_size } else { rect_min }
+        if positive {
+            rect_min + rect_size
+        } else {
+            rect_min
+        }
     } else {
         raw
     }
@@ -159,26 +229,36 @@ fn clamp_bend_outside(raw: f64, rect_min: f64, rect_size: f64, positive: bool) -
 
 /// Compute the bend offset for an L-path, clamped outside the source rect.
 fn compute_bend_offset(
-    lane_offset: f64, lane_t: f64,
-    center: f64, start_pos: f64,
-    rect_min: f64, rect_size: f64,
+    lane_offset: f64,
+    lane_t: f64,
+    center: f64,
+    start_pos: f64,
+    rect_min: f64,
+    rect_size: f64,
 ) -> f64 {
     if lane_offset.abs() < lane_t {
         center
     } else {
         clamp_bend_outside(
-            start_pos + lane_offset, rect_min, rect_size, lane_offset > 0.0,
+            start_pos + lane_offset,
+            rect_min,
+            rect_size,
+            lane_offset > 0.0,
         )
     }
 }
 
 /// Build the final path points given bend, target intersection check, and border padding.
+#[allow(clippy::too_many_arguments)]
 fn finalize_lpath(
-    start: Point, bend: Point, bend_is_degenerate: bool,
+    start: Point,
+    bend: Point,
+    bend_is_degenerate: bool,
     inside_target: bool,
     direct_border: Point,
     pre_target: Point,
-    to: &Anchor, border_pad: f64,
+    to: &Anchor,
+    border_pad: f64,
 ) -> Vec<Point> {
     if inside_target {
         build_pts_opt_bend(start, bend, direct_border, bend_is_degenerate)
@@ -190,8 +270,11 @@ fn finalize_lpath(
 
 /// Route an L-path when horizontal distance dominates (adx >= ady).
 fn route_horizontal_dominant(
-    from: &Anchor, to: &Anchor,
-    lane_offset: f64, lane_t: f64, border_pad: f64,
+    from: &Anchor,
+    to: &Anchor,
+    lane_offset: f64,
+    lane_t: f64,
+    border_pad: f64,
 ) -> Option<(Vec<Point>, char)> {
     let dx = to.cx - from.cx;
     let (start, side) = if lane_offset.abs() < lane_t {
@@ -200,23 +283,43 @@ fn route_horizontal_dominant(
         clip_source_to_border(from, 0.0, lane_offset, border_pad)
     };
     let bend_y = compute_bend_offset(lane_offset, lane_t, from.cy, start.y, from.by, from.bh);
-    let bend = Point { x: start.x, y: bend_y };
+    let bend = Point {
+        x: start.x,
+        y: bend_y,
+    };
     let bend_degen = (bend.x - start.x).abs() < 0.01 && (bend.y - start.y).abs() < 0.01;
     let inside = bend_y >= to.by + border_pad && bend_y <= to.by + to.bh - border_pad;
-    let border_x = if from.cx < to.cx { to.bx + border_pad } else { to.bx + to.bw - border_pad };
+    let border_x = if from.cx < to.cx {
+        to.bx + border_pad
+    } else {
+        to.bx + to.bw - border_pad
+    };
     let pts = finalize_lpath(
-        start, bend, bend_degen, inside,
-        Point { x: border_x, y: bend_y },
-        Point { x: to.cx, y: bend_y },
-        to, border_pad,
+        start,
+        bend,
+        bend_degen,
+        inside,
+        Point {
+            x: border_x,
+            y: bend_y,
+        },
+        Point {
+            x: to.cx,
+            y: bend_y,
+        },
+        to,
+        border_pad,
     );
     Some((pts, side))
 }
 
 /// Route an L-path when vertical distance dominates (ady > adx).
 fn route_vertical_dominant(
-    from: &Anchor, to: &Anchor,
-    lane_offset: f64, lane_t: f64, border_pad: f64,
+    from: &Anchor,
+    to: &Anchor,
+    lane_offset: f64,
+    lane_t: f64,
+    border_pad: f64,
 ) -> Option<(Vec<Point>, char)> {
     let dy = to.cy - from.cy;
     let (start, side) = if lane_offset.abs() < lane_t {
@@ -225,28 +328,57 @@ fn route_vertical_dominant(
         clip_source_to_border(from, lane_offset, 0.0, border_pad)
     };
     let bend_x = compute_bend_offset(lane_offset, lane_t, from.cx, start.x, from.bx, from.bw);
-    let bend = Point { x: bend_x, y: start.y };
+    let bend = Point {
+        x: bend_x,
+        y: start.y,
+    };
     let bend_degen = (bend.x - start.x).abs() < 0.01 && (bend.y - start.y).abs() < 0.01;
     let inside = bend_x >= to.bx + border_pad && bend_x <= to.bx + to.bw - border_pad;
-    let border_y = if from.cy < to.cy { to.by + border_pad } else { to.by + to.bh - border_pad };
+    let border_y = if from.cy < to.cy {
+        to.by + border_pad
+    } else {
+        to.by + to.bh - border_pad
+    };
     let pts = finalize_lpath(
-        start, bend, bend_degen, inside,
-        Point { x: bend_x, y: border_y },
-        Point { x: bend_x, y: to.cy },
-        to, border_pad,
+        start,
+        bend,
+        bend_degen,
+        inside,
+        Point {
+            x: bend_x,
+            y: border_y,
+        },
+        Point {
+            x: bend_x,
+            y: to.cy,
+        },
+        to,
+        border_pad,
     );
     Some((pts, side))
 }
 
 /// Build point list: [start, end] or [start, bend, end] depending on degeneracy.
 fn build_pts_opt_bend(start: Point, bend: Point, end: Point, degenerate: bool) -> Vec<Point> {
-    if degenerate { vec![start, end] } else { vec![start, bend, end] }
+    if degenerate {
+        vec![start, end]
+    } else {
+        vec![start, bend, end]
+    }
 }
 
 /// Build point list with optional bend and optional pre-target waypoint.
-fn build_pts_with_pre(start: Point, bend: Point, pre: Point, end: Point, bend_degenerate: bool) -> Vec<Point> {
+fn build_pts_with_pre(
+    start: Point,
+    bend: Point,
+    pre: Point,
+    end: Point,
+    bend_degenerate: bool,
+) -> Vec<Point> {
     let mut pts = vec![start];
-    if !bend_degenerate { pts.push(bend); }
+    if !bend_degenerate {
+        pts.push(bend);
+    }
     if (pre.x - end.x).abs() >= 2.0 || (pre.y - end.y).abs() >= 2.0 {
         pts.push(pre);
     }

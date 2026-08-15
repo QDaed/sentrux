@@ -51,19 +51,45 @@ impl Constraints {
     /// Count how many constraint thresholds are actively set.
     pub fn count_active(&self) -> usize {
         let mut n = 0;
-        if self.min_quality.is_some() { n += 1; }
-        if self.min_modularity.is_some() { n += 1; }
-        if self.min_acyclicity.is_some() { n += 1; }
-        if self.min_depth.is_some() { n += 1; }
-        if self.min_equality.is_some() { n += 1; }
-        if self.min_redundancy.is_some() { n += 1; }
-        if self.max_coupling_score.is_some() { n += 1; }
-        if self.max_cycles.is_some() { n += 1; }
-        if self.max_cc.is_some() { n += 1; }
-        if self.max_file_lines.is_some() { n += 1; }
-        if self.max_fn_lines.is_some() { n += 1; }
-        if self.no_god_files { n += 1; }
-        if self.max_upward_violations.is_some() { n += 1; }
+        if self.min_quality.is_some() {
+            n += 1;
+        }
+        if self.min_modularity.is_some() {
+            n += 1;
+        }
+        if self.min_acyclicity.is_some() {
+            n += 1;
+        }
+        if self.min_depth.is_some() {
+            n += 1;
+        }
+        if self.min_equality.is_some() {
+            n += 1;
+        }
+        if self.min_redundancy.is_some() {
+            n += 1;
+        }
+        if self.max_coupling_score.is_some() {
+            n += 1;
+        }
+        if self.max_cycles.is_some() {
+            n += 1;
+        }
+        if self.max_cc.is_some() {
+            n += 1;
+        }
+        if self.max_file_lines.is_some() {
+            n += 1;
+        }
+        if self.max_fn_lines.is_some() {
+            n += 1;
+        }
+        if self.no_god_files {
+            n += 1;
+        }
+        if self.max_upward_violations.is_some() {
+            n += 1;
+        }
         n
     }
 
@@ -82,7 +108,9 @@ impl Constraints {
             max_file_lines: override_with.max_file_lines.or(self.max_file_lines),
             max_fn_lines: override_with.max_fn_lines.or(self.max_fn_lines),
             no_god_files: override_with.no_god_files || self.no_god_files,
-            max_upward_violations: override_with.max_upward_violations.or(self.max_upward_violations),
+            max_upward_violations: override_with
+                .max_upward_violations
+                .or(self.max_upward_violations),
         }
     }
 }
@@ -127,7 +155,10 @@ pub fn check_min_quality(c: &Constraints, health: &HealthReport) -> Option<RuleV
         Some(RuleViolation {
             rule: "min_quality".into(),
             severity: Severity::Error,
-            message: format!("Quality signal {:.2} below minimum required {:.2}", health.quality_signal, min_quality),
+            message: format!(
+                "Quality signal {:.2} below minimum required {:.2}",
+                health.quality_signal, min_quality
+            ),
             files: vec![],
         })
     } else {
@@ -142,7 +173,10 @@ pub fn check_max_coupling(c: &Constraints, health: &HealthReport) -> Option<Rule
         Some(RuleViolation {
             rule: "max_coupling_score".into(),
             severity: Severity::Error,
-            message: format!("Coupling score {:.2} exceeds maximum allowed {:.2}", health.coupling_score, max_coupling),
+            message: format!(
+                "Coupling score {:.2} exceeds maximum allowed {:.2}",
+                health.coupling_score, max_coupling
+            ),
             files: vec![],
         })
     } else {
@@ -157,8 +191,16 @@ pub fn check_max_cycles(c: &Constraints, health: &HealthReport) -> Option<RuleVi
         Some(RuleViolation {
             rule: "max_cycles".into(),
             severity: Severity::Error,
-            message: format!("Found {} circular dependencies, maximum allowed is {}", health.circular_dep_count, max_cycles),
-            files: health.circular_dep_files.iter().flatten().cloned().collect(),
+            message: format!(
+                "Found {} circular dependencies, maximum allowed is {}",
+                health.circular_dep_count, max_cycles
+            ),
+            files: health
+                .circular_dep_files
+                .iter()
+                .flatten()
+                .cloned()
+                .collect(),
         })
     } else {
         None
@@ -170,13 +212,24 @@ pub fn check_max_cycles(c: &Constraints, health: &HealthReport) -> Option<RuleVi
 /// hardcoded CC_THRESHOLD_HIGH (15) are correctly enforced.
 pub fn check_max_cc(c: &Constraints, health: &HealthReport) -> Option<RuleViolation> {
     let max_cc = c.max_cc?;
-    let over: Vec<_> = health.all_function_ccs.iter().filter(|f| f.value > max_cc).collect();
+    let over: Vec<_> = health
+        .all_function_ccs
+        .iter()
+        .filter(|f| f.value > max_cc)
+        .collect();
     if !over.is_empty() {
         Some(RuleViolation {
             rule: "max_cc".into(),
             severity: Severity::Error,
-            message: format!("{} function(s) exceed max cyclomatic complexity of {}", over.len(), max_cc),
-            files: over.iter().map(|f| format!("{}:{} (cc={})", f.file, f.func, f.value)).collect(),
+            message: format!(
+                "{} function(s) exceed max cyclomatic complexity of {}",
+                over.len(),
+                max_cc
+            ),
+            files: over
+                .iter()
+                .map(|f| format!("{}:{} (cc={})", f.file, f.func, f.value))
+                .collect(),
         })
     } else {
         None
@@ -188,13 +241,24 @@ pub fn check_max_cc(c: &Constraints, health: &HealthReport) -> Option<RuleViolat
 /// hardcoded LARGE_FILE_THRESHOLD (500) are correctly enforced.
 pub fn check_max_file_lines(c: &Constraints, health: &HealthReport) -> Option<RuleViolation> {
     let max_file_lines = c.max_file_lines?;
-    let over: Vec<_> = health.all_file_lines.iter().filter(|f| f.value > max_file_lines as usize).collect();
+    let over: Vec<_> = health
+        .all_file_lines
+        .iter()
+        .filter(|f| f.value > max_file_lines as usize)
+        .collect();
     if !over.is_empty() {
         Some(RuleViolation {
             rule: "max_file_lines".into(),
             severity: Severity::Error,
-            message: format!("{} file(s) exceed max length of {} lines", over.len(), max_file_lines),
-            files: over.iter().map(|f| format!("{} ({} lines)", f.path, f.value)).collect(),
+            message: format!(
+                "{} file(s) exceed max length of {} lines",
+                over.len(),
+                max_file_lines
+            ),
+            files: over
+                .iter()
+                .map(|f| format!("{} ({} lines)", f.path, f.value))
+                .collect(),
         })
     } else {
         None
@@ -206,13 +270,24 @@ pub fn check_max_file_lines(c: &Constraints, health: &HealthReport) -> Option<Ru
 /// hardcoded FUNC_LENGTH_THRESHOLD (50) are correctly enforced.
 pub fn check_max_fn_lines(c: &Constraints, health: &HealthReport) -> Option<RuleViolation> {
     let max_fn_lines = c.max_fn_lines?;
-    let over: Vec<_> = health.all_function_lines.iter().filter(|f| f.value > max_fn_lines).collect();
+    let over: Vec<_> = health
+        .all_function_lines
+        .iter()
+        .filter(|f| f.value > max_fn_lines)
+        .collect();
     if !over.is_empty() {
         Some(RuleViolation {
             rule: "max_fn_lines".into(),
             severity: Severity::Error,
-            message: format!("{} function(s) exceed max length of {} lines", over.len(), max_fn_lines),
-            files: over.iter().map(|f| format!("{}:{} ({} lines)", f.file, f.func, f.value)).collect(),
+            message: format!(
+                "{} function(s) exceed max length of {} lines",
+                over.len(),
+                max_fn_lines
+            ),
+            files: over
+                .iter()
+                .map(|f| format!("{}:{} ({} lines)", f.file, f.func, f.value))
+                .collect(),
         })
     } else {
         None
@@ -228,8 +303,15 @@ pub fn check_no_god_files(c: &Constraints, health: &HealthReport) -> Option<Rule
         Some(RuleViolation {
             rule: "no_god_files".into(),
             severity: Severity::Error,
-            message: format!("{} god file(s) found (fan-out > 15)", health.god_files.len()),
-            files: health.god_files.iter().map(|f| format!("{} (fan-out={})", f.path, f.value)).collect(),
+            message: format!(
+                "{} god file(s) found (fan-out > 15)",
+                health.god_files.len()
+            ),
+            files: health
+                .god_files
+                .iter()
+                .map(|f| format!("{} (fan-out={})", f.path, f.value))
+                .collect(),
         })
     } else {
         None
@@ -244,7 +326,10 @@ fn check_root_cause(name: &str, score: f64, min: Option<f64>) -> Option<RuleViol
         Some(RuleViolation {
             rule: format!("min_{}", name),
             severity: Severity::Error,
-            message: format!("{} score {:.4} below minimum required {:.4}", name, score, min),
+            message: format!(
+                "{} score {:.4} below minimum required {:.4}",
+                name, score, min
+            ),
             files: vec![],
         })
     } else {
@@ -254,12 +339,20 @@ fn check_root_cause(name: &str, score: f64, min: Option<f64>) -> Option<RuleViol
 
 /// Check minimum modularity score.
 pub fn check_min_modularity(c: &Constraints, health: &HealthReport) -> Option<RuleViolation> {
-    check_root_cause("modularity", health.root_cause_scores.modularity, c.min_modularity)
+    check_root_cause(
+        "modularity",
+        health.root_cause_scores.modularity,
+        c.min_modularity,
+    )
 }
 
 /// Check minimum acyclicity score.
 pub fn check_min_acyclicity(c: &Constraints, health: &HealthReport) -> Option<RuleViolation> {
-    check_root_cause("acyclicity", health.root_cause_scores.acyclicity, c.min_acyclicity)
+    check_root_cause(
+        "acyclicity",
+        health.root_cause_scores.acyclicity,
+        c.min_acyclicity,
+    )
 }
 
 /// Check minimum depth score.
@@ -269,12 +362,20 @@ pub fn check_min_depth(c: &Constraints, health: &HealthReport) -> Option<RuleVio
 
 /// Check minimum equality score.
 pub fn check_min_equality(c: &Constraints, health: &HealthReport) -> Option<RuleViolation> {
-    check_root_cause("equality", health.root_cause_scores.equality, c.min_equality)
+    check_root_cause(
+        "equality",
+        health.root_cause_scores.equality,
+        c.min_equality,
+    )
 }
 
 /// Check minimum redundancy score.
 pub fn check_min_redundancy(c: &Constraints, health: &HealthReport) -> Option<RuleViolation> {
-    check_root_cause("redundancy", health.root_cause_scores.redundancy, c.min_redundancy)
+    check_root_cause(
+        "redundancy",
+        health.root_cause_scores.redundancy,
+        c.min_redundancy,
+    )
 }
 
 /// Check maximum upward dependency violations.
@@ -284,9 +385,21 @@ pub fn check_max_upward(c: &Constraints, arch: &ArchReport) -> Option<RuleViolat
         Some(RuleViolation {
             rule: "max_upward_violations".into(),
             severity: Severity::Error,
-            message: format!("{} upward dependency violations, maximum allowed is {}", arch.upward_violations.len(), max_upward),
-            files: arch.upward_violations.iter().take(5)
-                .map(|v| format!("{} (L{}) \u{2192} {} (L{})", v.from_file, v.from_level, v.to_file, v.to_level))
+            message: format!(
+                "{} upward dependency violations, maximum allowed is {}",
+                arch.upward_violations.len(),
+                max_upward
+            ),
+            files: arch
+                .upward_violations
+                .iter()
+                .take(5)
+                .map(|v| {
+                    format!(
+                        "{} (L{}) \u{2192} {} (L{})",
+                        v.from_file, v.from_level, v.to_file, v.to_level
+                    )
+                })
                 .collect(),
         })
     } else {

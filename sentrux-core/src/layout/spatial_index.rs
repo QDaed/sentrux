@@ -68,7 +68,13 @@ impl SpatialIndex {
             if is_file {
                 register_in_cells(hr, &cell_range, cols, &mut cells, &mut hit_rects);
             } else {
-                register_in_cells(hr, &cell_range, cols, &mut section_cells, &mut section_rects);
+                register_in_cells(
+                    hr,
+                    &cell_range,
+                    cols,
+                    &mut section_cells,
+                    &mut section_rects,
+                );
             }
         }
 
@@ -81,7 +87,6 @@ impl SpatialIndex {
             section_rects,
         }
     }
-
 }
 
 /// Cell range for a rect: (col_start, col_end, row_start, row_end).
@@ -126,7 +131,6 @@ fn register_in_cells(
     }
 }
 
-
 /// Compute the grid cell index for a world coordinate. Returns None if out of bounds.
 fn cell_index_for(wx: f64, wy: f64, cols: usize, rows: usize, grid_len: usize) -> Option<usize> {
     if wx < 0.0 || wy < 0.0 {
@@ -135,7 +139,11 @@ fn cell_index_for(wx: f64, wy: f64, cols: usize, rows: usize, grid_len: usize) -
     let col = ((wx / CELL_SIZE).floor() as usize).min(cols.saturating_sub(1));
     let row = ((wy / CELL_SIZE).floor() as usize).min(rows.saturating_sub(1));
     let idx = row * cols + col;
-    if idx >= grid_len { None } else { Some(idx) }
+    if idx >= grid_len {
+        None
+    } else {
+        Some(idx)
+    }
 }
 
 /// Find the smallest-area rect containing (wx, wy) among candidates.

@@ -12,7 +12,11 @@ use super::SentruxApp;
 
 impl SentruxApp {
     /// Handle canvas interaction: pan, zoom, hover, click, minimap click
-    pub(crate) fn handle_canvas_interaction(&mut self, response: &egui::Response, canvas_rect: egui::Rect) {
+    pub(crate) fn handle_canvas_interaction(
+        &mut self,
+        response: &egui::Response,
+        canvas_rect: egui::Rect,
+    ) {
         let ctx_ptr = response.ctx.clone();
 
         // Update canvas dimensions
@@ -47,23 +51,46 @@ impl SentruxApp {
 
     /// Compute the dynamic minimum zoom level based on content dimensions.
     fn dynamic_min_zoom(&self) -> f64 {
-        self.state.render_data.as_ref().map_or(
-            self.state.settings.zoom_min,
-            |rd| self.state.viewport.min_zoom_for_content(rd.content_width, rd.content_height, 0.8, self.state.settings.zoom_min),
-        )
+        self.state
+            .render_data
+            .as_ref()
+            .map_or(self.state.settings.zoom_min, |rd| {
+                self.state.viewport.min_zoom_for_content(
+                    rd.content_width,
+                    rd.content_height,
+                    0.8,
+                    self.state.settings.zoom_min,
+                )
+            })
     }
 
     /// Handle scroll-wheel zoom centered on cursor position.
-    fn handle_zoom(&mut self, response: &egui::Response, ctx: &egui::Context, canvas_rect: egui::Rect) {
-        if !response.hovered() { return; }
+    fn handle_zoom(
+        &mut self,
+        response: &egui::Response,
+        ctx: &egui::Context,
+        canvas_rect: egui::Rect,
+    ) {
+        if !response.hovered() {
+            return;
+        }
         let scroll = ctx.input(|i| i.smooth_scroll_delta.y);
-        if scroll.abs() <= 0.1 { return; }
+        if scroll.abs() <= 0.1 {
+            return;
+        }
 
         let zf = self.state.settings.zoom_scroll_factor;
         let factor = if scroll > 0.0 { zf } else { 1.0 / zf };
         if let Some(pos) = ctx.input(|i| i.pointer.hover_pos()) {
             let dynamic_min = self.dynamic_min_zoom();
-            self.state.viewport.zoom_at(pos.x, pos.y, canvas_rect.min, factor, dynamic_min, self.state.settings.zoom_max);
+            self.state.viewport.zoom_at(
+                pos.x,
+                pos.y,
+                canvas_rect.min,
+                factor,
+                dynamic_min,
+                self.state.settings.zoom_max,
+            );
             self.state.last_interaction = std::time::Instant::now();
             self.state.interacting = true;
         }
@@ -74,7 +101,8 @@ impl SentruxApp {
         ctx.input(|i| {
             i.pointer.hover_pos().is_some_and(|pos| {
                 self.state.render_data.as_ref().is_some_and(|rd| {
-                    minimap::minimap_rect(canvas_rect, &self.state.settings).contains(pos) && rd.content_width > 0.0
+                    minimap::minimap_rect(canvas_rect, &self.state.settings).contains(pos)
+                        && rd.content_width > 0.0
                 })
             })
         })
@@ -99,14 +127,17 @@ impl SentruxApp {
     }
 
     /// Handle drag-based panning (start, move, stop).
-    fn handle_pan(&mut self, response: &egui::Response, ctx: &egui::Context, canvas_rect: egui::Rect) {
+    fn handle_pan(
+        &mut self,
+        response: &egui::Response,
+        ctx: &egui::Context,
+        canvas_rect: egui::Rect,
+    ) {
         if response.drag_started() && !self.is_drag_on_minimap(ctx, canvas_rect) {
             self.state.dragging = true;
             self.state.drag_start_screen = ctx.input(|i| i.pointer.hover_pos());
-            self.state.drag_start_offset = Some((
-                self.state.viewport.offset_x,
-                self.state.viewport.offset_y,
-            ));
+            self.state.drag_start_offset =
+                Some((self.state.viewport.offset_x, self.state.viewport.offset_y));
         }
 
         if self.state.dragging {
@@ -137,8 +168,14 @@ impl SentruxApp {
             Some(p) => p,
             None => return,
         };
-        let (wx, wy) = self.state.viewport.screen_to_world(pos.x, pos.y, canvas_rect.min);
-        let hit = self.state.spatial_index.as_ref()
+        let (wx, wy) = self
+            .state
+            .viewport
+            .screen_to_world(pos.x, pos.y, canvas_rect.min);
+        let hit = self
+            .state
+            .spatial_index
+            .as_ref()
             .and_then(|si| si.hit_test(wx, wy))
             .map(|s| s.to_string());
         if hit != self.state.hovered_path {
@@ -148,7 +185,12 @@ impl SentruxApp {
     }
 
     /// Update hovered file path via spatial index hit testing.
-    fn handle_hover(&mut self, response: &egui::Response, ctx: &egui::Context, canvas_rect: egui::Rect) {
+    fn handle_hover(
+        &mut self,
+        response: &egui::Response,
+        ctx: &egui::Context,
+        canvas_rect: egui::Rect,
+    ) {
         if response.hovered() && !self.state.dragging {
             self.update_hover_from_cursor(ctx, canvas_rect);
         } else if !response.hovered() && self.state.hovered_path.is_some() {
@@ -158,15 +200,21 @@ impl SentruxApp {
     }
 
     /// Try to navigate the viewport via minimap click. Returns true if consumed.
-    fn try_minimap_navigate(&mut self, pos: egui::Pos2, canvas_rect: egui::Rect, ctx: &egui::Context) -> bool {
+    fn try_minimap_navigate(
+        &mut self,
+        pos: egui::Pos2,
+        canvas_rect: egui::Rect,
+        ctx: &egui::Context,
+    ) -> bool {
         let rd = match &self.state.render_data {
             Some(rd) => rd,
             None => return false,
         };
-        let (wx, wy) = match minimap::minimap_click_to_world(pos, canvas_rect, rd, &self.state.settings) {
-            Some(coords) => coords,
-            None => return false,
-        };
+        let (wx, wy) =
+            match minimap::minimap_click_to_world(pos, canvas_rect, rd, &self.state.settings) {
+                Some(coords) => coords,
+                None => return false,
+            };
         let vp = &self.state.viewport;
         let half_w = vp.canvas_w / vp.scale / 2.0;
         let half_h = vp.canvas_h / vp.scale / 2.0;
@@ -191,14 +239,22 @@ impl SentruxApp {
 
     /// Handle left-click: minimap navigation or file select/deselect.
     /// Returns true if the click was consumed by the minimap.
-    fn handle_click(&mut self, response: &egui::Response, ctx: &egui::Context, canvas_rect: egui::Rect) -> bool {
+    fn handle_click(
+        &mut self,
+        response: &egui::Response,
+        ctx: &egui::Context,
+        canvas_rect: egui::Rect,
+    ) -> bool {
         // Use ui.input() to check if pointer had a double-click this frame.
         // egui's response.clicked() fires on the first click of a double-click too,
         // so checking response.double_clicked() alone misses the first click.
         // By checking the raw pointer state, we suppress single-click side effects
         // entirely when a double-click occurred.
         let double_clicked_this_frame = response.double_clicked()
-            || ctx.input(|i| i.pointer.button_double_clicked(egui::PointerButton::Primary));
+            || ctx.input(|i| {
+                i.pointer
+                    .button_double_clicked(egui::PointerButton::Primary)
+            });
         if !(response.clicked() && !self.state.dragging && !double_clicked_this_frame) {
             return false;
         }
@@ -217,13 +273,16 @@ impl SentruxApp {
 
     /// Handle double-click: drill into parent directory. Returns true if drill changed.
     fn handle_double_click(&mut self, response: &egui::Response) -> bool {
-        if !response.double_clicked() { return false; }
+        if !response.double_clicked() {
+            return false;
+        }
         if let Some(path) = &self.state.hovered_path {
             if let Some(pos) = path.rfind('/') {
                 let dir = path[..pos].to_string();
                 // Only drill deeper — don't push if already at or below this directory
-                let already_at = self.state.drill_stack.last()
-                    .map_or(false, |current| dir == *current || dir.starts_with(&format!("{}/", current)));
+                let already_at = self.state.drill_stack.last().is_some_and(|current| {
+                    dir == *current || dir.starts_with(&format!("{}/", current))
+                });
                 if already_at {
                     // We're already in this dir — try to drill into a subdirectory
                     // by finding the next level down from the current drill point
@@ -246,7 +305,9 @@ impl SentruxApp {
 
     /// Handle ESC key: clear selection or pop drill stack. Returns true if drill popped.
     fn handle_escape(&mut self, ctx: &egui::Context) -> bool {
-        if !ctx.input(|i| i.key_pressed(egui::Key::Escape)) { return false; }
+        if !ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            return false;
+        }
         if self.state.selected_path.is_some() {
             self.state.selected_path = None;
             false
@@ -259,20 +320,40 @@ impl SentruxApp {
     }
 
     /// Resolve what the user right-clicked on: a file, a section, or nothing.
-    fn resolve_click_target(&self, wx: f64, wy: f64) -> Option<crate::app::state::ContextMenuTarget> {
+    fn resolve_click_target(
+        &self,
+        wx: f64,
+        wy: f64,
+    ) -> Option<crate::app::state::ContextMenuTarget> {
         let si = self.state.spatial_index.as_ref()?;
         if let Some(path) = si.hit_test(wx, wy) {
-            return Some(crate::app::state::ContextMenuTarget { path: path.to_string(), is_dir: false });
+            return Some(crate::app::state::ContextMenuTarget {
+                path: path.to_string(),
+                is_dir: false,
+            });
         }
         si.hit_test_section(wx, wy)
-            .map(|path| crate::app::state::ContextMenuTarget { path: path.to_string(), is_dir: true })
+            .map(|path| crate::app::state::ContextMenuTarget {
+                path: path.to_string(),
+                is_dir: true,
+            })
     }
 
     /// Handle right-click: set context menu target (file or directory section).
-    fn handle_right_click(&mut self, response: &egui::Response, ctx: &egui::Context, canvas_rect: egui::Rect) {
-        if !response.secondary_clicked() { return; }
+    fn handle_right_click(
+        &mut self,
+        response: &egui::Response,
+        ctx: &egui::Context,
+        canvas_rect: egui::Rect,
+    ) {
+        if !response.secondary_clicked() {
+            return;
+        }
         if let Some(pos) = ctx.input(|i| i.pointer.hover_pos()) {
-            let (wx, wy) = self.state.viewport.screen_to_world(pos.x, pos.y, canvas_rect.min);
+            let (wx, wy) = self
+                .state
+                .viewport
+                .screen_to_world(pos.x, pos.y, canvas_rect.min);
             self.state.context_menu_target = self.resolve_click_target(wx, wy);
         }
     }
@@ -280,8 +361,10 @@ impl SentruxApp {
     /// Show the context menu and apply hide/unhide actions.
     fn handle_context_menu(&mut self, response: &egui::Response) {
         let (hide_action, unhide_action) = Self::draw_context_menu_ui(
-            response, &self.state.context_menu_target,
-            &self.state.root_path, &self.state.hidden_paths,
+            response,
+            &self.state.context_menu_target,
+            &self.state.root_path,
+            &self.state.hidden_paths,
         );
 
         if let Some(path) = hide_action {
@@ -305,7 +388,8 @@ impl SentruxApp {
         ui.label(egui::RichText::new(name).strong().monospace());
         ui.separator();
         if ui.button("Copy abs path").clicked() {
-            let text = root_path.as_ref()
+            let text = root_path
+                .as_ref()
                 .map(|r| format!("{}/{}", r, t.path))
                 .unwrap_or_else(|| t.path.clone());
             ui.ctx().copy_text(text);
@@ -314,7 +398,9 @@ impl SentruxApp {
         if ui.button("Reveal in Finder").clicked() {
             if let Some(root) = root_path {
                 let _ = std::process::Command::new("open")
-                    .arg("-R").arg(format!("{}/{}", root, t.path)).spawn();
+                    .arg("-R")
+                    .arg(format!("{}/{}", root, t.path))
+                    .spawn();
             }
             ui.close_menu();
         }
@@ -343,7 +429,10 @@ impl SentruxApp {
             }
             if !hidden_paths.is_empty() {
                 ui.separator();
-                if ui.button(format!("Unhide all ({} hidden)", hidden_paths.len())).clicked() {
+                if ui
+                    .button(format!("Unhide all ({} hidden)", hidden_paths.len()))
+                    .clicked()
+                {
                     unhide_action = true;
                     ui.close_menu();
                 }

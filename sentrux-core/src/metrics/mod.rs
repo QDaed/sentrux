@@ -8,9 +8,9 @@
 //! Key function: `compute_health` produces a `HealthReport` from a `Snapshot`.
 
 // ── Sub-modules (directory modules with internal cohesion) ──
-pub mod arch;     // arch/mod.rs + graph.rs + distance.rs
-pub mod evo;      // evo/mod.rs + git_walker.rs
-pub mod rules;    // rules/mod.rs + checks.rs
+pub mod arch; // arch/mod.rs + graph.rs + distance.rs
+pub mod evo; // evo/mod.rs + git_walker.rs
+pub mod rules; // rules/mod.rs + checks.rs
 
 // ── Flat modules (remain at metrics root) ──
 pub mod cross_validation; // FREE: compression-based quality cross-check
@@ -29,21 +29,20 @@ pub use types::*;
 pub use evo as evolution;
 
 #[cfg(test)]
-pub(crate) mod test_helpers;
-#[cfg(test)]
 mod mod_tests;
 #[cfg(test)]
 mod mod_tests2;
+#[cfg(test)]
+pub(crate) mod test_helpers;
 
 use stability::{
-    compute_avg_cohesion, compute_coupling_score, compute_shannon_entropy,
-    compute_stable_modules,
+    compute_avg_cohesion, compute_coupling_score, compute_shannon_entropy, compute_stable_modules,
 };
 // Threshold constants are no longer imported — thresholds are now per-language,
 // read from the LanguageProfile at runtime via lang_registry::profile().
-use crate::core::types::{EntryPoint, ImportEdge};
 use crate::core::snapshot::Snapshot;
 use crate::core::types::FileNode;
+use crate::core::types::{EntryPoint, ImportEdge};
 use std::collections::{HashMap, HashSet};
 
 /// Check if a file is a package-index / barrel file via its language profile.
@@ -58,7 +57,10 @@ pub(crate) fn is_package_index_for_path(path: &str) -> bool {
 /// Compute per-file fan-out and fan-in counts from import + call edges.
 /// Both represent real dependencies — import is explicit, call is implicit.
 /// Deduplicated: A→B via import AND call counts as 1 edge.
-fn compute_fan_maps(import_edges: &[ImportEdge], call_edges: &[crate::core::types::CallEdge]) -> (HashMap<String, usize>, HashMap<String, usize>) {
+fn compute_fan_maps(
+    import_edges: &[ImportEdge],
+    call_edges: &[crate::core::types::CallEdge],
+) -> (HashMap<String, usize>, HashMap<String, usize>) {
     let mut seen: HashSet<(String, String)> = HashSet::new();
     let mut fan_out: HashMap<String, usize> = HashMap::new();
     let mut fan_in: HashMap<String, usize> = HashMap::new();
@@ -81,14 +83,18 @@ fn compute_fan_maps(import_edges: &[ImportEdge], call_edges: &[crate::core::type
 fn fan_out_threshold_for_path(path: &str) -> usize {
     let ext = path.rsplit('.').next().unwrap_or("");
     let lang = crate::analysis::lang_registry::detect_lang_from_ext(ext);
-    crate::analysis::lang_registry::profile(&lang).thresholds.fan_out
+    crate::analysis::lang_registry::profile(&lang)
+        .thresholds
+        .fan_out
 }
 
 /// Resolve file path to its language profile's fan-in threshold.
 fn fan_in_threshold_for_path(path: &str) -> usize {
     let ext = path.rsplit('.').next().unwrap_or("");
     let lang = crate::analysis::lang_registry::detect_lang_from_ext(ext);
-    crate::analysis::lang_registry::profile(&lang).thresholds.fan_in
+    crate::analysis::lang_registry::profile(&lang)
+        .thresholds
+        .fan_in
 }
 
 /// Detect god files: files with fan-out exceeding per-language FAN_OUT threshold.
@@ -97,10 +103,7 @@ fn detect_god_files(
     fan_out: &HashMap<String, usize>,
     entry_points: &[EntryPoint],
 ) -> Vec<FileMetric> {
-    let entry_file_set: HashSet<&str> = entry_points
-        .iter()
-        .map(|ep| ep.file.as_str())
-        .collect();
+    let entry_file_set: HashSet<&str> = entry_points.iter().map(|ep| ep.file.as_str()).collect();
     let mut v: Vec<FileMetric> = fan_out
         .iter()
         .filter(|(path, &count)| {
@@ -109,9 +112,12 @@ fn detect_god_files(
                 && !entry_file_set.contains(path.as_str())
                 && !is_package_index_for_path(path)
         })
-        .map(|(path, &count)| FileMetric { path: path.clone(), value: count })
+        .map(|(path, &count)| FileMetric {
+            path: path.clone(),
+            value: count,
+        })
         .collect();
-    v.sort_unstable_by(|a, b| b.value.cmp(&a.value));
+    v.sort_unstable_by_key(|b| std::cmp::Reverse(b.value));
     v
 }
 
@@ -119,24 +125,34 @@ fn detect_god_files(
 /// Stable foundations (high fan-in + low fan-out) are excluded per Martin's SDP.
 /// Package-index files (__init__.py, index.js, mod.rs, etc.) are excluded because
 /// their fan-in reflects barrel re-exports, not genuine coupling hotspots.
-fn detect_hotspot_files(fan_in: &HashMap<String, usize>, fan_out: &HashMap<String, usize>) -> Vec<FileMetric> {
+fn detect_hotspot_files(
+    fan_in: &HashMap<String, usize>,
+    fan_out: &HashMap<String, usize>,
+) -> Vec<FileMetric> {
     let mut v: Vec<FileMetric> = fan_in
         .iter()
         .filter(|(path, &count)| {
             let threshold = fan_in_threshold_for_path(path);
-            if count <= threshold { return false; }
+            if count <= threshold {
+                return false;
+            }
             // Exclude package-index / barrel files — their high fan-in is an
             // artifact of re-exporting, not a design flaw.
-            if is_package_index_for_path(path) { return false; }
+            if is_package_index_for_path(path) {
+                return false;
+            }
             // Exclude stable foundations (I < 0.15): high fan-in + low fan-out
             // is GOOD architecture (Martin's SDP). Only flag unstable hotspots.
             let fo = *fan_out.get(path.as_str()).unwrap_or(&0);
             let instability = fo as f64 / (count + fo) as f64;
             instability >= 0.15
         })
-        .map(|(path, &count)| FileMetric { path: path.clone(), value: count })
+        .map(|(path, &count)| FileMetric {
+            path: path.clone(),
+            value: count,
+        })
         .collect();
-    v.sort_unstable_by(|a, b| b.value.cmp(&a.value));
+    v.sort_unstable_by_key(|b| std::cmp::Reverse(b.value));
     v
 }
 
@@ -159,7 +175,11 @@ fn compute_instability(
             let ca = *fan_in.get(path).unwrap_or(&0);
             let total = ca + ce;
             // Simple ratio: 0.5 when no data (neutral).
-            let instability = if total == 0 { 0.5 } else { ce as f64 / total as f64 };
+            let instability = if total == 0 {
+                0.5
+            } else {
+                ce as f64 / total as f64
+            };
             InstabilityMetric {
                 path: path.to_string(),
                 instability,
@@ -168,7 +188,11 @@ fn compute_instability(
             }
         })
         .collect();
-    v.sort_unstable_by(|a, b| b.instability.partial_cmp(&a.instability).unwrap_or(std::cmp::Ordering::Equal));
+    v.sort_unstable_by(|a, b| {
+        b.instability
+            .partial_cmp(&a.instability)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     v.truncate(10);
     v
 }
@@ -196,22 +220,28 @@ fn collect_functions_exceeding(
             }
         }
     }
-    result.sort_unstable_by(|a, b| b.value.cmp(&a.value));
+    result.sort_unstable_by_key(|b| std::cmp::Reverse(b.value));
     result
 }
 
 /// Collect complex functions and long functions from all files.
 /// Thresholds are per-language: reads from the file's language profile.
-fn collect_per_function_metrics(
-    files: &[&FileNode],
-) -> (Vec<FuncMetric>, Vec<FuncMetric>) {
+fn collect_per_function_metrics(files: &[&FileNode]) -> (Vec<FuncMetric>, Vec<FuncMetric>) {
     let complex_functions = collect_functions_exceeding(files, |file, f| {
-        let threshold = crate::analysis::lang_registry::profile(&file.lang).thresholds.cc_high;
+        let threshold = crate::analysis::lang_registry::profile(&file.lang)
+            .thresholds
+            .cc_high;
         f.cc.filter(|&cc| cc > threshold)
     });
     let long_functions = collect_functions_exceeding(files, |file, f| {
-        let threshold = crate::analysis::lang_registry::profile(&file.lang).thresholds.func_length;
-        if f.ln > threshold { Some(f.ln) } else { None }
+        let threshold = crate::analysis::lang_registry::profile(&file.lang)
+            .thresholds
+            .func_length;
+        if f.ln > threshold {
+            Some(f.ln)
+        } else {
+            None
+        }
     });
     (complex_functions, long_functions)
 }
@@ -228,39 +258,59 @@ fn collect_all_function_lines(files: &[&FileNode]) -> Vec<FuncMetric> {
 
 /// Collect ALL file line counts (unfiltered, for rules engine).
 fn collect_all_file_lines(files: &[&FileNode]) -> Vec<FileMetric> {
-    files.iter()
+    files
+        .iter()
         .filter(|f| !f.lang.is_empty() && f.lang != "unknown")
-        .map(|f| FileMetric { path: f.path.clone(), value: f.lines as usize })
+        .map(|f| FileMetric {
+            path: f.path.clone(),
+            value: f.lines as usize,
+        })
         .collect()
 }
 
 /// Compute comment-to-total-lines ratio across all code files.
 /// Returns None if there are no code files (no language detected).
 fn compute_comment_ratio(files: &[&FileNode]) -> Option<f64> {
-    let (total_comments, total_lines): (u64, u64) = files.iter()
+    let (total_comments, total_lines): (u64, u64) = files
+        .iter()
         .filter(|f| !f.lang.is_empty() && f.lang != "unknown")
-        .fold((0u64, 0u64), |(c, l), f| (c + f.comments as u64, l + f.lines as u64));
+        .fold((0u64, 0u64), |(c, l), f| {
+            (c + f.comments as u64, l + f.lines as u64)
+        });
     if total_lines > 0 {
         Some(total_comments as f64 / total_lines as f64)
-    } else { None }
+    } else {
+        None
+    }
 }
 
 /// Compute large file statistics: files exceeding per-language large_file_lines threshold.
 /// Returns (long_files_list, count, ratio_vs_total_code_files).
-fn compute_large_file_stats(
-    files: &[&FileNode],
-) -> (Vec<FileMetric>, usize, f64) {
-    let long_files: Vec<FileMetric> = files.iter()
+fn compute_large_file_stats(files: &[&FileNode]) -> (Vec<FileMetric>, usize, f64) {
+    let long_files: Vec<FileMetric> = files
+        .iter()
         .filter(|f| {
-            if f.lang.is_empty() || f.lang == "unknown" { return false; }
-            let threshold = crate::analysis::lang_registry::profile(&f.lang).thresholds.large_file_lines;
+            if f.lang.is_empty() || f.lang == "unknown" {
+                return false;
+            }
+            let threshold = crate::analysis::lang_registry::profile(&f.lang)
+                .thresholds
+                .large_file_lines;
             f.lines > threshold
         })
-        .map(|f| FileMetric { path: f.path.clone(), value: f.lines as usize })
+        .map(|f| FileMetric {
+            path: f.path.clone(),
+            value: f.lines as usize,
+        })
         .collect();
     let large_file_count = long_files.len();
-    let code_file_count = files.iter().filter(|f| !f.lang.is_empty() && f.lang != "unknown").count();
-    let large_file_ratio = if code_file_count == 0 || large_file_count == 0 { 0.0 } else {
+    let code_file_count = files
+        .iter()
+        .filter(|f| !f.lang.is_empty() && f.lang != "unknown")
+        .count();
+    let large_file_ratio = if code_file_count == 0 || large_file_count == 0 {
+        0.0
+    } else {
         large_file_count as f64 / code_file_count as f64
     };
     (long_files, large_file_count, large_file_ratio)
@@ -269,7 +319,9 @@ fn compute_large_file_stats(
 /// Collect functions with cognitive complexity > threshold (per-language).
 fn collect_cog_complex_functions(files: &[&FileNode]) -> Vec<FuncMetric> {
     collect_functions_exceeding(files, |file, f| {
-        let threshold = crate::analysis::lang_registry::profile(&file.lang).thresholds.cog_high;
+        let threshold = crate::analysis::lang_registry::profile(&file.lang)
+            .thresholds
+            .cog_high;
         f.cog.filter(|&cog| cog > threshold)
     })
 }
@@ -277,13 +329,18 @@ fn collect_cog_complex_functions(files: &[&FileNode]) -> Vec<FuncMetric> {
 /// Collect functions with parameter count > threshold (per-language).
 fn collect_high_param_functions(files: &[&FileNode]) -> Vec<FuncMetric> {
     collect_functions_exceeding(files, |file, f| {
-        let threshold = crate::analysis::lang_registry::profile(&file.lang).thresholds.param_high;
+        let threshold = crate::analysis::lang_registry::profile(&file.lang)
+            .thresholds
+            .param_high;
         f.pc.filter(|&pc| pc > threshold)
     })
 }
 
 /// Collect body-hashed functions from a single file into the hash map.
-fn collect_file_body_hashes(file: &FileNode, hash_map: &mut HashMap<u64, Vec<(String, String, u32)>>) {
+fn collect_file_body_hashes(
+    file: &FileNode,
+    hash_map: &mut HashMap<u64, Vec<(String, String, u32)>>,
+) {
     let funcs = match file.sa.as_ref().and_then(|sa| sa.functions.as_ref()) {
         Some(f) => f,
         None => return,
@@ -291,7 +348,10 @@ fn collect_file_body_hashes(file: &FileNode, hash_map: &mut HashMap<u64, Vec<(St
     for f in funcs {
         if let Some(bh) = f.bh {
             if bh != 0 {
-                hash_map.entry(bh).or_default().push((file.path.clone(), f.n.clone(), f.ln));
+                hash_map
+                    .entry(bh)
+                    .or_default()
+                    .push((file.path.clone(), f.n.clone(), f.ln));
             }
         }
     }
@@ -314,7 +374,7 @@ fn collect_duplicate_groups(files: &[&FileNode]) -> Vec<DuplicateGroup> {
         .filter(|(_, instances)| instances.len() > 1)
         .map(|(hash, instances)| DuplicateGroup { hash, instances })
         .collect();
-    groups.sort_unstable_by(|a, b| b.instances.len().cmp(&a.instances.len()));
+    groups.sort_unstable_by_key(|b| std::cmp::Reverse(b.instances.len()));
     groups
 }
 
@@ -334,7 +394,10 @@ fn insert_calls_from_list(all_calls: &mut HashSet<String>, calls: &[String]) {
 }
 
 /// Collect all calls from a file's structural analysis into the call set.
-fn collect_file_calls(all_calls: &mut HashSet<String>, sa: &crate::core::types::StructuralAnalysis) {
+fn collect_file_calls(
+    all_calls: &mut HashSet<String>,
+    sa: &crate::core::types::StructuralAnalysis,
+) {
     if let Some(co) = &sa.co {
         insert_calls_from_list(all_calls, co);
     }
@@ -361,9 +424,23 @@ fn build_call_target_set(files: &[&FileNode]) -> HashSet<String> {
 /// Default implicit entry points (lifecycle, framework, common patterns).
 /// Used when plugin TOML doesn't specify language-specific ones.
 const DEFAULT_IMPLICIT_ENTRY_POINTS: &[&str] = &[
-    "main", "new", "default", "init", "setup", "teardown",
-    "run", "start", "stop", "build", "configure", "register",
-    "update", "draw", "render", "serialize", "deserialize",
+    "main",
+    "new",
+    "default",
+    "init",
+    "setup",
+    "teardown",
+    "run",
+    "start",
+    "stop",
+    "build",
+    "configure",
+    "register",
+    "update",
+    "draw",
+    "render",
+    "serialize",
+    "deserialize",
 ];
 
 /// Default test function prefixes.
@@ -372,7 +449,10 @@ const DEFAULT_TEST_PREFIXES: &[&str] = &["test_"];
 /// Collect implicit entry points from all loaded language profiles.
 /// Merges language-specific lists with universal defaults.
 fn implicit_entry_points() -> HashSet<String> {
-    let mut set: HashSet<String> = DEFAULT_IMPLICIT_ENTRY_POINTS.iter().map(|s| s.to_string()).collect();
+    let mut set: HashSet<String> = DEFAULT_IMPLICIT_ENTRY_POINTS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     for profile in crate::analysis::lang_registry::all_profiles() {
         for ep in &profile.semantics.implicit_entry_points {
             set.insert(ep.clone());
@@ -410,7 +490,10 @@ fn is_excluded_function(func_name: &str, implicit: &HashSet<String>, lang: &str)
 
     // Skip test/bench functions using configured prefixes
     let test_prefixes = if sem.test_function_prefixes.is_empty() {
-        DEFAULT_TEST_PREFIXES.iter().map(|s| s.to_string()).collect::<Vec<_>>()
+        DEFAULT_TEST_PREFIXES
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
     } else {
         sem.test_function_prefixes.clone()
     };
@@ -421,12 +504,17 @@ fn is_excluded_function(func_name: &str, implicit: &HashSet<String>, lang: &str)
     }
 
     // Skip qualified names (trait impl methods like Foo::bar or obj.method)
-    if !sem.qualified_name_separator.is_empty() && func_name.contains(&sem.qualified_name_separator) {
+    if !sem.qualified_name_separator.is_empty() && func_name.contains(&sem.qualified_name_separator)
+    {
         return true;
     }
 
     // Skip implicit entry points
-    let sep = if sem.qualified_name_separator.is_empty() { "::" } else { &sem.qualified_name_separator };
+    let sep = if sem.qualified_name_separator.is_empty() {
+        "::"
+    } else {
+        &sem.qualified_name_separator
+    };
     let base_name = func_name.rsplit(sep).next().unwrap_or(func_name);
     implicit.contains(base_name)
 }
@@ -444,7 +532,9 @@ fn collect_dead_functions(files: &[&FileNode]) -> Vec<FuncMetric> {
 
     let mut result = Vec::new();
     for file in files {
-        if is_dead_code_skip_file(file) { continue; }
+        if is_dead_code_skip_file(file) {
+            continue;
+        }
         let funcs = match file.sa.as_ref().and_then(|sa| sa.functions.as_ref()) {
             Some(f) => f,
             None => continue,
@@ -452,8 +542,12 @@ fn collect_dead_functions(files: &[&FileNode]) -> Vec<FuncMetric> {
         for f in funcs {
             // Public/exported functions are NOT dead code — they're API surface.
             // Methods (self/this) are called via object dispatch — can't trace statically.
-            if f.is_public || f.is_method { continue; }
-            if is_excluded_function(&f.n, &implicit, &file.lang) { continue; }
+            if f.is_public || f.is_method {
+                continue;
+            }
+            if is_excluded_function(&f.n, &implicit, &file.lang) {
+                continue;
+            }
             if !is_called(&f.n, &all_calls) {
                 result.push(FuncMetric {
                     file: file.path.clone(),
@@ -463,19 +557,22 @@ fn collect_dead_functions(files: &[&FileNode]) -> Vec<FuncMetric> {
             }
         }
     }
-    result.sort_unstable_by(|a, b| b.value.cmp(&a.value));
+    result.sort_unstable_by_key(|b| std::cmp::Reverse(b.value));
     result
 }
 
 /// Simple ratio: count / total, or 0.0 if total == 0 or count == 0.
 fn simple_ratio(count: usize, total: usize) -> f64 {
-    if total == 0 || count == 0 { return 0.0; }
+    if total == 0 || count == 0 {
+        return 0.0;
+    }
     count as f64 / total as f64
 }
 
 /// Count total functions across all files.
 fn count_total_funcs(files: &[&FileNode]) -> usize {
-    files.iter()
+    files
+        .iter()
         .filter_map(|f| f.sa.as_ref())
         .filter_map(|sa| sa.functions.as_ref())
         .map(|fns| fns.len())
@@ -512,17 +609,37 @@ fn compute_file_metrics(
     let comment_ratio = compute_comment_ratio(files);
     let (long_files, large_file_count, large_file_ratio) = compute_large_file_stats(files);
 
-    let code_file_count = files.iter().filter(|f| !f.lang.is_empty() && f.lang != "unknown").count();
+    let code_file_count = files
+        .iter()
+        .filter(|f| !f.lang.is_empty() && f.lang != "unknown")
+        .count();
     let god_ratio = simple_ratio(god_files.len(), code_file_count);
     let hotspot_ratio = simple_ratio(hotspot_files.len(), code_file_count);
 
     FileMetrics {
-        fan_out, fan_in, god_files, hotspot_files, most_unstable,
-        complex_functions, long_functions, long_files,
-        complex_fn_ratio, long_fn_ratio, comment_ratio,
-        large_file_count, large_file_ratio, god_ratio, hotspot_ratio,
-        cog_complex_functions, high_param_functions, duplicate_groups, dead_functions,
-        duplication_ratio, dead_code_ratio, high_param_ratio, cog_complex_ratio,
+        fan_out,
+        fan_in,
+        god_files,
+        hotspot_files,
+        most_unstable,
+        complex_functions,
+        long_functions,
+        long_files,
+        complex_fn_ratio,
+        long_fn_ratio,
+        comment_ratio,
+        large_file_count,
+        large_file_ratio,
+        god_ratio,
+        hotspot_ratio,
+        cog_complex_functions,
+        high_param_functions,
+        duplicate_groups,
+        dead_functions,
+        duplication_ratio,
+        dead_code_ratio,
+        high_param_ratio,
+        cog_complex_ratio,
     }
 }
 
@@ -538,7 +655,7 @@ fn compute_module_metrics(
     let stable_modules = compute_stable_modules(dep_edges);
     let (coupling_score, cross_module_edges, _) =
         compute_coupling_score(dep_edges, &stable_modules);
-    let (entropy_raw, entropy_bits, entropy_num_pairs) = compute_shannon_entropy(dep_edges, &stable_modules);
+    let (entropy_raw, entropy_bits, _) = compute_shannon_entropy(dep_edges, &stable_modules);
     // Scale entropy by coupling: low coupling means few cross-module edges,
     // so entropy of their distribution is less meaningful. Use B-threshold (0.35)
     // as denominator for gradual dampening instead of binary cutoff at A-threshold.
@@ -551,8 +668,14 @@ fn compute_module_metrics(
     let circular_dep_count = circular_dep_files.len();
 
     ModuleMetrics {
-        coupling_score, cross_module_edges, entropy, entropy_bits, entropy_num_pairs,
-        avg_cohesion, max_depth, circular_dep_files, circular_dep_count,
+        coupling_score,
+        cross_module_edges,
+        entropy,
+        entropy_bits,
+        avg_cohesion,
+        max_depth,
+        circular_dep_files,
+        circular_dep_count,
     }
 }
 
@@ -564,13 +687,25 @@ pub fn compute_health(snapshot: &Snapshot) -> HealthReport {
     let files = crate::core::snapshot::flatten_files_ref(&snapshot.root);
     // Filter mod-declaration edges once at the top. `pub mod foo;` is structural
     // containment, not a functional dependency — consistent across ALL metrics.
-    let dep_edges: Vec<ImportEdge> = snapshot.import_graph.iter()
+    let dep_edges: Vec<ImportEdge> = snapshot
+        .import_graph
+        .iter()
         .filter(|e| !is_mod_declaration_edge(e))
         .cloned()
         .collect();
 
-    let fm = compute_file_metrics(&files, &dep_edges, &snapshot.call_graph, &snapshot.entry_points);
-    let mm = compute_module_metrics(&files, &dep_edges, &snapshot.call_graph, &snapshot.entry_points);
+    let fm = compute_file_metrics(
+        &files,
+        &dep_edges,
+        &snapshot.call_graph,
+        &snapshot.entry_points,
+    );
+    let mm = compute_module_metrics(
+        &files,
+        &dep_edges,
+        &snapshot.call_graph,
+        &snapshot.entry_points,
+    );
 
     // Raw unfiltered data for rules engine (user thresholds may be stricter than hardcoded ones)
     let all_function_ccs = collect_all_function_ccs(&files);
@@ -582,9 +717,8 @@ pub fn compute_health(snapshot: &Snapshot) -> HealthReport {
     let complexity_gini = root_causes::compute_complexity_gini(&files);
     let dup_func_count: usize = fm.duplicate_groups.iter().map(|g| g.instances.len()).sum();
     let total_funcs = count_total_funcs(&files);
-    let redundancy_ratio = root_causes::compute_redundancy_ratio(
-        fm.dead_functions.len(), dup_func_count, total_funcs,
-    );
+    let redundancy_ratio =
+        root_causes::compute_redundancy_ratio(fm.dead_functions.len(), dup_func_count, total_funcs);
 
     let root_cause_raw = root_causes::RootCauseRaw {
         modularity_q,
@@ -593,7 +727,8 @@ pub fn compute_health(snapshot: &Snapshot) -> HealthReport {
         complexity_gini,
         redundancy_ratio,
     };
-    let (root_cause_scores, quality_signal) = root_causes::compute_root_cause_scores(&root_cause_raw);
+    let (root_cause_scores, quality_signal) =
+        root_causes::compute_root_cause_scores(&root_cause_raw);
 
     HealthReport {
         coupling_score: mm.coupling_score,
@@ -698,7 +833,9 @@ impl<'a> TarjanState<'a> {
             let w = self.stack.pop().unwrap();
             self.on_stack.remove(w);
             scc.push(w.to_string());
-            if w == root { break; }
+            if w == root {
+                break;
+            }
         }
         if scc.len() > 1 {
             scc.sort_unstable();
@@ -772,7 +909,11 @@ fn detect_cycles(edges: &[ImportEdge]) -> Vec<Vec<String>> {
 fn find_depth_seeds<'a>(
     edges: &'a [ImportEdge],
     entry_points: &'a [EntryPoint],
-) -> (Vec<&'a str>, HashMap<&'a str, Vec<&'a str>>, HashSet<&'a str>) {
+) -> (
+    Vec<&'a str>,
+    HashMap<&'a str, Vec<&'a str>>,
+    HashSet<&'a str>,
+) {
     let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
     let mut has_incoming: HashSet<&str> = HashSet::new();
     let mut all_nodes: HashSet<&str> = HashSet::new();
@@ -871,7 +1012,8 @@ fn compute_max_depth(edges: &[ImportEdge], entry_points: &[EntryPoint]) -> u32 {
     let memo = longest_path_dfs(&seeds, &adj, all_nodes.len());
 
     // Only max from seed nodes (non-seed memos are for correctness only).
-    seeds.iter()
+    seeds
+        .iter()
         .filter_map(|s| memo.get(s))
         .copied()
         .max()
@@ -886,13 +1028,14 @@ pub trait MetricsExtension: Send + Sync {
     /// Compute additional metrics and return as JSON value.
     /// Called after the standard health report is computed.
     fn compute(&self, snapshot: &crate::core::snapshot::Snapshot) -> serde_json::Value;
-    
+
     /// Name of the metric (for display in health panel).
     fn name(&self) -> &str;
 }
 
 /// Global registry of Pro metrics extensions.
-static METRICS_EXTENSIONS: std::sync::OnceLock<Vec<Box<dyn MetricsExtension>>> = std::sync::OnceLock::new();
+static METRICS_EXTENSIONS: std::sync::OnceLock<Vec<Box<dyn MetricsExtension>>> =
+    std::sync::OnceLock::new();
 
 /// Register Pro metrics extensions (called by sentrux-pro at startup).
 pub fn register_extensions(extensions: Vec<Box<dyn MetricsExtension>>) {
@@ -901,5 +1044,8 @@ pub fn register_extensions(extensions: Vec<Box<dyn MetricsExtension>>) {
 
 /// Get registered extensions (returns empty slice if no Pro).
 pub fn extensions() -> &'static [Box<dyn MetricsExtension>] {
-    METRICS_EXTENSIONS.get().map(|v| v.as_slice()).unwrap_or(&[])
+    METRICS_EXTENSIONS
+        .get()
+        .map(|v| v.as_slice())
+        .unwrap_or(&[])
 }

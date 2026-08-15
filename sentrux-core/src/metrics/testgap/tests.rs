@@ -106,9 +106,7 @@ fn tested_files_direct() {
 
 #[test]
 fn untested_files_detected() {
-    let edges = vec![
-        edge("test_main.py", "main.py"),
-    ];
+    let edges = vec![edge("test_main.py", "main.py")];
     let test_files: HashSet<String> = ["test_main.py"].iter().map(|s| s.to_string()).collect();
     let source_files: HashSet<String> = ["main.py", "orphan.py"]
         .iter()
@@ -154,7 +152,10 @@ fn coverage_score_equals_ratio() {
     let source_files: HashSet<String> = ["a.py", "b.py"].iter().map(|s| s.to_string()).collect();
     let tested = find_tested_files(&edges, &test_files, &source_files);
     let ratio = tested.len() as f64 / source_files.len() as f64;
-    assert!((ratio - 0.5).abs() < f64::EPSILON, "1/2 tested = 0.5 coverage");
+    assert!(
+        (ratio - 0.5).abs() < f64::EPSILON,
+        "1/2 tested = 0.5 coverage"
+    );
 }
 
 // ── Idempotency ──
@@ -171,15 +172,12 @@ fn fan_in_idempotent() {
 
 #[test]
 fn tested_files_order_independent() {
-    let edges1 = vec![
-        edge("test_a.py", "a.py"),
-        edge("test_b.py", "b.py"),
-    ];
-    let edges2 = vec![
-        edge("test_b.py", "b.py"),
-        edge("test_a.py", "a.py"),
-    ];
-    let tests: HashSet<String> = ["test_a.py", "test_b.py"].iter().map(|s| s.to_string()).collect();
+    let edges1 = vec![edge("test_a.py", "a.py"), edge("test_b.py", "b.py")];
+    let edges2 = vec![edge("test_b.py", "b.py"), edge("test_a.py", "a.py")];
+    let tests: HashSet<String> = ["test_a.py", "test_b.py"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let sources: HashSet<String> = ["a.py", "b.py"].iter().map(|s| s.to_string()).collect();
 
     let r1 = find_tested_files(&edges1, &tests, &sources);

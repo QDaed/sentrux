@@ -117,7 +117,10 @@ mod tests {
     fn depth_2_grouping() {
         // Files at exactly 2 dir levels still group at depth-2
         assert_eq!(module_of("src/layout/types.rs"), "src/layout");
-        assert_eq!(module_of("frontend/components/btn.js"), "frontend/components");
+        assert_eq!(
+            module_of("frontend/components/btn.js"),
+            "frontend/components"
+        );
     }
 
     #[test]
@@ -126,7 +129,10 @@ mod tests {
         assert_eq!(module_of("src/layout/algo/squarify.rs"), "src/layout/algo");
         assert_eq!(module_of("src/metrics/arch/graph.rs"), "src/metrics/arch");
         assert_eq!(module_of("src/metrics/arch/tests.rs"), "src/metrics/arch");
-        assert_eq!(module_of("frontend/components/atoms/btn.js"), "frontend/components/atoms");
+        assert_eq!(
+            module_of("frontend/components/atoms/btn.js"),
+            "frontend/components/atoms"
+        );
         // Deeper nesting still caps at depth-3
         assert_eq!(module_of("a/b/c/d/e.rs"), "a/b/c");
     }
@@ -148,8 +154,8 @@ mod tests {
     fn depth_2_and_3_are_different_modules() {
         // Flat files at depth-2 vs files in subdirs are different modules
         assert_ne!(
-            module_of("src/metrics/types.rs"),       // "src/metrics"
-            module_of("src/metrics/arch/graph.rs")   // "src/metrics/arch"
+            module_of("src/metrics/types.rs"),      // "src/metrics"
+            module_of("src/metrics/arch/graph.rs")  // "src/metrics/arch"
         );
     }
 
@@ -189,16 +195,28 @@ mod tests {
         assert_eq!(module_of("src/app/state.rs"), "src/app");
         // Depth-3 subdirs get their own module
         assert_eq!(module_of("src/metrics/arch/graph.rs"), "src/metrics/arch");
-        assert_eq!(module_of("src/analysis/parser/mod.rs"), "src/analysis/parser");
+        assert_eq!(
+            module_of("src/analysis/parser/mod.rs"),
+            "src/analysis/parser"
+        );
     }
 
     #[test]
     fn symmetry() {
         // Same module regardless of file
-        assert_eq!(module_of("analysis/scanner.rs"), module_of("analysis/parser.rs"));
-        assert_eq!(module_of("src/layout/types.rs"), module_of("src/layout/routing.rs"));
+        assert_eq!(
+            module_of("analysis/scanner.rs"),
+            module_of("analysis/parser.rs")
+        );
+        assert_eq!(
+            module_of("src/layout/types.rs"),
+            module_of("src/layout/routing.rs")
+        );
         // Different modules
-        assert_ne!(module_of("analysis/scanner.rs"), module_of("metrics/arch.rs"));
+        assert_ne!(
+            module_of("analysis/scanner.rs"),
+            module_of("metrics/arch.rs")
+        );
         assert_ne!(module_of("src/app.rs"), module_of("src/settings.rs"));
     }
 }

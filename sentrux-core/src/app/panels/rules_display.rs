@@ -5,8 +5,8 @@
 //! Violations list the offending file pairs with the rule they break.
 //! Key function: `draw_rules_section` paints the rules UI into an egui frame.
 
-use crate::metrics::rules::checks::{RuleCheckResult, Severity};
 use super::ThemeConfig;
+use crate::metrics::rules::checks::{RuleCheckResult, Severity};
 
 /// Draw the rules check section in the metrics panel.
 pub(crate) fn draw_rules_section(ui: &mut egui::Ui, result: &RuleCheckResult, tc: &ThemeConfig) {
@@ -29,7 +29,8 @@ pub(crate) fn draw_rules_section(ui: &mut egui::Ui, result: &RuleCheckResult, tc
         ("FAIL", tc.status_error)
     };
 
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 18.0), egui::Sense::hover());
+    let (rect, _) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 18.0), egui::Sense::hover());
     ui.painter().text(
         egui::pos2(rect.left() + 4.0, rect.center().y),
         egui::Align2::LEFT_CENTER,
@@ -40,12 +41,25 @@ pub(crate) fn draw_rules_section(ui: &mut egui::Ui, result: &RuleCheckResult, tc
     ui.add_space(2.0);
 
     // Violations
-    if result.violations.is_empty() { return; }
+    if result.violations.is_empty() {
+        return;
+    }
 
-    let error_count = result.violations.iter().filter(|v| v.severity == Severity::Error).count();
-    let warn_count = result.violations.iter().filter(|v| v.severity == Severity::Warning).count();
+    let error_count = result
+        .violations
+        .iter()
+        .filter(|v| v.severity == Severity::Error)
+        .count();
+    let warn_count = result
+        .violations
+        .iter()
+        .filter(|v| v.severity == Severity::Warning)
+        .count();
 
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), row_h),
+        egui::Sense::hover(),
+    );
     ui.painter().text(
         egui::pos2(rect.left() + 4.0, rect.center().y),
         egui::Align2::LEFT_CENTER,
@@ -74,25 +88,43 @@ fn draw_violation_rows(
             Severity::Error => (error_color, "E"),
             Severity::Warning => (warn_color, "W"),
         };
-        let text = format!("  {} {}: {}", prefix, violation.rule, truncate(&violation.message, 40));
-        let (rect, resp) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let text = format!(
+            "  {} {}: {}",
+            prefix,
+            violation.rule,
+            truncate(&violation.message, 40)
+        );
+        let (rect, resp) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         if resp.hovered() {
             resp.on_hover_text(
-                egui::RichText::new(&violation.message).monospace().size(9.0)
+                egui::RichText::new(&violation.message)
+                    .monospace()
+                    .size(9.0),
             );
         }
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
-            egui::Align2::LEFT_CENTER, &text,
-            egui::FontId::monospace(8.0), color);
+            egui::Align2::LEFT_CENTER,
+            &text,
+            egui::FontId::monospace(8.0),
+            color,
+        );
     }
     if result.violations.len() > 8 {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Sense::hover(),
+        );
         ui.painter().text(
             egui::pos2(rect.left() + 4.0, rect.center().y),
             egui::Align2::LEFT_CENTER,
             format!("  +{} more violations", result.violations.len() - 8),
-            egui::FontId::monospace(8.0), tc.text_muted);
+            egui::FontId::monospace(8.0),
+            tc.text_muted,
+        );
     }
 }
 

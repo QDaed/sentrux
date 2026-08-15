@@ -7,13 +7,14 @@
 //! Uses synthetic snapshots with controlled import edges.
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
-    use crate::metrics::rules::*;
-    use crate::metrics::arch;
-    use crate::metrics;
-    use crate::core::types::ImportEdge;
-    use crate::core::types::FileNode;
     use crate::core::snapshot::Snapshot;
+    use crate::core::types::FileNode;
+    use crate::core::types::ImportEdge;
+    use crate::metrics;
+    use crate::metrics::arch;
+    use crate::metrics::rules::*;
     use std::collections::HashMap;
     use std::sync::Arc;
 
@@ -25,14 +26,24 @@ mod tests {
                 path: ".".into(),
                 name: ".".into(),
                 is_dir: true,
-                lines: 0, logic: 0, comments: 0, blanks: 0, funcs: 0,
-                mtime: 0.0, gs: String::new(), lang: String::new(),
+                lines: 0,
+                logic: 0,
+                comments: 0,
+                blanks: 0,
+                funcs: 0,
+                mtime: 0.0,
+                gs: String::new(),
+                lang: String::new(),
                 sa: None,
                 children: Some(files),
             }),
-            total_files: 0, total_lines: 0, total_dirs: 0,
-            call_graph: vec![], import_graph: edges,
-            inherit_graph: vec![], entry_points: vec![],
+            total_files: 0,
+            total_lines: 0,
+            total_dirs: 0,
+            call_graph: vec![],
+            import_graph: edges,
+            inherit_graph: vec![],
+            entry_points: vec![],
             exec_depth: HashMap::new(),
         }
     }
@@ -91,7 +102,10 @@ reason = "Renderer must not know about scanning"
         assert_eq!(config.layers.len(), 3);
         assert_eq!(config.layers[0].name, "presentation");
         assert_eq!(config.boundaries.len(), 1);
-        assert_eq!(config.boundaries[0].reason, "Renderer must not know about scanning");
+        assert_eq!(
+            config.boundaries[0].reason,
+            "Renderer must not know about scanning"
+        );
     }
 
     // ── Glob matching ──
@@ -133,10 +147,13 @@ reason = "Renderer must not know about scanning"
 
     #[test]
     fn constraint_max_cycles_catches_violations() {
-        let config: RulesConfig = toml::from_str(r#"
+        let config: RulesConfig = toml::from_str(
+            r#"
 [constraints]
 max_cycles = 0
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let edges = vec![edge("a.rs", "b.rs"), edge("b.rs", "a.rs")];
         let snap = make_snapshot(edges.clone(), vec![file("a.rs"), file("b.rs")]);
@@ -150,10 +167,13 @@ max_cycles = 0
 
     #[test]
     fn constraint_passes_when_met() {
-        let config: RulesConfig = toml::from_str(r#"
+        let config: RulesConfig = toml::from_str(
+            r#"
 [constraints]
 max_cycles = 5
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let edges = vec![edge("a.rs", "b.rs")];
         let snap = make_snapshot(edges.clone(), vec![file("a.rs"), file("b.rs")]);
@@ -168,7 +188,8 @@ max_cycles = 5
 
     #[test]
     fn layer_violation_detected() {
-        let config: RulesConfig = toml::from_str(r#"
+        let config: RulesConfig = toml::from_str(
+            r#"
 [[layers]]
 name = "presentation"
 paths = ["src/ui/*"]
@@ -178,25 +199,31 @@ order = 0
 name = "infrastructure"
 paths = ["src/scanner.rs"]
 order = 2
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Infrastructure imports presentation = violation
         let edges = vec![edge("src/scanner.rs", "src/ui/panel.rs")];
-        let snap = make_snapshot(edges.clone(), vec![
-            file("src/scanner.rs"),
-            file("src/ui/panel.rs"),
-        ]);
+        let snap = make_snapshot(
+            edges.clone(),
+            vec![file("src/scanner.rs"), file("src/ui/panel.rs")],
+        );
         let health = metrics::compute_health(&snap);
         let arch_report = arch::compute_arch(&snap);
 
         let result = check_rules(&config, &health, &arch_report, &edges);
         assert!(!result.passed);
-        assert!(result.violations.iter().any(|v| v.rule == "layer_direction"));
+        assert!(result
+            .violations
+            .iter()
+            .any(|v| v.rule == "layer_direction"));
     }
 
     #[test]
     fn layer_correct_direction_passes() {
-        let config: RulesConfig = toml::from_str(r#"
+        let config: RulesConfig = toml::from_str(
+            r#"
 [[layers]]
 name = "presentation"
 paths = ["src/ui/*"]
@@ -206,69 +233,85 @@ order = 0
 name = "infrastructure"
 paths = ["src/scanner.rs"]
 order = 2
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Presentation imports infrastructure = correct direction
         let edges = vec![edge("src/ui/panel.rs", "src/scanner.rs")];
-        let snap = make_snapshot(edges.clone(), vec![
-            file("src/ui/panel.rs"),
-            file("src/scanner.rs"),
-        ]);
+        let snap = make_snapshot(
+            edges.clone(),
+            vec![file("src/ui/panel.rs"), file("src/scanner.rs")],
+        );
         let health = metrics::compute_health(&snap);
         let arch_report = arch::compute_arch(&snap);
 
         let result = check_rules(&config, &health, &arch_report, &edges);
-        let layer_violations: Vec<_> = result.violations.iter()
+        let layer_violations: Vec<_> = result
+            .violations
+            .iter()
             .filter(|v| v.rule == "layer_direction")
             .collect();
-        assert!(layer_violations.is_empty(), "correct direction should not violate");
+        assert!(
+            layer_violations.is_empty(),
+            "correct direction should not violate"
+        );
     }
 
     // ── Boundary checks ──
 
     #[test]
     fn boundary_violation_detected() {
-        let config: RulesConfig = toml::from_str(r#"
+        let config: RulesConfig = toml::from_str(
+            r#"
 [[boundaries]]
 from = "src/renderer/*"
 to = "src/scanner.rs"
 reason = "Renderer must not know about scanning"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let edges = vec![edge("src/renderer/edges.rs", "src/scanner.rs")];
-        let snap = make_snapshot(edges.clone(), vec![
-            file("src/renderer/edges.rs"),
-            file("src/scanner.rs"),
-        ]);
+        let snap = make_snapshot(
+            edges.clone(),
+            vec![file("src/renderer/edges.rs"), file("src/scanner.rs")],
+        );
         let health = metrics::compute_health(&snap);
         let arch_report = arch::compute_arch(&snap);
 
         let result = check_rules(&config, &health, &arch_report, &edges);
         assert!(!result.passed);
-        assert!(result.violations.iter().any(|v|
-            v.rule == "boundary" && v.message.contains("Renderer must not know")
-        ));
+        assert!(result
+            .violations
+            .iter()
+            .any(|v| v.rule == "boundary" && v.message.contains("Renderer must not know")));
     }
 
     #[test]
     fn boundary_non_matching_passes() {
-        let config: RulesConfig = toml::from_str(r#"
+        let config: RulesConfig = toml::from_str(
+            r#"
 [[boundaries]]
 from = "src/renderer/*"
 to = "src/scanner.rs"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // This edge doesn't match the boundary rule
         let edges = vec![edge("src/app.rs", "src/scanner.rs")];
-        let snap = make_snapshot(edges.clone(), vec![
-            file("src/app.rs"),
-            file("src/scanner.rs"),
-        ]);
+        let snap = make_snapshot(
+            edges.clone(),
+            vec![file("src/app.rs"), file("src/scanner.rs")],
+        );
         let health = metrics::compute_health(&snap);
         let arch_report = arch::compute_arch(&snap);
 
         let result = check_rules(&config, &health, &arch_report, &edges);
-        let boundary_violations: Vec<_> = result.violations.iter()
+        let boundary_violations: Vec<_> = result
+            .violations
+            .iter()
             .filter(|v| v.rule == "boundary")
             .collect();
         assert!(boundary_violations.is_empty());

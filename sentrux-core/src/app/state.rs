@@ -5,24 +5,27 @@
 //! All fields are public for UI code simplicity; access is serialized by
 //! the single-threaded egui event loop.
 
+use crate::core::heat::HeatTracker;
+use crate::core::settings::Settings;
+use crate::core::settings::{Theme, ThemeConfig};
+use crate::core::snapshot::Snapshot;
+use crate::core::types::FileIndexEntry;
+use crate::layout::spatial_index::SpatialIndex;
+use crate::layout::types::ColorMode;
+use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
+use crate::layout::viewport::ViewportTransform;
 use crate::metrics::arch::ArchReport;
 use crate::metrics::dsm::{DesignStructureMatrix, DsmStats};
 use crate::metrics::evo::EvolutionReport;
-use crate::metrics::testgap::TestGapReport;
 use crate::metrics::rules::checks::RuleCheckResult;
-use crate::layout::types::{EdgeFilter, FocusMode, LayoutMode, RenderData, ScaleMode, SizeMode};
+use crate::metrics::testgap::TestGapReport;
 use crate::metrics::HealthReport;
-use crate::layout::types::ColorMode;
-use crate::core::heat::HeatTracker;
-use crate::layout::spatial_index::SpatialIndex;
-use crate::core::settings::{Theme, ThemeConfig};
-use crate::layout::viewport::ViewportTransform;
-use crate::core::settings::Settings;
-use crate::core::snapshot::Snapshot;
-use crate::core::types::FileIndexEntry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
+
+/// Cached top connected files: (rendered_version, edge_filter, list).
+pub type TopConnectionsCache = Option<(u64, u8, Vec<(String, usize)>)>;
 
 /// All mutable UI state — owned exclusively by the main thread.
 /// Fields are grouped by concern. Worker threads never touch this directly;
@@ -155,7 +158,7 @@ pub struct AppState {
     /// Cached DSM matrix + stats, keyed by rendered_version to avoid O(N^2) per-frame rebuild
     pub dsm_cache: Option<(u64, DesignStructureMatrix, DsmStats)>,
     /// Cached top connected files, keyed by (rendered_version, edge_filter) to avoid O(E) per-frame rebuild
-    pub top_connections_cache: Option<(u64, u8, Vec<(String, usize)>)>,
+    pub top_connections_cache: TopConnectionsCache,
 
     // ── Language stats (cached per scan) ──
     pub lang_stats: Vec<(String, crate::app::panels::language_summary::LangStat)>,
@@ -192,7 +195,6 @@ pub struct AppState {
     pub hidden_paths: Arc<HashSet<String>>,
     /// Path under the pointer when context menu was opened (file or section).
     pub context_menu_target: Option<ContextMenuTarget>,
-
 }
 
 /// A recent file change event for the activity panel.
@@ -229,6 +231,12 @@ fn now_epoch_secs() -> f64 {
             std::time::Duration::ZERO
         })
         .as_secs_f64()
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AppState {
@@ -308,17 +316,27 @@ impl AppState {
         self.record_activity_with_delta(path, kind, 0, 0);
     }
 
-    pub fn record_activity_with_delta(&mut self, path: String, kind: String, lines_delta: i32, funcs_delta: i32) {
+    pub fn record_activity_with_delta(
+        &mut self,
+        path: String,
+        kind: String,
+        lines_delta: i32,
+        funcs_delta: i32,
+    ) {
         const MAX_ACTIVITY: usize = 50;
         if let Some(pos) = self.recent_activity.iter().position(|e| e.path == path) {
             self.recent_activity.remove(pos);
         }
-        self.recent_activity.insert(0, ActivityEntry {
-            path, kind,
-            time: Instant::now(),
-            lines_delta,
-            funcs_delta,
-        });
+        self.recent_activity.insert(
+            0,
+            ActivityEntry {
+                path,
+                kind,
+                time: Instant::now(),
+                lines_delta,
+                funcs_delta,
+            },
+        );
         self.recent_activity.truncate(MAX_ACTIVITY);
     }
 
@@ -402,7 +420,8 @@ impl AppState {
         let mut lang_set: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         for f in &files {
-            self.file_index.insert(f.path.clone(), Self::file_to_index_entry(f));
+            self.file_index
+                .insert(f.path.clone(), Self::file_to_index_entry(f));
             if let Some(slash) = f.path.find('/') {
                 dir_set.insert(f.path[..slash].to_string());
             }

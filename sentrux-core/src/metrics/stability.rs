@@ -40,7 +40,10 @@ pub(crate) fn module_of(path: &str) -> &str {
 ///
 /// 0.0 = all imports within same module or to stable foundations.
 /// 1.0 = all imports cross modules toward unstable targets (spaghetti).
-pub(crate) fn compute_coupling_score(edges: &[ImportEdge], stable_modules: &HashSet<&str>) -> (f64, usize, usize) {
+pub(crate) fn compute_coupling_score(
+    edges: &[ImportEdge],
+    stable_modules: &HashSet<&str>,
+) -> (f64, usize, usize) {
     if edges.is_empty() {
         return (0.0, 0, 0);
     }
@@ -58,7 +61,9 @@ pub(crate) fn compute_coupling_score(edges: &[ImportEdge], stable_modules: &Hash
     }
 
     // Simple ratio: cross-unstable edges / total edges.
-    let score = if cross_unstable == 0 { 0.0 } else {
+    let score = if cross_unstable == 0 {
+        0.0
+    } else {
         cross_unstable as f64 / edges.len() as f64
     };
     (score, cross, cross_unstable)
@@ -137,9 +142,19 @@ pub(crate) fn compute_stable_modules(edges: &[ImportEdge]) -> HashSet<&str> {
     // deterministic regardless of HashSet iteration order.
     let mut stable = HashSet::new();
     loop {
-        let batch: Vec<&str> = all_mods.iter()
+        let batch: Vec<&str> = all_mods
+            .iter()
             .filter(|&&m| !stable.contains(m))
-            .filter(|&&m| is_module_stable(m, &mod_fan_out, &mod_fan_in, &stable, STABILITY_THRESHOLD, MIN_FAN_IN))
+            .filter(|&&m| {
+                is_module_stable(
+                    m,
+                    &mod_fan_out,
+                    &mod_fan_in,
+                    &stable,
+                    STABILITY_THRESHOLD,
+                    MIN_FAN_IN,
+                )
+            })
             .copied()
             .collect();
         if batch.is_empty() {
@@ -161,7 +176,10 @@ pub(crate) fn compute_stable_modules(edges: &[ImportEdge]) -> HashSet<&str> {
 /// modules (types, error, config) are healthy hub-and-spoke dependencies
 /// and should not inflate entropy. Without this, a project with shared
 /// foundational types always scores entropy ≈ 1.0 (F grade).
-pub(crate) fn compute_shannon_entropy(edges: &[ImportEdge], stable_modules: &HashSet<&str>) -> (f64, f64, usize) {
+pub(crate) fn compute_shannon_entropy(
+    edges: &[ImportEdge],
+    stable_modules: &HashSet<&str>,
+) -> (f64, f64, usize) {
     if edges.is_empty() {
         return (0.0, 0.0, 0);
     }
@@ -192,7 +210,6 @@ pub(crate) fn compute_shannon_entropy(edges: &[ImportEdge], stable_modules: &Has
         return (0.0, 0.0, num_pairs);
     }
 
-
     let n = cross_count as f64;
     let mut h: f64 = 0.0;
     for &count in pair_counts.values() {
@@ -220,7 +237,11 @@ pub(crate) fn compute_shannon_entropy(edges: &[ImportEdge], stable_modules: &Has
 /// code never imports from test files. This is the same principle as excluding
 /// entry points from god-file detection: known one-way consumers should not
 /// penalize the metric they can't contribute to.
-pub(crate) fn compute_avg_cohesion(edges: &[ImportEdge], call_edges: &[crate::core::types::CallEdge], files: &[&crate::core::types::FileNode]) -> Option<f64> {
+pub(crate) fn compute_avg_cohesion(
+    edges: &[ImportEdge],
+    call_edges: &[crate::core::types::CallEdge],
+    files: &[&crate::core::types::FileNode],
+) -> Option<f64> {
     // Group files by module (same boundary as coupling), excluding test files.
     // Test files are one-way consumers (import production code, never imported back).
     // Including them inflates n without proportional intra-module edges,

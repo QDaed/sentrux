@@ -106,7 +106,6 @@ pub struct HealthReport {
     pub root_cause_raw: super::root_causes::RootCauseRaw,
     /// Normalized root cause scores ∈ [0,1] (for signal computation)
     pub root_cause_scores: super::root_causes::RootCauseScores,
-
 }
 
 /// A file-level metric: path + numeric value (e.g., fan-out count, line count).
@@ -191,7 +190,6 @@ pub(crate) struct ModuleMetrics {
     pub(crate) cross_module_edges: usize,
     pub(crate) entropy: f64,
     pub(crate) entropy_bits: f64,
-    pub(crate) entropy_num_pairs: usize,
     pub(crate) avg_cohesion: Option<f64>,
     pub(crate) max_depth: u32,
     pub(crate) circular_dep_files: Vec<Vec<String>>,
@@ -215,8 +213,16 @@ pub(crate) fn is_mod_declaration_edge(edge: &crate::core::types::ImportEdge) -> 
     if !MOD_DECL_FILES.contains(from_name) {
         return false;
     }
-    let from_dir = edge.from_file.rfind('/').map(|i| &edge.from_file[..i]).unwrap_or("");
-    let to_dir = edge.to_file.rfind('/').map(|i| &edge.to_file[..i]).unwrap_or("");
+    let from_dir = edge
+        .from_file
+        .rfind('/')
+        .map(|i| &edge.from_file[..i])
+        .unwrap_or("");
+    let to_dir = edge
+        .to_file
+        .rfind('/')
+        .map(|i| &edge.to_file[..i])
+        .unwrap_or("");
     // Same directory: "src/app/mod.rs" → "src/app/state.rs"
     // Guard: both dirs must be non-empty to prevent false positives when files are at root level
     // (e.g., "lib.rs" → "foo.rs" both have from_dir="" and to_dir="", but this is NOT a mod declaration)
@@ -241,4 +247,3 @@ pub(crate) fn is_mod_declaration_edge(edge: &crate::core::types::ImportEdge) -> 
     }
     false
 }
-

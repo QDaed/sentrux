@@ -10,9 +10,9 @@
 //! Graph algorithms (SCC, levelization, blast radius, attack surface) are in
 //! `arch_graph`. Re-exported here for backward compatibility.
 
-use crate::core::types::ImportEdge;
-use crate::core::snapshot::Snapshot;
 use self::distance::{self as distance_mod, ModuleDistance};
+use crate::core::snapshot::Snapshot;
+use crate::core::types::ImportEdge;
 use std::collections::{HashMap, HashSet};
 
 pub mod distance;
@@ -200,8 +200,7 @@ impl ArchBaseline {
     pub fn load(path: &std::path::Path) -> Result<Self, String> {
         let json = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read baseline from {}: {e}", path.display()))?;
-        serde_json::from_str(&json)
-            .map_err(|e| format!("Failed to parse baseline: {e}"))
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse baseline: {e}"))
     }
 
     /// Compare current health report against this baseline.
@@ -245,8 +244,8 @@ impl ArchBaseline {
             ));
         }
 
-        let degraded = current.quality_signal < self.quality_signal - 0.02
-            || !violations.is_empty();
+        let degraded =
+            current.quality_signal < self.quality_signal - 0.02 || !violations.is_empty();
 
         ArchDiff {
             signal_before: self.quality_signal,
@@ -280,9 +279,8 @@ pub fn score_blast_concentration(blast_radius: &HashMap<String, u32>, edges: &[I
     let (mod_fan_out, mod_fan_in) = compute_blast_module_coupling(edges);
     let file_fan_in = compute_blast_file_fan_in(edges);
 
-    let max_non_foundation = find_max_non_foundation_blast(
-        blast_radius, &mod_fan_out, &mod_fan_in, &file_fan_in,
-    );
+    let max_non_foundation =
+        find_max_non_foundation_blast(blast_radius, &mod_fan_out, &mod_fan_in, &file_fan_in);
 
     let ratio = max_non_foundation as f64 / total_files as f64;
     (1.0 - ratio).clamp(0.0, 1.0)
@@ -293,7 +291,10 @@ pub fn score_blast_concentration(blast_radius: &HashMap<String, u32>, edges: &[I
 /// parent module fan-out without representing functional dependencies.
 fn compute_blast_module_coupling(
     edges: &[ImportEdge],
-) -> (HashMap<String, HashSet<String>>, HashMap<String, HashSet<String>>) {
+) -> (
+    HashMap<String, HashSet<String>>,
+    HashMap<String, HashSet<String>>,
+) {
     let mut mod_fan_out: HashMap<String, HashSet<String>> = HashMap::new();
     let mut mod_fan_in: HashMap<String, HashSet<String>> = HashMap::new();
     for edge in edges {
@@ -303,7 +304,10 @@ fn compute_blast_module_coupling(
         let from_mod = crate::core::path_utils::module_of(&edge.from_file).to_string();
         let to_mod = crate::core::path_utils::module_of(&edge.to_file).to_string();
         if from_mod != to_mod {
-            mod_fan_out.entry(from_mod.clone()).or_default().insert(to_mod.clone());
+            mod_fan_out
+                .entry(from_mod.clone())
+                .or_default()
+                .insert(to_mod.clone());
             mod_fan_in.entry(to_mod).or_default().insert(from_mod);
         }
     }
@@ -337,7 +341,9 @@ fn find_max_non_foundation_blast(
         let ce = mod_fan_out.get(module).map_or(0, |s| s.len());
         let ca = mod_fan_in.get(module).map_or(0, |s| s.len());
         let total = ca + ce;
-        if total == 0 { return false; }
+        if total == 0 {
+            return false;
+        }
         let instability = ce as f64 / total as f64;
         instability <= MOD_STABILITY_THRESHOLD && ca >= MIN_MOD_FAN_IN
     };
@@ -350,9 +356,8 @@ fn find_max_non_foundation_blast(
         // re-exporters — their high blast radius reflects re-exports, not genuine
         // change risk. Treat them as foundation regardless of instability.
         let is_barrel = super::is_package_index_for_path(path);
-        let is_foundation = is_barrel
-            || is_foundation_module(&module)
-            || ca >= MIN_FILE_FAN_IN_FOUNDATION;
+        let is_foundation =
+            is_barrel || is_foundation_module(&module) || ca >= MIN_FILE_FAN_IN_FOUNDATION;
         if !is_foundation && blast > max_non_foundation {
             max_non_foundation = blast;
         }
@@ -391,7 +396,8 @@ pub fn compute_arch(snapshot: &Snapshot) -> ArchReport {
     // Mod declarations are structural containment — NOT functional dependencies.
     // Without this filter, parent→child + child→parent(facade) creates false cycles.
     // Health metrics already filter these for coupling/depth/cycles; arch must too.
-    let dep_edges: Vec<ImportEdge> = edges.iter()
+    let dep_edges: Vec<ImportEdge> = edges
+        .iter()
         .filter(|e| !crate::metrics::types::is_mod_declaration_edge(e))
         .cloned()
         .collect();
@@ -414,9 +420,13 @@ pub fn compute_arch(snapshot: &Snapshot) -> ArchReport {
         .unwrap_or_default();
 
     // Attack surface + distance — diagnostic data only, no scoring
-    let (attack_surface_files, total_graph_files, attack_surface_ratio,
-         distance_metrics, avg_distance) =
-        compute_arch_diagnostics(snapshot, &dep_edges);
+    let (
+        attack_surface_files,
+        total_graph_files,
+        attack_surface_ratio,
+        distance_metrics,
+        avg_distance,
+    ) = compute_arch_diagnostics(snapshot, &dep_edges);
 
     ArchReport {
         levels,
@@ -449,9 +459,11 @@ fn compute_arch_diagnostics(
     };
 
     // Distance from Main Sequence (Martin 2003) — diagnostic only
-    let distance_metrics = distance_mod::compute_distance_from_main_seq(snapshot, &snapshot.import_graph);
+    let distance_metrics =
+        distance_mod::compute_distance_from_main_seq(snapshot, &snapshot.import_graph);
     let avg_distance = {
-        let non_foundation: Vec<&ModuleDistance> = distance_metrics.iter()
+        let non_foundation: Vec<&ModuleDistance> = distance_metrics
+            .iter()
             .filter(|m| !m.is_foundation)
             .collect();
         if non_foundation.is_empty() {
@@ -461,6 +473,11 @@ fn compute_arch_diagnostics(
         }
     };
 
-    (attack_surface_files, total_graph_files, attack_surface_ratio,
-     distance_metrics, avg_distance)
+    (
+        attack_surface_files,
+        total_graph_files,
+        attack_surface_ratio,
+        distance_metrics,
+        avg_distance,
+    )
 }

@@ -13,9 +13,12 @@ pub mod loader;
 pub mod manifest;
 pub mod profile;
 
-pub use loader::{LoadedPlugin, PluginLoadError, load_all_plugins, plugins_dir};
+pub use loader::{load_all_plugins, plugins_dir, LoadedPlugin, PluginLoadError};
 pub use manifest::PluginManifest;
-pub use profile::{LanguageProfile, LanguageSemantics, LanguageThresholds, ComplexityNodes, ProjectConfig, ResolverConfig, DEFAULT_PROFILE};
+pub use profile::{
+    ComplexityNodes, LanguageProfile, LanguageSemantics, LanguageThresholds, ProjectConfig,
+    ResolverConfig, DEFAULT_PROFILE,
+};
 
 /// Silently sync embedded plugin configs to ~/.sentrux/plugins/ at startup.
 /// Overwrites plugin.toml and tags.scm if the binary version is newer.

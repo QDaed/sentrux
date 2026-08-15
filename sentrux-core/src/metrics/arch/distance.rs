@@ -12,8 +12,8 @@
 //! Zone of pain (D~1, low A, low I): concrete and stable = hard to change.
 //! Zone of uselessness (D~1, high A, high I): abstract and unstable = nobody uses it.
 
-use crate::core::types::ImportEdge;
 use crate::core::snapshot::Snapshot;
+use crate::core::types::ImportEdge;
 use std::collections::{HashMap, HashSet};
 
 // ── Named constants [ref:736ae249] ──
@@ -78,7 +78,8 @@ pub fn compute_distance_from_main_seq(
     // 2. Compute per-module fan-in (Ca) and fan-out (Ce) from import edges.
     // Filter mod-declaration edges (Rust `pub mod foo;`) — structural containment
     // inflates parent module fan-out without representing functional coupling.
-    let dep_edges: Vec<ImportEdge> = edges.iter()
+    let dep_edges: Vec<ImportEdge> = edges
+        .iter()
         .filter(|e| !crate::metrics::types::is_mod_declaration_edge(e))
         .cloned()
         .collect();
@@ -86,12 +87,17 @@ pub fn compute_distance_from_main_seq(
 
     // 3. Compute distance for each module that has types
     let mut results = build_module_distances(
-        &module_abstract, &module_total, &module_fan_out, &module_fan_in,
+        &module_abstract,
+        &module_total,
+        &module_fan_out,
+        &module_fan_in,
     );
 
     // Sort by distance descending — worst first
     results.sort_unstable_by(|a, b| {
-        b.distance.partial_cmp(&a.distance).unwrap_or(std::cmp::Ordering::Equal)
+        b.distance
+            .partial_cmp(&a.distance)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
     results
 }
@@ -188,7 +194,10 @@ fn walk_types(
 /// Compute cross-module fan-in (Ca) and fan-out (Ce) from import edges.
 fn compute_module_coupling(
     edges: &[ImportEdge],
-) -> (HashMap<String, HashSet<String>>, HashMap<String, HashSet<String>>) {
+) -> (
+    HashMap<String, HashSet<String>>,
+    HashMap<String, HashSet<String>>,
+) {
     let mut module_fan_out: HashMap<String, HashSet<String>> = HashMap::new();
     let mut module_fan_in: HashMap<String, HashSet<String>> = HashMap::new();
 
@@ -196,7 +205,10 @@ fn compute_module_coupling(
         let from_mod = crate::core::path_utils::module_of(&edge.from_file).to_string();
         let to_mod = crate::core::path_utils::module_of(&edge.to_file).to_string();
         if from_mod != to_mod {
-            module_fan_out.entry(from_mod.clone()).or_default().insert(to_mod.clone());
+            module_fan_out
+                .entry(from_mod.clone())
+                .or_default()
+                .insert(to_mod.clone());
             module_fan_in.entry(to_mod).or_default().insert(from_mod);
         }
     }

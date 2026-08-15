@@ -8,10 +8,16 @@ mod tests {
     #[test]
     fn normalize_path_resolves_dotdot() {
         let p = std::path::Path::new("src/../a.css");
-        assert_eq!(crate::analysis::resolver::suffix::normalize_path(p), "a.css");
+        assert_eq!(
+            crate::analysis::resolver::suffix::normalize_path(p),
+            "a.css"
+        );
 
         let p2 = std::path::Path::new("a/b/../c/./d.css");
-        assert_eq!(crate::analysis::resolver::suffix::normalize_path(p2), "a/c/d.css");
+        assert_eq!(
+            crate::analysis::resolver::suffix::normalize_path(p2),
+            "a/c/d.css"
+        );
     }
 
     #[test]
@@ -20,25 +26,41 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
 
-        let files = vec![
-            make_file("02_compute.py", "pipeline/02_compute.py", "python",
+        let files = [
+            make_file(
+                "02_compute.py",
+                "pipeline/02_compute.py",
+                "python",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec![
                         "orderflow_ml/config".to_string(),
                         "orderflow_ml/core/feature_store".to_string(),
                         "os".to_string(),
                     ]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
             make_file("config.py", "orderflow_ml/config.py", "python", None),
-            make_file("feature_store.py", "orderflow_ml/core/feature_store.py", "python", None),
+            make_file(
+                "feature_store.py",
+                "orderflow_ml/core/feature_store.py",
+                "python",
+                None,
+            ),
         ];
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert_eq!(gr.import_edges.len(), 2, "expected 2 edges, got {:?}", gr.import_edges);
+        assert_eq!(
+            gr.import_edges.len(),
+            2,
+            "expected 2 edges, got {:?}",
+            gr.import_edges
+        );
         let targets: Vec<&str> = gr.import_edges.iter().map(|e| e.to_file.as_str()).collect();
         assert!(targets.contains(&"orderflow_ml/config.py"));
         assert!(targets.contains(&"orderflow_ml/core/feature_store.py"));
@@ -52,26 +74,52 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
 
-        let files = vec![
-            make_file("02_compute_features.py", "python_ml/pipeline/02_compute_features.py", "python",
+        let files = [
+            make_file(
+                "02_compute_features.py",
+                "python_ml/pipeline/02_compute_features.py",
+                "python",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec![
                         "orderflow_ml/config".to_string(),
                         "orderflow_ml/core/feature_store".to_string(),
                         "orderflow_ml/utils/symbol_utils".to_string(),
                     ]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
-            make_file("__init__.py", "python_ml/orderflow_ml/config/__init__.py", "python", None),
-            make_file("feature_store.py", "python_ml/orderflow_ml/core/feature_store.py", "python", None),
-            make_file("symbol_utils.py", "python_ml/orderflow_ml/utils/symbol_utils.py", "python", None),
+            make_file(
+                "__init__.py",
+                "python_ml/orderflow_ml/config/__init__.py",
+                "python",
+                None,
+            ),
+            make_file(
+                "feature_store.py",
+                "python_ml/orderflow_ml/core/feature_store.py",
+                "python",
+                None,
+            ),
+            make_file(
+                "symbol_utils.py",
+                "python_ml/orderflow_ml/utils/symbol_utils.py",
+                "python",
+                None,
+            ),
         ];
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert_eq!(gr.import_edges.len(), 3, "expected 3 edges, got {:?}", gr.import_edges);
+        assert_eq!(
+            gr.import_edges.len(),
+            3,
+            "expected 3 edges, got {:?}",
+            gr.import_edges
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -82,12 +130,18 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
 
-        let files = vec![
-            make_file("main.py", "pkg/main.py", "python",
+        let files = [
+            make_file(
+                "main.py",
+                "pkg/main.py",
+                "python",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec![".utils".to_string(), "..config".to_string()]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
             make_file("utils.py", "pkg/utils.py", "python", None),
@@ -96,7 +150,12 @@ mod tests {
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert_eq!(gr.import_edges.len(), 2, "expected 2 edges, got {:?}", gr.import_edges);
+        assert_eq!(
+            gr.import_edges.len(),
+            2,
+            "expected 2 edges, got {:?}",
+            gr.import_edges
+        );
         let targets: Vec<&str> = gr.import_edges.iter().map(|e| e.to_file.as_str()).collect();
         assert!(targets.contains(&"pkg/utils.py"));
         assert!(targets.contains(&"config.py"));
@@ -110,12 +169,18 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
 
-        let files = vec![
-            make_file("main.py", "main.py", "python",
+        let files = [
+            make_file(
+                "main.py",
+                "main.py",
+                "python",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec!["mypackage".to_string()]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
             make_file("__init__.py", "mypackage/__init__.py", "python", None),
@@ -135,17 +200,26 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
 
-        let files = vec![make_file("config.py", "orderflow_ml/config.py", "python",
+        let files = [make_file(
+            "config.py",
+            "orderflow_ml/config.py",
+            "python",
             Some(StructuralAnalysis {
-                functions: None, cls: None,
+                functions: None,
+                cls: None,
                 imp: Some(vec!["orderflow_ml/config".to_string()]),
-                co: None, tags: None, comment_lines: None,
+                co: None,
+                tags: None,
+                comment_lines: None,
             }),
         )];
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert!(gr.import_edges.is_empty(), "Self-import should produce no edge");
+        assert!(
+            gr.import_edges.is_empty(),
+            "Self-import should produce no edge"
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -156,28 +230,55 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
 
-        let files = vec![
-            make_file("02_compute.py", "python_ml/pipeline/02_compute.py", "python",
+        let files = [
+            make_file(
+                "02_compute.py",
+                "python_ml/pipeline/02_compute.py",
+                "python",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec!["orderflow_ml/config".to_string()]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
-            make_file("02_compute_dup.py", "arch/python_ml1/pipeline/02_compute.py", "python",
+            make_file(
+                "02_compute_dup.py",
+                "arch/python_ml1/pipeline/02_compute.py",
+                "python",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec!["orderflow_ml/config".to_string()]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
-            make_file("config1.py", "python_ml/orderflow_ml/config.py", "python", None),
-            make_file("config2.py", "arch/python_ml1/orderflow_ml/config.py", "python", None),
+            make_file(
+                "config1.py",
+                "python_ml/orderflow_ml/config.py",
+                "python",
+                None,
+            ),
+            make_file(
+                "config2.py",
+                "arch/python_ml1/orderflow_ml/config.py",
+                "python",
+                None,
+            ),
         ];
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert_eq!(gr.import_edges.len(), 2, "expected 2 edges, got {:?}", gr.import_edges);
+        assert_eq!(
+            gr.import_edges.len(),
+            2,
+            "expected 2 edges, got {:?}",
+            gr.import_edges
+        );
 
         for edge in &gr.import_edges {
             if edge.from_file == "python_ml/pipeline/02_compute.py" {
@@ -198,12 +299,18 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
 
-        let files = vec![
-            make_file("index.html", "index.html", "html",
+        let files = [
+            make_file(
+                "index.html",
+                "index.html",
+                "html",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec!["app.js".to_string()]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
             make_file("app.js", "app.js", "javascript", None),
@@ -228,15 +335,29 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join("project_a/src")).unwrap();
         std::fs::create_dir_all(tmp.join("project_b/src")).unwrap();
-        std::fs::write(tmp.join("project_a/Cargo.toml"), "[package]\nname = \"project_a\"").unwrap();
-        std::fs::write(tmp.join("project_b/Cargo.toml"), "[package]\nname = \"project_b\"").unwrap();
+        std::fs::write(
+            tmp.join("project_a/Cargo.toml"),
+            "[package]\nname = \"project_a\"",
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.join("project_b/Cargo.toml"),
+            "[package]\nname = \"project_b\"",
+        )
+        .unwrap();
 
-        let files = vec![
-            make_file("main.rs", "project_a/src/main.rs", "rust",
+        let files = [
+            make_file(
+                "main.rs",
+                "project_a/src/main.rs",
+                "rust",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None,
+                    functions: None,
+                    cls: None,
                     imp: Some(vec!["crate/graph".to_string()]),
-                    co: None, tags: None, comment_lines: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                 }),
             ),
             make_file("graph.rs", "project_a/src/graph.rs", "rust", None),
@@ -245,8 +366,12 @@ mod tests {
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert_eq!(gr.import_edges.len(), 1,
-            "expected 1 edge within project_a, got {:?}", gr.import_edges);
+        assert_eq!(
+            gr.import_edges.len(),
+            1,
+            "expected 1 edge within project_a, got {:?}",
+            gr.import_edges
+        );
         assert_eq!(gr.import_edges[0].from_file, "project_a/src/main.rs");
         assert_eq!(gr.import_edges[0].to_file, "project_a/src/graph.rs");
 
@@ -261,10 +386,17 @@ mod tests {
         std::fs::create_dir_all(tmp.join("src/store")).unwrap();
         std::fs::write(tmp.join("Cargo.toml"), "[package]\nname = \"beemem\"").unwrap();
 
-        let files = vec![
-            make_file("db.rs", "src/store/db.rs", "rust",
+        let files = [
+            make_file(
+                "db.rs",
+                "src/store/db.rs",
+                "rust",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec![
                         "crate/models/episode".to_string(),
                         "crate/models/primitive".to_string(),
@@ -272,16 +404,34 @@ mod tests {
                     ]),
                 }),
             ),
-            make_file("mod.rs", "src/models/mod.rs", "rust",
+            make_file(
+                "mod.rs",
+                "src/models/mod.rs",
+                "rust",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec!["episode".to_string(), "primitive".to_string()]),
                 }),
             ),
-            make_file("mod.rs", "src/store/mod.rs", "rust",
+            make_file(
+                "mod.rs",
+                "src/store/mod.rs",
+                "rust",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
-                    imp: Some(vec!["db".to_string(), "schema".to_string(), "vectors".to_string()]),
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
+                    imp: Some(vec![
+                        "db".to_string(),
+                        "schema".to_string(),
+                        "vectors".to_string(),
+                    ]),
                 }),
             ),
             make_file("episode.rs", "src/models/episode.rs", "rust", None),
@@ -293,10 +443,13 @@ mod tests {
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
 
-        let db_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "src/store/db.rs").collect();
-        let db_targets: std::collections::HashSet<&str> = db_edges.iter()
-            .map(|e| e.to_file.as_str()).collect();
+        let db_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "src/store/db.rs")
+            .collect();
+        let db_targets: std::collections::HashSet<&str> =
+            db_edges.iter().map(|e| e.to_file.as_str()).collect();
 
         assert!(db_targets.contains("src/models/episode.rs"));
         assert!(db_targets.contains("src/models/primitive.rs"));
@@ -305,17 +458,23 @@ mod tests {
         assert!(!db_targets.contains("src/store/mod.rs"));
         assert_eq!(db_edges.len(), 3);
 
-        let mod_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "src/models/mod.rs").collect();
-        let mod_targets: std::collections::HashSet<&str> = mod_edges.iter()
-            .map(|e| e.to_file.as_str()).collect();
+        let mod_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "src/models/mod.rs")
+            .collect();
+        let mod_targets: std::collections::HashSet<&str> =
+            mod_edges.iter().map(|e| e.to_file.as_str()).collect();
         assert!(mod_targets.contains("src/models/episode.rs"));
         assert!(mod_targets.contains("src/models/primitive.rs"));
 
-        let store_mod_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "src/store/mod.rs").collect();
-        let store_targets: std::collections::HashSet<&str> = store_mod_edges.iter()
-            .map(|e| e.to_file.as_str()).collect();
+        let store_mod_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "src/store/mod.rs")
+            .collect();
+        let store_targets: std::collections::HashSet<&str> =
+            store_mod_edges.iter().map(|e| e.to_file.as_str()).collect();
         assert!(store_targets.contains("src/store/db.rs"));
         assert!(store_targets.contains("src/store/schema.rs"));
         assert!(store_targets.contains("src/store/vectors.rs"));
@@ -330,10 +489,17 @@ mod tests {
         std::fs::create_dir_all(tmp.join("src/commands")).unwrap();
         std::fs::write(tmp.join("Cargo.toml"), "[package]\nname = \"beemem\"").unwrap();
 
-        let files = vec![
-            make_file("main.rs", "src/main.rs", "rust",
+        let files = [
+            make_file(
+                "main.rs",
+                "src/main.rs",
+                "rust",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec!["beemem/commands".to_string()]),
                 }),
             ),
@@ -344,11 +510,17 @@ mod tests {
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
 
-        let main_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "src/main.rs").collect();
+        let main_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "src/main.rs")
+            .collect();
         let targets: Vec<&str> = main_edges.iter().map(|e| e.to_file.as_str()).collect();
-        assert!(targets.contains(&"src/commands/mod.rs"),
-            "main.rs should connect to commands/mod.rs, got: {:?}", targets);
+        assert!(
+            targets.contains(&"src/commands/mod.rs"),
+            "main.rs should connect to commands/mod.rs, got: {:?}",
+            targets
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -358,12 +530,23 @@ mod tests {
         let tmp = std::env::temp_dir().join("sentrux_test_crate_name");
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join("src")).unwrap();
-        std::fs::write(tmp.join("Cargo.toml"), "[package]\nname = \"sentrux-tauri\"").unwrap();
+        std::fs::write(
+            tmp.join("Cargo.toml"),
+            "[package]\nname = \"sentrux-tauri\"",
+        )
+        .unwrap();
 
-        let files = vec![
-            make_file("main.rs", "src/main.rs", "rust",
+        let files = [
+            make_file(
+                "main.rs",
+                "src/main.rs",
+                "rust",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec!["sentrux_tauri".to_string()]),
                 }),
             ),
@@ -373,11 +556,17 @@ mod tests {
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
 
-        let main_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "src/main.rs").collect();
+        let main_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "src/main.rs")
+            .collect();
         let targets: Vec<&str> = main_edges.iter().map(|e| e.to_file.as_str()).collect();
-        assert!(targets.contains(&"src/lib.rs"),
-            "main.rs should connect to lib.rs via crate name, got: {:?}", targets);
+        assert!(
+            targets.contains(&"src/lib.rs"),
+            "main.rs should connect to lib.rs via crate name, got: {:?}",
+            targets
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -387,21 +576,38 @@ mod tests {
         let tmp = std::env::temp_dir().join("sentrux_test_html_css");
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join("src")).unwrap();
-        std::fs::write(tmp.join("index.html"), r#"<link rel="stylesheet" href="src/style.css" />"#).unwrap();
+        std::fs::write(
+            tmp.join("index.html"),
+            r#"<link rel="stylesheet" href="src/style.css" />"#,
+        )
+        .unwrap();
         std::fs::write(tmp.join("src/style.css"), "body { color: red; }").unwrap();
 
-        let files = vec![
-            make_file("index.html", "index.html", "html",
+        let files = [
+            make_file(
+                "index.html",
+                "index.html",
+                "html",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec!["src/style.css".to_string()]),
-                })),
+                }),
+            ),
             make_file("style.css", "src/style.css", "css", None),
         ];
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert!(gr.import_edges.iter().any(|e| e.from_file == "index.html" && e.to_file == "src/style.css"),
-            "expected HTML->CSS edge, got {:?}", gr.import_edges);
+        assert!(
+            gr.import_edges
+                .iter()
+                .any(|e| e.from_file == "index.html" && e.to_file == "src/style.css"),
+            "expected HTML->CSS edge, got {:?}",
+            gr.import_edges
+        );
     }
 
     #[test]
@@ -412,18 +618,31 @@ mod tests {
         std::fs::write(tmp.join("main.py"), "from mylib.utils.helpers import foo").unwrap();
         std::fs::write(tmp.join("mylib/utils/helpers.py"), "def foo(): pass").unwrap();
 
-        let files = vec![
-            make_file("main.py", "main.py", "python",
+        let files = [
+            make_file(
+                "main.py",
+                "main.py",
+                "python",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec!["mylib/utils/helpers".to_string()]),
-                })),
+                }),
+            ),
             make_file("helpers.py", "mylib/utils/helpers.py", "python", None),
         ];
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
-        assert!(gr.import_edges.iter().any(|e| e.from_file == "main.py" && e.to_file == "mylib/utils/helpers.py"),
-            "expected main.py->helpers.py edge, got {:?}", gr.import_edges);
+        assert!(
+            gr.import_edges
+                .iter()
+                .any(|e| e.from_file == "main.py" && e.to_file == "mylib/utils/helpers.py"),
+            "expected main.py->helpers.py edge, got {:?}",
+            gr.import_edges
+        );
     }
 
     #[test]
@@ -434,12 +653,23 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join("internal/config")).unwrap();
         std::fs::create_dir_all(tmp.join("internal/handler")).unwrap();
-        std::fs::write(tmp.join("go.mod"), "module github.com/slush-dev/phonevault\n\ngo 1.21\n").unwrap();
+        std::fs::write(
+            tmp.join("go.mod"),
+            "module github.com/slush-dev/phonevault\n\ngo 1.21\n",
+        )
+        .unwrap();
 
-        let files = vec![
-            make_file("main.go", "cmd/server/main.go", "go",
+        let files = [
+            make_file(
+                "main.go",
+                "cmd/server/main.go",
+                "go",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec![
                         "github.com/slush-dev/phonevault/internal/config".to_string(),
                         "github.com/slush-dev/phonevault/internal/handler".to_string(),
@@ -454,17 +684,30 @@ mod tests {
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
 
-        let main_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "cmd/server/main.go").collect();
-        let targets: std::collections::HashSet<&str> = main_edges.iter()
-            .map(|e| e.to_file.as_str()).collect();
+        let main_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "cmd/server/main.go")
+            .collect();
+        let targets: std::collections::HashSet<&str> =
+            main_edges.iter().map(|e| e.to_file.as_str()).collect();
 
-        assert!(targets.iter().any(|t| t.starts_with("internal/config/")),
-            "expected edge to internal/config/*.go, got targets: {:?}", targets);
-        assert!(targets.iter().any(|t| t.starts_with("internal/handler/")),
-            "expected edge to internal/handler/*.go, got targets: {:?}", targets);
-        assert!(main_edges.len() >= 2,
-            "expected at least 2 import edges, got {}: {:?}", main_edges.len(), main_edges);
+        assert!(
+            targets.iter().any(|t| t.starts_with("internal/config/")),
+            "expected edge to internal/config/*.go, got targets: {:?}",
+            targets
+        );
+        assert!(
+            targets.iter().any(|t| t.starts_with("internal/handler/")),
+            "expected edge to internal/handler/*.go, got targets: {:?}",
+            targets
+        );
+        assert!(
+            main_edges.len() >= 2,
+            "expected at least 2 import edges, got {}: {:?}",
+            main_edges.len(),
+            main_edges
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -479,13 +722,23 @@ mod tests {
         std::fs::create_dir_all(tmp.join("server/cmd/server")).unwrap();
         std::fs::create_dir_all(tmp.join("server/internal/config")).unwrap();
         std::fs::create_dir_all(tmp.join("server/internal/handler")).unwrap();
-        std::fs::write(tmp.join("server/go.mod"),
-            "module github.com/example/myapp\n\ngo 1.21\n").unwrap();
+        std::fs::write(
+            tmp.join("server/go.mod"),
+            "module github.com/example/myapp\n\ngo 1.21\n",
+        )
+        .unwrap();
 
-        let files = vec![
-            make_file("main.go", "server/cmd/server/main.go", "go",
+        let files = [
+            make_file(
+                "main.go",
+                "server/cmd/server/main.go",
+                "go",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec![
                         "github.com/example/myapp/internal/config".to_string(),
                         "github.com/example/myapp/internal/handler".to_string(),
@@ -493,23 +746,45 @@ mod tests {
                 }),
             ),
             make_file("config.go", "server/internal/config/config.go", "go", None),
-            make_file("handler.go", "server/internal/handler/handler.go", "go", None),
+            make_file(
+                "handler.go",
+                "server/internal/handler/handler.go",
+                "go",
+                None,
+            ),
         ];
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
 
-        let main_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "server/cmd/server/main.go").collect();
-        let targets: std::collections::HashSet<&str> = main_edges.iter()
-            .map(|e| e.to_file.as_str()).collect();
+        let main_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "server/cmd/server/main.go")
+            .collect();
+        let targets: std::collections::HashSet<&str> =
+            main_edges.iter().map(|e| e.to_file.as_str()).collect();
 
-        assert!(targets.iter().any(|t| t.starts_with("server/internal/config/")),
-            "expected edge to server/internal/config/*.go, got targets: {:?}", targets);
-        assert!(targets.iter().any(|t| t.starts_with("server/internal/handler/")),
-            "expected edge to server/internal/handler/*.go, got targets: {:?}", targets);
-        assert!(main_edges.len() >= 2,
-            "expected at least 2 import edges, got {}: {:?}", main_edges.len(), main_edges);
+        assert!(
+            targets
+                .iter()
+                .any(|t| t.starts_with("server/internal/config/")),
+            "expected edge to server/internal/config/*.go, got targets: {:?}",
+            targets
+        );
+        assert!(
+            targets
+                .iter()
+                .any(|t| t.starts_with("server/internal/handler/")),
+            "expected edge to server/internal/handler/*.go, got targets: {:?}",
+            targets
+        );
+        assert!(
+            main_edges.len() >= 2,
+            "expected at least 2 import edges, got {}: {:?}",
+            main_edges.len(),
+            main_edges
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -522,13 +797,23 @@ mod tests {
         let tmp = std::env::temp_dir().join("sentrux_test_go_flat_pkg");
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join("parser")).unwrap();
-        std::fs::write(tmp.join("go.mod"),
-            "module github.com/user/myapp\n\ngo 1.21\n").unwrap();
+        std::fs::write(
+            tmp.join("go.mod"),
+            "module github.com/user/myapp\n\ngo 1.21\n",
+        )
+        .unwrap();
 
-        let files = vec![
-            make_file("main.go", "main.go", "go",
+        let files = [
+            make_file(
+                "main.go",
+                "main.go",
+                "go",
                 Some(StructuralAnalysis {
-                    functions: None, cls: None, co: None, tags: None, comment_lines: None,
+                    functions: None,
+                    cls: None,
+                    co: None,
+                    tags: None,
+                    comment_lines: None,
                     imp: Some(vec!["github.com/user/myapp/parser".to_string()]),
                 }),
             ),
@@ -540,13 +825,21 @@ mod tests {
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);
 
-        let main_edges: Vec<&ImportEdge> = gr.import_edges.iter()
-            .filter(|e| e.from_file == "main.go").collect();
+        let main_edges: Vec<&ImportEdge> = gr
+            .import_edges
+            .iter()
+            .filter(|e| e.from_file == "main.go")
+            .collect();
 
-        assert!(!main_edges.is_empty(),
-            "expected import edge from main.go to parser/, got none");
-        assert!(main_edges.iter().all(|e| e.to_file.starts_with("parser/")),
-            "all edges should target parser/, got {:?}", main_edges);
+        assert!(
+            !main_edges.is_empty(),
+            "expected import edge from main.go to parser/, got none"
+        );
+        assert!(
+            main_edges.iter().all(|e| e.to_file.starts_with("parser/")),
+            "all edges should target parser/, got {:?}",
+            main_edges
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }

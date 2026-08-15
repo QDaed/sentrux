@@ -5,10 +5,8 @@
 //! and per-match-kind processing (func def, class def, import, call).
 
 use super::imports::{
-    count_complexity_ast, count_cognitive_complexity_ast,
-    count_parameters, hash_body,
-    extract_base_classes,
-    lang_uses_dot_separator, normalize_module_path,
+    count_cognitive_complexity_ast, count_complexity_ast, count_parameters, extract_base_classes,
+    hash_body, lang_uses_dot_separator, normalize_module_path,
 };
 use crate::core::types::{ClassInfo, FuncInfo};
 use std::collections::HashSet;
@@ -71,14 +69,28 @@ fn handle_definition_capture<'a>(
             r.match_node = Some(cap.node);
             true
         }
-        "definition.class" => { set_class_def(r, cap.node, "class"); true }
-        "definition.interface" => { set_class_def(r, cap.node, "interface"); true }
-        "definition.adt" => { set_class_def(r, cap.node, "adt"); true }
-        "definition.type" => { set_class_def(r, cap.node, "type"); true }
+        "definition.class" => {
+            set_class_def(r, cap.node, "class");
+            true
+        }
+        "definition.interface" => {
+            set_class_def(r, cap.node, "interface");
+            true
+        }
+        "definition.adt" => {
+            set_class_def(r, cap.node, "adt");
+            true
+        }
+        "definition.type" => {
+            set_class_def(r, cap.node, "type");
+            true
+        }
         "class.def" => {
             r.match_type = Some(MatchKind::ClassDef);
             r.match_node = Some(cap.node);
-            if r.class_kind.is_none() { r.class_kind = Some("class"); }
+            if r.class_kind.is_none() {
+                r.class_kind = Some("class");
+            }
             true
         }
         "reference.call" | "reference.class" | "reference.send" | "reference.type" | "call" => {
@@ -101,6 +113,7 @@ fn handle_definition_capture<'a>(
 }
 
 /// Handle import, scoped path, and entry-point captures.
+#[allow(clippy::too_many_arguments)]
 fn handle_import_capture<'a>(
     cname: &str,
     cap: &tree_sitter::QueryCapture<'a>,
@@ -120,9 +133,11 @@ fn handle_import_capture<'a>(
             }
         }
         "import.module" => {
-            r.import_module_text = cap.node.utf8_text(content).ok().map(|s| {
-                s.trim_matches(|c: char| c == '"' || c == '\'').to_string()
-            });
+            r.import_module_text = cap
+                .node
+                .utf8_text(content)
+                .ok()
+                .map(|s| s.trim_matches(|c: char| c == '"' || c == '\'').to_string());
         }
         "call.scoped_path" => {
             process_scoped_path(cap.node, content, imports, import_set);
@@ -135,6 +150,7 @@ fn handle_import_capture<'a>(
 }
 
 /// Process a single capture, updating the result accordingly.
+#[allow(clippy::too_many_arguments)]
 fn process_single_capture<'a>(
     cname: &str,
     cap: &tree_sitter::QueryCapture<'a>,
@@ -149,9 +165,13 @@ fn process_single_capture<'a>(
     if handle_definition_capture(cname, cap, content, r) {
         return;
     }
-    handle_import_capture(cname, cap, content, lang, r, imports, import_set, tags, tag_set);
+    handle_import_capture(
+        cname, cap, content, lang, r, imports, import_set, tags, tag_set,
+    );
 }
 
+/// Classify a set of tree-sitter query captures.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn classify_captures<'a>(
     captures: &'a [tree_sitter::QueryCapture<'a>],
     capture_names: &[&str],
@@ -174,7 +194,9 @@ pub(super) fn classify_captures<'a>(
 
     for cap in captures {
         let cname = capture_names[cap.index as usize];
-        process_single_capture(cname, cap, content, lang, &mut r, imports, import_set, tags, tag_set);
+        process_single_capture(
+            cname, cap, content, lang, &mut r, imports, import_set, tags, tag_set,
+        );
     }
     r
 }
@@ -182,7 +204,9 @@ pub(super) fn classify_captures<'a>(
 /// Check if an attribute node matches all test attribute patterns.
 /// Generic: patterns come from plugin TOML `test_attribute_patterns`.
 fn is_test_attribute(sib: tree_sitter::Node, content: &[u8], patterns: &[String]) -> bool {
-    if patterns.is_empty() { return false; }
+    if patterns.is_empty() {
+        return false;
+    }
     if let Ok(text) = sib.utf8_text(content) {
         patterns.iter().all(|p| text.contains(p.as_str()))
     } else {
@@ -289,13 +313,19 @@ fn detect_visibility(
         false
     } else {
         let text = body.trim_start();
-        keywords.iter().any(|kw: &String| text.starts_with(kw.as_str()))
+        keywords
+            .iter()
+            .any(|kw: &String| text.starts_with(kw.as_str()))
     };
     if !is_public && !profile.semantics.method_parent_kinds.is_empty() {
         let mut ancestor = node.parent();
         while let Some(parent) = ancestor {
-            if profile.semantics.method_parent_kinds.iter()
-                .any(|k| k == parent.kind()) {
+            if profile
+                .semantics
+                .method_parent_kinds
+                .iter()
+                .any(|k| k == parent.kind())
+            {
                 is_public = true;
                 break;
             }
@@ -315,12 +345,18 @@ fn detect_is_test(
     if profile.semantics.test_decorators.is_empty() {
         return false;
     }
-    let mut found = profile.semantics.test_decorators.iter()
+    let mut found = profile
+        .semantics
+        .test_decorators
+        .iter()
         .any(|d: &String| body.contains(d.as_str()));
     if !found {
         if let Some(prev) = node.prev_sibling() {
             if let Ok(prev_text) = prev.utf8_text(content) {
-                found = profile.semantics.test_decorators.iter()
+                found = profile
+                    .semantics
+                    .test_decorators
+                    .iter()
                     .any(|d: &String| prev_text.contains(d.as_str()));
             }
         }
@@ -349,12 +385,16 @@ pub(super) fn process_func_def(
         let is_public = detect_visibility(node, body, profile);
         let is_test = detect_is_test(node, body, pctx.content, profile);
         functions.push(FuncInfo {
-            n: name, sl, el, ln,
+            n: name,
+            sl,
+            el,
+            ln,
             cc: Some(cc),
             cog: Some(cog),
             pc: Some(pc),
             bh: if bh != 0 { Some(bh) } else { None },
-            d: None, co: None,
+            d: None,
+            co: None,
             is_public: is_public || is_test,
             is_method: false,
         });
@@ -368,13 +408,14 @@ pub(super) fn process_class_def(
     pctx: &ParseContext<'_>,
     classes: &mut Vec<ClassInfo>,
 ) {
-    let name = name_text.unwrap_or_else(|| {
-        match_node.map(|n| n.kind().to_string()).unwrap_or_default()
-    });
+    let name =
+        name_text.unwrap_or_else(|| match_node.map(|n| n.kind().to_string()).unwrap_or_default());
     if !name.is_empty() {
         let bases = match_node.and_then(|node| extract_base_classes(node, pctx.content, pctx.lang));
         classes.push(ClassInfo {
-            n: name, m: None, b: bases,
+            n: name,
+            m: None,
+            b: bases,
             k: class_kind.map(|s| s.to_string()),
         });
     }
@@ -389,7 +430,13 @@ fn apply_module_transform(module: &str, transform: &str) -> String {
 }
 
 /// Insert a normalized module path into imports if non-empty and not seen.
-fn insert_normalized(raw: &str, dots_are_seps: bool, namespace_sep: &str, imports: &mut Vec<String>, import_set: &mut HashSet<String>) {
+fn insert_normalized(
+    raw: &str,
+    dots_are_seps: bool,
+    namespace_sep: &str,
+    imports: &mut Vec<String>,
+    import_set: &mut HashSet<String>,
+) {
     let module = normalize_module_path(raw, dots_are_seps, namespace_sep);
     if !module.is_empty() && import_set.insert(module.clone()) {
         imports.push(module);
@@ -406,6 +453,7 @@ pub(super) struct ImportContext<'a> {
 }
 
 /// Try brace expansion and AST-based extraction from an import node.
+#[allow(clippy::too_many_arguments)]
 fn resolve_import_from_node(
     node: tree_sitter::Node,
     content: &[u8],
@@ -431,7 +479,9 @@ fn resolve_import_from_node(
     }
     if profile.semantics.import_ast.is_configured() {
         let paths = super::ast_import_walker::extract_imports_from_ast(
-            node, content, &profile.semantics.import_ast,
+            node,
+            content,
+            &profile.semantics.import_ast,
         );
         for raw in paths {
             insert_normalized(&raw, dots_are_seps, namespace_sep, imports, import_set);
@@ -457,6 +507,15 @@ pub(super) fn process_import(
         let module = apply_module_transform(module, transform);
         insert_normalized(&module, dots_are_seps, namespace_sep, imports, import_set);
     } else if let Some(node) = ictx.import_node.or(ictx.match_node) {
-        resolve_import_from_node(node, content, profile, transform, dots_are_seps, namespace_sep, imports, import_set);
+        resolve_import_from_node(
+            node,
+            content,
+            profile,
+            transform,
+            dots_are_seps,
+            namespace_sep,
+            imports,
+            import_set,
+        );
     }
 }

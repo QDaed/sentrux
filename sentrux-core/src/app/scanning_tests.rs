@@ -8,9 +8,9 @@
 
 use super::channels::{LayoutMsg, LayoutRequest, ScanCommand, ScanMsg};
 use super::scan_threads::{drain_to_latest, layout_thread, scanner_thread};
-use crate::layout::types::{LayoutMode, ScaleMode, SizeMode};
 use crate::core::snapshot::Snapshot;
 use crate::core::types::FileNode;
+use crate::layout::types::{LayoutMode, ScaleMode, SizeMode};
 use crossbeam_channel::bounded;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -54,12 +54,26 @@ fn drain_to_latest_fullscan_beats_trailing_rescan() {
         root: "b".into(),
         changed: vec!["x.rs".into()],
         old_snap: Arc::new(dummy_snapshot()),
-        limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 },
-        gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        limits: crate::app::scan_threads::ScanLimits {
+            max_file_size_kb: 2048,
+            max_parse_size_kb: 512,
+            max_call_targets: 5,
+        },
+        gen: 0,
+        cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     })
     .unwrap();
 
-    let first = ScanCommand::FullScan { root: "a".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) };
+    let first = ScanCommand::FullScan {
+        root: "a".into(),
+        limits: crate::app::scan_threads::ScanLimits {
+            max_file_size_kb: 2048,
+            max_parse_size_kb: 512,
+            max_call_targets: 5,
+        },
+        gen: 0,
+        cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    };
     let result = drain_to_latest(first, &rx);
     assert!(
         matches!(result, ScanCommand::FullScan { root: ref p, .. } if p == "a"),
@@ -70,9 +84,28 @@ fn drain_to_latest_fullscan_beats_trailing_rescan() {
 #[test]
 fn drain_to_latest_keeps_latest_fullscan() {
     let (tx, rx) = bounded::<ScanCommand>(4);
-    tx.send(ScanCommand::FullScan { root: "b".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) }).unwrap();
+    tx.send(ScanCommand::FullScan {
+        root: "b".into(),
+        limits: crate::app::scan_threads::ScanLimits {
+            max_file_size_kb: 2048,
+            max_parse_size_kb: 512,
+            max_call_targets: 5,
+        },
+        gen: 0,
+        cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    })
+    .unwrap();
 
-    let first = ScanCommand::FullScan { root: "a".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) };
+    let first = ScanCommand::FullScan {
+        root: "a".into(),
+        limits: crate::app::scan_threads::ScanLimits {
+            max_file_size_kb: 2048,
+            max_parse_size_kb: 512,
+            max_call_targets: 5,
+        },
+        gen: 0,
+        cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    };
     let result = drain_to_latest(first, &rx);
     assert!(
         matches!(result, ScanCommand::FullScan { root: ref p, .. } if p == "b"),
@@ -83,7 +116,16 @@ fn drain_to_latest_keeps_latest_fullscan() {
 #[test]
 fn drain_to_latest_empty_queue_returns_first() {
     let (_tx, rx) = bounded::<ScanCommand>(4);
-    let first = ScanCommand::FullScan { root: "a".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) };
+    let first = ScanCommand::FullScan {
+        root: "a".into(),
+        limits: crate::app::scan_threads::ScanLimits {
+            max_file_size_kb: 2048,
+            max_parse_size_kb: 512,
+            max_call_targets: 5,
+        },
+        gen: 0,
+        cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    };
     let result = drain_to_latest(first, &rx);
     assert!(matches!(result, ScanCommand::FullScan { root: ref p, .. } if p == "a"));
 }
@@ -96,8 +138,13 @@ fn drain_to_latest_rescan_merges_changed() {
         root: "a".into(),
         changed: vec!["y.rs".into()],
         old_snap: Arc::clone(&snap),
-        limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 },
-        gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        limits: crate::app::scan_threads::ScanLimits {
+            max_file_size_kb: 2048,
+            max_parse_size_kb: 512,
+            max_call_targets: 5,
+        },
+        gen: 0,
+        cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     })
     .unwrap();
 
@@ -105,15 +152,26 @@ fn drain_to_latest_rescan_merges_changed() {
         root: "a".into(),
         changed: vec!["x.rs".into()],
         old_snap: snap,
-        limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 },
-        gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        limits: crate::app::scan_threads::ScanLimits {
+            max_file_size_kb: 2048,
+            max_parse_size_kb: 512,
+            max_call_targets: 5,
+        },
+        gen: 0,
+        cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     };
     let result = drain_to_latest(first, &rx);
     match result {
         ScanCommand::Rescan { changed, .. } => {
             let set: std::collections::HashSet<String> = changed.into_iter().collect();
-            assert!(set.contains("x.rs"), "merged result must contain x.rs from first Rescan");
-            assert!(set.contains("y.rs"), "merged result must contain y.rs from queued Rescan");
+            assert!(
+                set.contains("x.rs"),
+                "merged result must contain x.rs from first Rescan"
+            );
+            assert!(
+                set.contains("y.rs"),
+                "merged result must contain y.rs from queued Rescan"
+            );
         }
         _ => panic!("Expected Rescan"),
     }
@@ -184,11 +242,33 @@ fn generation_bumps_before_send() {
 
     gen.fetch_add(1, Ordering::AcqRel);
     assert_eq!(gen.load(Ordering::Acquire), 1);
-    assert!(tx.try_send(ScanCommand::FullScan { root: "a".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) }).is_ok());
+    assert!(tx
+        .try_send(ScanCommand::FullScan {
+            root: "a".into(),
+            limits: crate::app::scan_threads::ScanLimits {
+                max_file_size_kb: 2048,
+                max_parse_size_kb: 512,
+                max_call_targets: 5
+            },
+            gen: 0,
+            cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false))
+        })
+        .is_ok());
 
     gen.fetch_add(1, Ordering::AcqRel);
     assert_eq!(gen.load(Ordering::Acquire), 2);
-    assert!(tx.try_send(ScanCommand::FullScan { root: "b".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) }).is_err());
+    assert!(tx
+        .try_send(ScanCommand::FullScan {
+            root: "b".into(),
+            limits: crate::app::scan_threads::ScanLimits {
+                max_file_size_kb: 2048,
+                max_parse_size_kb: 512,
+                max_call_targets: 5
+            },
+            gen: 0,
+            cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false))
+        })
+        .is_err());
     assert_eq!(gen.load(Ordering::Acquire), 2);
 }
 
@@ -216,8 +296,7 @@ fn stale_imports_ready_rejected_by_generation() {
 fn layout_version_not_bumped_on_full_channel() {
     let (tx, _rx) = bounded::<LayoutRequest>(1);
     let snap = Arc::new(dummy_snapshot());
-    let mut layout_version: u64 = 0;
-    let mut layout_pending = false;
+    let mut layout_version = 1u64;
 
     let req = LayoutRequest {
         snapshot: Arc::clone(&snap),
@@ -236,7 +315,6 @@ fn layout_version_not_bumped_on_full_channel() {
         impact_files: None,
     };
     tx.try_send(req).unwrap();
-    layout_version = 1;
 
     let next_version = layout_version + 1;
     let req2 = LayoutRequest {
@@ -255,21 +333,19 @@ fn layout_version_not_bumped_on_full_channel() {
         hidden_paths: std::sync::Arc::new(std::collections::HashSet::new()),
         impact_files: None,
     };
-    match tx.try_send(req2) {
-        Ok(()) => {
-            layout_version = next_version;
-            layout_pending = true;
-        }
-        Err(_) => {
-            layout_pending = true;
-        }
+    let send_result = tx.try_send(req2);
+    if send_result.is_ok() {
+        layout_version = next_version;
     }
 
     assert_eq!(
         layout_version, 1,
         "Version must stay at 1 when channel is full"
     );
-    assert!(layout_pending, "layout_pending should be set even on failure");
+    assert!(
+        send_result.is_err(),
+        "Second send should fail because channel is full"
+    );
 }
 
 // ── Invariant 11: layout_pending correctly reflects version gap ──
@@ -318,7 +394,16 @@ fn scanner_thread_sends_complete() {
     });
 
     cmd_tx
-        .send(ScanCommand::FullScan { root: tmp.to_string_lossy().into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 1, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) })
+        .send(ScanCommand::FullScan {
+            root: tmp.to_string_lossy().into(),
+            limits: crate::app::scan_threads::ScanLimits {
+                max_file_size_kb: 2048,
+                max_parse_size_kb: 512,
+                max_call_targets: 5,
+            },
+            gen: 1,
+            cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        })
         .unwrap();
 
     let mut got_complete = false;
@@ -346,12 +431,36 @@ fn scanner_thread_sends_complete() {
 #[test]
 fn drain_to_latest_idempotent() {
     let (_tx, rx) = bounded::<ScanCommand>(4);
-    let r1 = drain_to_latest(ScanCommand::FullScan { root: "test".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) }, &rx);
+    let r1 = drain_to_latest(
+        ScanCommand::FullScan {
+            root: "test".into(),
+            limits: crate::app::scan_threads::ScanLimits {
+                max_file_size_kb: 2048,
+                max_parse_size_kb: 512,
+                max_call_targets: 5,
+            },
+            gen: 0,
+            cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        },
+        &rx,
+    );
     match r1 {
         ScanCommand::FullScan { root: ref a, .. } => assert_eq!(a, "test"),
         _ => panic!("Expected FullScan"),
     }
-    let r2 = drain_to_latest(ScanCommand::FullScan { root: "test".into(), limits: crate::app::scan_threads::ScanLimits { max_file_size_kb: 2048, max_parse_size_kb: 512, max_call_targets: 5 }, gen: 0, cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) }, &rx);
+    let r2 = drain_to_latest(
+        ScanCommand::FullScan {
+            root: "test".into(),
+            limits: crate::app::scan_threads::ScanLimits {
+                max_file_size_kb: 2048,
+                max_parse_size_kb: 512,
+                max_call_targets: 5,
+            },
+            gen: 0,
+            cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        },
+        &rx,
+    );
     match r2 {
         ScanCommand::FullScan { root: ref b, .. } => assert_eq!(b, "test"),
         _ => panic!("Idempotency violated"),

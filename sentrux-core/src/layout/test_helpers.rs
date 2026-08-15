@@ -3,18 +3,25 @@
 //! Eliminates duplication of `make_file()`, `make_dir()`, `run_layout()`,
 //! and `simple_snapshot()` between tests.rs and tests2.rs.
 
-use crate::core::settings::Settings;
-use crate::core::types::{CallEdge, FileNode, ImportEdge};
-use crate::core::snapshot::Snapshot;
 use super::types::{FocusMode, LayoutMode, ScaleMode, SizeMode};
+use crate::core::settings::Settings;
+use crate::core::snapshot::Snapshot;
+use crate::core::types::{CallEdge, FileNode, ImportEdge};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-pub fn default_focus() -> FocusMode { FocusMode::All }
-pub fn empty_entry_points() -> HashSet<String> { HashSet::new() }
-pub fn no_hidden() -> HashSet<String> { HashSet::new() }
+pub fn default_focus() -> FocusMode {
+    FocusMode::All
+}
+pub fn empty_entry_points() -> HashSet<String> {
+    HashSet::new()
+}
+pub fn no_hidden() -> HashSet<String> {
+    HashSet::new()
+}
 
 /// Build LayoutConfig and call compute_layout_from_snapshot with common defaults.
+#[allow(dead_code)]
 pub fn run_layout(
     snap: &Snapshot,
     size_mode: SizeMode,
@@ -28,13 +35,17 @@ pub fn run_layout(
     let entry = empty_entry_points();
     let hidden = no_hidden();
     let cfg = super::LayoutConfig {
-        size_mode, scale_mode, layout_mode,
-        heat_map: None, settings: &settings, focus_mode: &focus,
-        entry_point_files: &entry, hidden_paths: &hidden, impact_files: None,
+        size_mode,
+        scale_mode,
+        layout_mode,
+        heat_map: None,
+        settings: &settings,
+        focus_mode: &focus,
+        entry_point_files: &entry,
+        hidden_paths: &hidden,
+        impact_files: None,
     };
-    super::compute_layout_from_snapshot(
-        snap, vw, vh, None, &cfg,
-    )
+    super::compute_layout_from_snapshot(snap, vw, vh, None, &cfg)
 }
 
 pub fn make_file(name: &str, path: &str, lines: u32) -> FileNode {
@@ -91,9 +102,7 @@ pub fn simple_snapshot() -> Snapshot {
             make_dir(
                 "tests",
                 "project/tests",
-                vec![
-                    make_file("test_main.rs", "project/tests/test_main.rs", 80),
-                ],
+                vec![make_file("test_main.rs", "project/tests/test_main.rs", 80)],
             ),
             make_file("Cargo.toml", "project/Cargo.toml", 20),
         ],

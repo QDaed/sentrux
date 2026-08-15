@@ -13,9 +13,9 @@ fn render_breadcrumb_buttons(ui: &mut egui::Ui, drill_stack: &[String]) -> Optio
         if ui.small_button("Root").clicked() {
             clicked_action = Some(usize::MAX);
         }
-        for i in 0..drill_stack.len() {
+        for (i, item) in drill_stack.iter().enumerate() {
             ui.label("/");
-            let name = drill_stack[i].rsplit('/').next().unwrap_or(&drill_stack[i]);
+            let name = item.rsplit('/').next().unwrap_or(item);
             if ui.small_button(name).clicked() {
                 clicked_action = Some(i);
             }
@@ -27,8 +27,14 @@ fn render_breadcrumb_buttons(ui: &mut egui::Ui, drill_stack: &[String]) -> Optio
 /// Apply a breadcrumb click action to the drill stack. Returns true if changed.
 fn apply_breadcrumb_action(drill_stack: &mut Vec<String>, action: Option<usize>) -> bool {
     match action {
-        Some(usize::MAX) => { drill_stack.clear(); true }
-        Some(i) if i + 1 < drill_stack.len() => { drill_stack.truncate(i + 1); true }
+        Some(usize::MAX) => {
+            drill_stack.clear();
+            true
+        }
+        Some(i) if i + 1 < drill_stack.len() => {
+            drill_stack.truncate(i + 1);
+            true
+        }
         _ => false,
     }
 }
@@ -43,9 +49,12 @@ pub fn draw_breadcrumb(ui: &mut egui::Ui, state: &mut AppState) -> bool {
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new(name).monospace().size(10.0).weak());
                 let tc = crate::core::settings::ThemeConfig::from_theme(state.theme);
-                ui.label(egui::RichText::new("(double-click a directory to drill in)").monospace().size(8.0).color(
-                    tc.text_muted
-                ));
+                ui.label(
+                    egui::RichText::new("(double-click a directory to drill in)")
+                        .monospace()
+                        .size(8.0)
+                        .color(tc.text_muted),
+                );
             });
         }
         return false;
