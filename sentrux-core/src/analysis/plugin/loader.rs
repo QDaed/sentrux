@@ -118,9 +118,69 @@ fn parse_version(s: &str) -> (u64, u64, u64, &str) {
     )
 }
 
-/// Compare two dotted version strings. Pre-release segments are only used to
-/// break ties on an otherwise equal core (a release is newer than any pre-release
-/// of the same core; otherwise pre-releases are compared lexicographically).
+/// Pre-release identifier, either numeric or alphanumeric.
+#[derive(Debug, PartialEq)]
+enum PrId {
+    Num(u64),
+    Str(String),
+}
+
+/// Parse a pre-release suffix into semver-like identifiers.
+fn parse_pre(s: &str) -> Vec<PrId> {
+    s.split('.').flat_map(parse_pre_segment).collect()
+}
+
+fn parse_pre_segment(seg: &str) -> Vec<PrId> {
+    if seg.is_empty() {
+        return Vec::new();
+    }
+    if seg.chars().all(|c| c.is_ascii_digit()) {
+        return vec![PrId::Num(seg.parse().unwrap_or(u64::MAX))];
+    }
+    if let Some(i) = seg.find(|c: char| c.is_ascii_digit()) {
+        let prefix = &seg[..i];
+        let rest = &seg[i..];
+        if !prefix.is_empty()
+            && prefix.chars().all(|c| c.is_alphabetic() || c == '-')
+            && rest.chars().all(|c| c.is_ascii_digit())
+        {
+            let num = rest.parse().unwrap_or(u64::MAX);
+            return vec![PrId::Str(prefix.to_string()), PrId::Num(num)];
+        }
+    }
+    vec![PrId::Str(seg.to_string())]
+}
+
+fn cmp_pre(current: &str, min: &str) -> std::cmp::Ordering {
+    let mut c = parse_pre(current).into_iter();
+    let mut m = parse_pre(min).into_iter();
+    loop {
+        match (c.next(), m.next()) {
+            (None, None) => return std::cmp::Ordering::Equal,
+            (Some(_), None) => return std::cmp::Ordering::Greater,
+            (None, Some(_)) => return std::cmp::Ordering::Less,
+            (Some(a), Some(b)) => match (a, b) {
+                (PrId::Num(_), PrId::Str(_)) => return std::cmp::Ordering::Less,
+                (PrId::Str(_), PrId::Num(_)) => return std::cmp::Ordering::Greater,
+                (PrId::Num(x), PrId::Num(y)) => match x.cmp(&y) {
+                    std::cmp::Ordering::Equal => continue,
+                    other => return other,
+                },
+                (PrId::Str(x), PrId::Str(y)) => match x.cmp(&y) {
+                    std::cmp::Ordering::Equal => continue,
+                    other => return other,
+                },
+            },
+        }
+    }
+}
+
+/// Compare two dotted version strings.
+///
+/// Semver-style rules are used: a release is newer than any pre-release of the
+/// same core; pre-releases are compared identifier by identifier, with numeric
+/// identifiers sorting before alphanumeric ones and shorter prefixes sorting
+/// before longer ones (`alpha` < `alpha.1`).
 fn version_at_least(current: &str, min: &str) -> bool {
     let (c_maj, c_min, c_pat, c_pre) = parse_version(current);
     let (m_maj, m_min, m_pat, m_pre) = parse_version(min);
@@ -130,8 +190,10 @@ fn version_at_least(current: &str, min: &str) -> bool {
         std::cmp::Ordering::Equal => {
             if m_pre.is_empty() {
                 c_pre.is_empty()
+            } else if c_pre.is_empty() {
+                true
             } else {
-                c_pre.is_empty() || c_pre >= m_pre
+                matches!(cmp_pre(c_pre, m_pre), std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
             }
         }
     }
@@ -381,5 +443,22 @@ mod tests {
                 Err(e) => println!("\nFAIL {}: {}", name, e),
             }
         }
+    }
+
+    #[test]
+    fn test_version_at_least_release_and_prerelease() {
+        assert!(version_at_least("0.5.7", "0.5.6"));
+        assert!(version_at_least("0.5.7", "0.5.7"));
+        assert!(!version_at_least("0.5.6", "0.5.7"));
+        // Release newer than pre-release of same core.
+        assert!(version_at_least("0.5.7", "0.5.7-rc1"));
+        assert!(!version_at_least("0.5.7-rc1", "0.5.7"));
+        // Numeric pre-release ordering.
+        assert!(version_at_least("0.5.7-rc10", "0.5.7-rc2"));
+        assert!(!version_at_least("0.5.7-rc2", "0.5.7-rc10"));
+        // Dotted pre-release ordering.
+        assert!(version_at_least("1.0.0-alpha.2", "1.0.0-alpha.1"));
+        assert!(version_at_least("1.0.0-alpha.1", "1.0.0-alpha"));
+        assert!(!version_at_least("1.0.0-alpha", "1.0.0-alpha.1"));
     }
 }
