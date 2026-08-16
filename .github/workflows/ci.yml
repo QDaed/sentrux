@@ -62,7 +62,7 @@ jobs:
           mkdir -p ~/.sentrux/plugins
           DOWNLOADED=false
           for TAG in $(git tag --sort=-v:refname | head -5); do
-            URL="https://github.com/sentrux/sentrux/releases/download/${TAG}/grammars-${PLATFORM}.tar.gz"
+            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/grammars-${PLATFORM}.tar.gz"
             if curl -fsSL "$URL" -o /tmp/grammars.tar.gz 2>/dev/null; then
               echo "Grammar bundle downloaded from ${TAG}"
               tar xzf /tmp/grammars.tar.gz -C ~/.sentrux/plugins/

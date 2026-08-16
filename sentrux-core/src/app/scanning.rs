@@ -311,7 +311,9 @@ impl SentruxApp {
         if !is_finished {
             return;
         }
-        let handle = self.scanner_handle.take().unwrap();
+        let Some(handle) = self.scanner_handle.take() else {
+            return;
+        };
         match handle.join() {
             Ok(()) => {
                 self.state.scan_step = "Error: scanner thread exited unexpectedly".into();
@@ -362,7 +364,9 @@ impl SentruxApp {
         if !is_finished {
             return;
         }
-        let handle = self.layout_handle.take().unwrap();
+        let Some(handle) = self.layout_handle.take() else {
+            return;
+        };
         self.handle_dead_layout_result(handle, ctx);
     }
 

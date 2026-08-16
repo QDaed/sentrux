@@ -22,4 +22,3 @@ target/
 .beemem*/
 .claude/
 .wrangler/
-sentrux-core/src/analysis/plugin/embedded.rs

@@ -327,7 +327,9 @@ fn draw_privacy_section(ui: &mut egui::Ui) {
         {
             if let Some(path) = &opt_out_path {
                 if opted_out {
-                    let _ = std::fs::create_dir_all(path.parent().unwrap());
+                    if let Some(parent) = path.parent() {
+                        let _ = std::fs::create_dir_all(parent);
+                    }
                     let _ = std::fs::write(path, "1");
                 } else {
                     let _ = std::fs::remove_file(path);
