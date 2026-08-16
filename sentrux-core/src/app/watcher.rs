@@ -68,9 +68,7 @@ fn build_gitignore(root: &Path) -> ignore::gitignore::Gitignore {
                 "[watcher] gitignore build error: {}, using empty matcher",
                 e
             );
-            ignore::gitignore::GitignoreBuilder::new(root)
-                .build()
-                .expect("empty gitignore should always build")
+            ignore::gitignore::Gitignore::empty()
         }
     }
 }

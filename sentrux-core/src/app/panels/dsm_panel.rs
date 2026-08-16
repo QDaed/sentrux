@@ -75,19 +75,21 @@ fn draw_dsm_body(
     state: &mut AppState,
     tc: &crate::core::settings::ThemeConfig,
 ) -> Option<bool> {
-    if state.snapshot.is_none() {
-        ui.label(
-            egui::RichText::new("Scan a project first")
-                .monospace()
-                .size(9.0)
-                .color(tc.text_secondary),
-        );
-        return None;
-    }
+    let snap = match state.snapshot.as_ref() {
+        Some(s) => s,
+        None => {
+            ui.label(
+                egui::RichText::new("Scan a project first")
+                    .monospace()
+                    .size(9.0)
+                    .color(tc.text_secondary),
+            );
+            return None;
+        }
+    };
     // Key DSM cache by snapshot content fingerprint instead of pointer identity.
     // Pointer identity can produce false cache hits if the allocator reuses an
     // address after a dropped Arc. [H9 fix]
-    let snap = state.snapshot.as_ref().unwrap();
     let snap_key = snap.import_graph.len() as u64 * 1_000_003
         + snap.total_files as u64 * 7
         + snap.total_lines as u64;
@@ -100,7 +102,7 @@ fn draw_dsm_body(
         let s = dsm::compute_stats(&m);
         state.dsm_cache = Some((snap_key, m, s));
     }
-    let (_, ref matrix, ref stats) = state.dsm_cache.as_ref().unwrap();
+    let (_, matrix, stats) = state.dsm_cache.as_ref()?;
     let size = matrix.size;
     let total_files = matrix.total_files;
     let dropped_level_range = matrix.dropped_level_range;

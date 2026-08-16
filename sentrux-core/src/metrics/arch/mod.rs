@@ -264,9 +264,9 @@ impl ArchBaseline {
 
 // ── Grading ──
 
-/// Blast radius concentration score [0,1].
+/// Blast radius concentration score `[0,1]`.
 /// 1.0 = no concentrated blast, 0.0 = catastrophic concentration.
-/// [ref:28b7bc6f]
+/// `[ref:28b7bc6f]`
 pub fn score_blast_concentration(blast_radius: &HashMap<String, u32>, edges: &[ImportEdge]) -> f64 {
     if blast_radius.is_empty() || edges.is_empty() {
         return 1.0;
@@ -369,7 +369,7 @@ fn find_max_non_foundation_blast(
     max_non_foundation
 }
 
-/// Attack surface score [0,1]: 1.0 = minimal exposure, 0.0 = everything reachable.
+/// Attack surface score `[0,1]`: 1.0 = minimal exposure, 0.0 = everything reachable.
 pub fn score_attack_surface(ratio: f64) -> f64 {
     (1.0 - ratio).clamp(0.0, 1.0)
 }

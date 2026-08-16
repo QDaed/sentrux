@@ -20,7 +20,7 @@ use std::sync::Arc;
 /// Each command carries its own `gen` (generation counter) so the scanner
 /// doesn't need a shared atomic — eliminates the send/bump race where
 /// the scanner could load a stale generation between try_send and fetch_add
-/// on the main thread. [ref:13696c9c]
+/// on the main thread. `[ref:13696c9c]`
 pub enum ScanCommand {
     /// Full scan of a directory — walks filesystem, parses all files, builds graphs.
     FullScan {
@@ -69,7 +69,7 @@ pub struct ScanReports {
 /// Messages from scanner thread → main thread.
 /// TreeReady and Complete carry a generation counter so the main thread
 /// can reject stale results from a previous scan (e.g., after rapid
-/// directory switches). [ref:93cf32d4]
+/// directory switches). `[ref:93cf32d4]`
 pub enum ScanMsg {
     /// Scan progress update (step name + percentage)
     Progress(ScanProgress),

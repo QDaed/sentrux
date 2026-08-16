@@ -817,23 +817,28 @@ impl<'a> TarjanState<'a> {
 
     /// Update lowlink for v when neighbor w is already on stack.
     fn update_lowlink(&mut self, v: &'a str, w: &'a str) {
-        if self.on_stack.contains(w) {
-            let w_idx = self.index_map[w];
-            let v_low = self.lowlink.get_mut(v).unwrap();
-            if w_idx < *v_low {
-                *v_low = w_idx;
-            }
+        if !self.on_stack.contains(w) {
+            return;
+        }
+        let Some(&w_idx) = self.index_map.get(w) else {
+            return;
+        };
+        let Some(v_low) = self.lowlink.get_mut(v) else {
+            return;
+        };
+        if w_idx < *v_low {
+            *v_low = w_idx;
         }
     }
 
     /// Pop an SCC rooted at `root` from the stack. Only keeps cycles (len > 1).
     fn pop_scc(&mut self, root: &str) {
         let mut scc = Vec::new();
-        loop {
-            let w = self.stack.pop().unwrap();
+        while let Some(w) = self.stack.pop() {
             self.on_stack.remove(w);
+            let is_root = w == root;
             scc.push(w.to_string());
-            if w == root {
+            if is_root {
                 break;
             }
         }
@@ -845,7 +850,9 @@ impl<'a> TarjanState<'a> {
 
     /// Propagate lowlink from child to parent after DFS backtrack.
     fn propagate_lowlink(&mut self, parent: &'a str, child_low: u32) {
-        let parent_low = self.lowlink.get_mut(parent).unwrap();
+        let Some(parent_low) = self.lowlink.get_mut(parent) else {
+            return;
+        };
         if child_low < *parent_low {
             *parent_low = child_low;
         }
@@ -881,8 +888,14 @@ fn tarjan_sccs<'a>(
                 }
             } else {
                 let v_node = *v;
-                let v_low = state.lowlink[v_node];
-                let v_idx = state.index_map[v_node];
+                let Some(&v_low) = state.lowlink.get(v_node) else {
+                    dfs_stack.pop();
+                    continue;
+                };
+                let Some(&v_idx) = state.index_map.get(v_node) else {
+                    dfs_stack.pop();
+                    continue;
+                };
 
                 if v_low == v_idx {
                     state.pop_scc(v_node);

@@ -26,7 +26,7 @@ static STATUS_CACHE: LazyLock<DashMap<String, GitStatusEntry>> = LazyLock::new(D
 const STATUS_CACHE_TTL_MS: u128 = 2000;
 
 /// Clear all cached git statuses — called on directory switch to prevent
-/// stale entries from a previous project persisting. [ref:93cf32d4]
+/// stale entries from a previous project persisting. `[ref:93cf32d4]`
 pub fn clear_cache() {
     STATUS_CACHE.clear();
 }

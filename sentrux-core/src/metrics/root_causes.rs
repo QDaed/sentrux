@@ -314,14 +314,14 @@ pub fn compute_redundancy_ratio(
 //  NORMALIZE + AGGREGATE
 // ══════════════════════════════════════════════════════════════════
 
-/// Normalize raw root cause values to [0, 1] scores and compute quality signal.
+/// Normalize raw root cause values to `[0, 1]` scores and compute quality signal.
 ///
 /// Normalization rules (no arbitrary parameters for 3 of 5):
-///   Q:         score = (Q + 0.5) / 1.5      linear rescale [-0.5,1] → [0,1]
+///   Q:         score = (Q + 0.5) / 1.5      linear rescale `[-0.5,1]` → `[0,1]`
 ///   Cycles:    score = 1 / (1 + cycles)      sigmoid (unbounded count)
 ///   Depth:     score = 1 / (1 + depth / 8)   sigmoid (unbounded count, midpoint=8)
-///   Gini:      score = 1 - G                 direct invert [0,1] → [1,0]
-///   Redundancy: score = 1 - R                direct invert [0,1] → [1,0]
+///   Gini:      score = 1 - G                 direct invert `[0,1]` → `[1,0]`
+///   Redundancy: score = 1 - R                direct invert `[0,1]` → `[1,0]`
 ///
 /// Quality signal = geometric mean of all 5 scores.
 pub fn compute_root_cause_scores(raw: &RootCauseRaw) -> (RootCauseScores, f64) {

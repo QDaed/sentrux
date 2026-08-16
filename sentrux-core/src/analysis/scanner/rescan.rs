@@ -19,7 +19,7 @@ use std::time::UNIX_EPOCH;
 
 /// Incremental rescan: patch an existing snapshot with changes to specific files.
 /// Re-parses only changed files, rebuilds tree + graphs.
-/// Accepts `on_tree_ready` to emit partial snapshot before graph rebuild. [ref:7f9a39c8]
+/// Accepts `on_tree_ready` to emit partial snapshot before graph rebuild. `[ref:7f9a39c8]`
 pub fn rescan_changed(
     root_path: &str,
     old_snap: &Snapshot,

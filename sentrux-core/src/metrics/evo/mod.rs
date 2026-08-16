@@ -124,13 +124,13 @@ pub struct EvolutionReport {
     /// Ratio of files with only 1 author.
     pub single_author_ratio: f64,
 
-    /// Bus factor score [0,1]: 1.0 = no single-author files, 0.0 = all single-author.
+    /// Bus factor score `[0,1]`: 1.0 = no single-author files, 0.0 = all single-author.
     pub bus_factor_score: f64,
 
-    /// Churn concentration score [0,1]: 1.0 = uniform churn, 0.0 = all churn in top 10%.
+    /// Churn concentration score `[0,1]`: 1.0 = uniform churn, 0.0 = all churn in top 10%.
     pub churn_score: f64,
 
-    /// Overall evolution score [0,1]: min of sub-scores.
+    /// Overall evolution score `[0,1]`: min of sub-scores.
     pub evolution_score: f64,
 
     /// Analysis window in days.

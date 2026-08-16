@@ -10,8 +10,8 @@
 //!   3. Project `.sentrux/rules.toml` — project-level policy overrides
 //!
 //! Architecture:
-//!   Layer 1 (plugin.toml [grammar] + [queries])  → HOW to parse
-//!   Layer 2 (plugin.toml [semantics] + [thresholds]) → WHAT'S NORMAL (this module)
+//!   Layer 1 (plugin.toml `[grammar]` + `[queries]`)  → HOW to parse
+//!   Layer 2 (plugin.toml `[semantics]` + `[thresholds]`) → WHAT'S NORMAL (this module)
 //!   Layer 3 (.sentrux/rules.toml)                → WHAT THE PROJECT REQUIRES
 
 use serde::Deserialize;

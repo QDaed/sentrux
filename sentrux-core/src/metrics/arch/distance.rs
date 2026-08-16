@@ -264,8 +264,8 @@ fn build_module_distances(
 
 // ── Scoring ──
 
-/// Distance score [0,1]: 1.0 = all modules on main sequence, 0.0 = maximally off.
-/// [ref:736ae249]
+/// Distance score `[0,1]`: 1.0 = all modules on main sequence, 0.0 = maximally off.
+/// `[ref:736ae249]`
 pub fn score_distance(avg_distance: f64) -> f64 {
     (1.0 - avg_distance).clamp(0.0, 1.0)
 }
