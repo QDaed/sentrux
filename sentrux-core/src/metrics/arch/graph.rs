@@ -168,7 +168,7 @@ fn kosaraju_assign_sccs<'a>(
 /// Compute levels via Kahn's topological sort on the SCC DAG.
 /// Level 0 = leaf nodes (no outgoing imports). Level N = imports up to level N-1.
 /// Cycles are handled by collapsing SCCs — all nodes in a cycle get the same
-/// level (max of their dependencies + 1). O(V+E), no re-enqueue. [ref:4e8f1175]
+/// level (max of their dependencies + 1). O(V+E), no re-enqueue. `[ref:4e8f1175]`
 pub fn compute_levels(edges: &[ImportEdge]) -> (HashMap<String, u32>, u32) {
     if edges.is_empty() {
         return (HashMap::new(), 0);
@@ -322,7 +322,7 @@ pub(crate) fn find_upward_violations_with_sccs(
 ///
 /// Uses index-based BFS with a reusable `Vec<bool>` instead of per-node
 /// `HashSet<&str>` allocation. For V nodes: old approach allocated V HashSets
-/// growing up to V entries = O(V^2) memory. New approach: one Vec<bool> of
+/// growing up to V entries = O(V^2) memory. New approach: one `Vec<bool>` of
 /// size V, cleared between runs = O(V) memory.
 ///
 /// For very large graphs (>5000 nodes), samples uniformly across the node set

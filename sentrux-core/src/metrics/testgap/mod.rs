@@ -64,7 +64,7 @@ pub struct TestGapReport {
     /// Coverage ratio: tested / total source.
     pub coverage_ratio: f64,
 
-    /// Coverage score [0,1]: same as coverage_ratio.
+    /// Coverage score `[0,1]`: same as coverage_ratio.
     pub coverage_score: f64,
 
     /// Untested files ranked by risk (complexity × fan-in).

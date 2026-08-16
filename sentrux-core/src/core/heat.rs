@@ -118,7 +118,7 @@ impl HeatTracker {
 
     /// Get current heat for a file (0.0–5.0 raw, 0.0 if not tracked).
     /// Computes live decay at query time for smooth animation (not stale
-    /// cached value from last tick). [ref:4f5a9de5]
+    /// cached value from last tick). `[ref:4f5a9de5]`
     /// Takes `now` to avoid calling Instant::now() per-file per-frame
     /// (previously ~2000 syscalls/frame for 1000 visible files).
     #[inline]
@@ -158,7 +158,7 @@ impl HeatTracker {
     }
 
     /// Get all files with heat > threshold, sorted by heat descending.
-    /// Uses live exponential decay (same as get_heat) for consistency. [ref:4f5a9de5]
+    /// Uses live exponential decay (same as get_heat) for consistency. `[ref:4f5a9de5]`
     pub fn hot_files(&self, threshold: f64, now: Instant, half_life: f64) -> Vec<(&str, f64)> {
         let ln2 = std::f64::consts::LN_2;
         let mut v: Vec<(&str, f64)> = self
@@ -178,10 +178,10 @@ impl HeatTracker {
 }
 
 /// Heat value → color (cool blue → warm yellow → hot red).
-/// BUG 12 fix: use 3-stop gradient across the full [0,1] range instead of
+/// BUG 12 fix: use 3-stop gradient across the full `[0,1]` range instead of
 /// saturating at t=0.5. Previously heat values > 2.5 all mapped to nearly
 /// the same red, compressing half the color space into identical output.
-/// New stops: blue(0) → orange(0.33) → yellow(0.66) → red(1.0). [ref:93cf32d4]
+/// New stops: blue(0) → orange(0.33) → yellow(0.66) → red(1.0). `[ref:93cf32d4]`
 pub fn heat_color(heat: f64) -> Color32 {
     let t = (heat / MAX_HEAT).clamp(0.0, 1.0) as f32;
     if t < 0.33 {

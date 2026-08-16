@@ -88,7 +88,7 @@ thread_local! {
 }
 
 /// Clear the parser cache — called on directory switch to prevent monotonic
-/// growth across scan sessions. [ref:93cf32d4]
+/// growth across scan sessions. `[ref:93cf32d4]`
 pub fn clear_cache() {
     match CACHE.lock() {
         Ok(mut cache) => cache.clear(),
@@ -405,7 +405,7 @@ fn distribute_calls_to_functions(
 
 /// Parse a file and extract structural analysis. Cached by content hash.
 /// Uses thread-local Parser and registry-based query extraction.
-/// Cache uses a single Mutex<ParseCache> — no CACHE/CACHE_ORDER split race. [ref:93cf32d4]
+/// Cache uses a single `Mutex<ParseCache>` — no `CACHE`/`CACHE_ORDER` split race. `[ref:93cf32d4]`
 pub fn parse_file(path: &str, lang: &str, max_parse_size: usize) -> Option<StructuralAnalysis> {
     // Check file size BEFORE reading to prevent OOM on large binaries
     let file_size = std::fs::metadata(path).ok()?.len() as usize;

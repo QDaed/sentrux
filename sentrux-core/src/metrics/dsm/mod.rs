@@ -61,7 +61,7 @@ pub struct DesignStructureMatrix {
     #[allow(dead_code)] // Lookup index for DSM panel interactions
     pub index: HashMap<String, usize>,
 
-    /// NxN matrix: matrix[row][col] = true means files[row] imports files[col].
+    /// NxN matrix: `matrix[row][col] = true` means `files[row]` imports `files[col]`.
     /// Row = importer (from), Col = imported (to).
     pub matrix: Vec<Vec<bool>>,
 
@@ -82,7 +82,7 @@ pub struct DesignStructureMatrix {
     /// which violated conservation and confused DSM panel users.
     pub same_level: usize,
 
-    /// Adjacency list built during matrix construction — adj[i] = list of j where matrix[i][j].
+    /// Adjacency list built during matrix construction — `adj[i] = list of j where matrix[i][j]`.
     /// Avoids O(N²) matrix scan when computing propagation cost.
     pub adj: Vec<Vec<usize>>,
 

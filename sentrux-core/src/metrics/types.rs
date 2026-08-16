@@ -14,7 +14,7 @@ use std::collections::HashMap;
 // Project-level overrides come from .sentrux/rules.toml.
 
 /// Complete health report for a codebase snapshot.
-/// Aggregates all health dimensions into a single quality signal [0,1].
+/// Aggregates all health dimensions into a single quality signal `[0,1]`.
 #[derive(Debug, Clone)]
 pub struct HealthReport {
     // ── Graph-level metrics ──
@@ -99,12 +99,12 @@ pub struct HealthReport {
     pub cog_complex_ratio: f64,
 
     // ── Root Cause Scores (6 fundamental metrics) ──
-    /// Quality signal ∈ [0,1]: geometric mean of 6 root cause scores.
+    /// Quality signal ∈ `[0,1]`: geometric mean of 6 root cause scores.
     /// THE one number AI agents maximize. Higher = better architecture.
     pub quality_signal: f64,
     /// Raw root cause values (un-normalized, for display)
     pub root_cause_raw: super::root_causes::RootCauseRaw,
-    /// Normalized root cause scores ∈ [0,1] (for signal computation)
+    /// Normalized root cause scores ∈ `[0,1]` (for signal computation)
     pub root_cause_scores: super::root_causes::RootCauseScores,
 }
 

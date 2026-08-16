@@ -2,7 +2,7 @@
 //!
 //! Each plugin directory contains:
 //! - plugin.toml (manifest)
-//! - grammars/<platform>.so|.dylib (compiled tree-sitter grammar)
+//! - `grammars/<platform>.so|.dylib` (compiled tree-sitter grammar)
 //! - queries/tags.scm (tree-sitter queries)
 //!
 //! Loaded grammars are registered into the global LangRegistry alongside built-in languages.
