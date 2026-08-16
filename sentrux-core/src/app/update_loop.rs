@@ -44,6 +44,9 @@ impl SentruxApp {
 
         let scanner_handle = spawn_scanner_thread(scan_cmd_rx, scan_msg_tx.clone());
         let layout_handle = spawn_layout_thread(layout_req_rx, layout_msg_tx);
+        if scanner_handle.is_none() || layout_handle.is_none() {
+            crate::debug_log!("[app] critical worker thread failed to spawn");
+        }
 
         Self {
             state,
@@ -58,8 +61,8 @@ impl SentruxApp {
             scan_generation: 0,
             scan_cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             watcher_setup_rx: None,
-            scanner_handle: Some(scanner_handle),
-            layout_handle: Some(layout_handle),
+            scanner_handle,
+            layout_handle,
             folder_picker_rx: None,
         }
     }
@@ -77,26 +80,36 @@ fn log_failed_languages() {
 fn spawn_scanner_thread(
     cmd_rx: crossbeam_channel::Receiver<ScanCommand>,
     msg_tx: crossbeam_channel::Sender<ScanMsg>,
-) -> std::thread::JoinHandle<()> {
-    std::thread::Builder::new()
+) -> Option<std::thread::JoinHandle<()>> {
+    match std::thread::Builder::new()
         .name("scanner".into())
         .spawn(move || {
             super::scan_threads::scanner_thread(cmd_rx, msg_tx);
-        })
-        .expect("failed to spawn scanner thread")
+        }) {
+        Ok(h) => Some(h),
+        Err(e) => {
+            crate::debug_log!("[app] failed to spawn scanner thread: {}", e);
+            None
+        }
+    }
 }
 
 /// Spawn the layout worker thread.
 fn spawn_layout_thread(
     req_rx: crossbeam_channel::Receiver<LayoutRequest>,
     msg_tx: crossbeam_channel::Sender<LayoutMsg>,
-) -> std::thread::JoinHandle<()> {
-    std::thread::Builder::new()
+) -> Option<std::thread::JoinHandle<()>> {
+    match std::thread::Builder::new()
         .name("layout".into())
         .spawn(move || {
             super::scan_threads::layout_thread(req_rx, msg_tx);
-        })
-        .expect("failed to spawn layout thread")
+        }) {
+        Ok(h) => Some(h),
+        Err(e) => {
+            crate::debug_log!("[app] failed to spawn layout thread: {}", e);
+            None
+        }
+    }
 }
 
 impl eframe::App for SentruxApp {
