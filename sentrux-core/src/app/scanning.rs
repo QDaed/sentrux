@@ -513,6 +513,14 @@ impl SentruxApp {
         }
     }
 
+    /// Ensure the scanner background thread is running, respawning it if it was
+    /// never successfully started (e.g. the initial spawn failed).
+    fn ensure_scanner_thread(&mut self) {
+        if self.scanner_handle.is_none() {
+            self.respawn_scanner_thread();
+        }
+    }
+
     /// Respawn the scanner background thread with fresh channels.
     /// Joins the old thread on a detached background thread to avoid blocking the UI.
     fn respawn_scanner_thread(&mut self) {
@@ -596,37 +604,52 @@ impl SentruxApp {
             Some(r) => r.clone(),
             None => return false,
         };
-        // Cancel any running scan before starting new one
-        self.scan_cancel
-            .store(true, std::sync::atomic::Ordering::Relaxed);
-        // Create fresh cancel token for the new scan
-        self.scan_cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-        let next_gen = self.scan_generation + 1;
-        match self.scan_tx.try_send(ScanCommand::FullScan {
-            root,
-            limits: crate::app::scan_threads::ScanLimits {
-                max_file_size_kb: self.state.settings.max_file_size_kb,
-                max_parse_size_kb: self.state.settings.max_parse_size_kb,
-                max_call_targets: self.state.settings.max_call_targets,
-            },
-            gen: next_gen,
-            cancel: self.scan_cancel.clone(),
-        }) {
-            Ok(()) => {
-                self.scan_generation = next_gen;
-                self.clear_stale_state();
-                true
+        for attempt in 0..2 {
+            if attempt == 0 {
+                self.ensure_scanner_thread();
+            } else {
+                crate::debug_log!("[app] scanner disconnected, respawning and retrying...");
+                self.respawn_scanner_thread();
+                if self.scanner_handle.is_none() {
+                    break;
+                }
             }
-            Err(crossbeam_channel::TrySendError::Full(_)) => {
-                self.state.scan_step = "Scanner busy, retrying...".into();
-                false
-            }
-            Err(crossbeam_channel::TrySendError::Disconnected(_)) => {
-                self.state.scan_step = "Error: scanner thread crashed".into();
-                false
+
+            // Cancel any running scan before starting new one
+            self.scan_cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+            // Create fresh cancel token for the new scan
+            self.scan_cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+            let next_gen = self.scan_generation + 1;
+            match self.scan_tx.try_send(ScanCommand::FullScan {
+                root: root.clone(),
+                limits: crate::app::scan_threads::ScanLimits {
+                    max_file_size_kb: self.state.settings.max_file_size_kb,
+                    max_parse_size_kb: self.state.settings.max_parse_size_kb,
+                    max_call_targets: self.state.settings.max_call_targets,
+                },
+                gen: next_gen,
+                cancel: self.scan_cancel.clone(),
+            }) {
+                Ok(()) => {
+                    self.scan_generation = next_gen;
+                    self.clear_stale_state();
+                    return true;
+                }
+                Err(crossbeam_channel::TrySendError::Full(_)) => {
+                    self.state.scan_step = "Scanner busy, retrying...".into();
+                    return false;
+                }
+                Err(crossbeam_channel::TrySendError::Disconnected(_)) => {
+                    // Loop around to respawn and try once more.
+                }
             }
         }
+
+        self.state.scan_step = "Error: scanner thread crashed".into();
+        false
     }
 
     /// Re-queue changed paths for a later debounce cycle (scanner was busy).
@@ -645,33 +668,61 @@ impl SentruxApp {
             (Some(r), Some(s)) => (r.clone(), Arc::clone(s)),
             _ => return,
         };
-        let next_gen = self.scan_generation + 1;
         let changed_count = changed.len();
-        match self.scan_tx.try_send(ScanCommand::Rescan {
-            root,
-            changed: changed.clone(),
-            old_snap: snap,
-            limits: crate::app::scan_threads::ScanLimits {
-                max_file_size_kb: self.state.settings.max_file_size_kb,
-                max_parse_size_kb: self.state.settings.max_parse_size_kb,
-                max_call_targets: self.state.settings.max_call_targets,
-            },
-            gen: next_gen,
-            cancel: self.scan_cancel.clone(),
-        }) {
-            Ok(()) => {
-                self.scan_generation = next_gen;
-                self.state.scanning = true;
-                self.state.scan_pct = 0;
-                self.state.scan_step = format!("Updating {} files...", changed_count);
+        let mut changed = changed;
+
+        for attempt in 0..2 {
+            if attempt == 0 {
+                self.ensure_scanner_thread();
+            } else {
+                crate::debug_log!(
+                    "[app] scanner disconnected during rescan, respawning and retrying..."
+                );
+                self.respawn_scanner_thread();
+                if self.scanner_handle.is_none() {
+                    break;
+                }
             }
-            Err(crossbeam_channel::TrySendError::Full(_)) => {
-                self.requeue_changes(changed);
-            }
-            Err(crossbeam_channel::TrySendError::Disconnected(_)) => {
-                self.state.scan_step = "Error: scanner thread crashed".into();
+
+            let next_gen = self.scan_generation + 1;
+            let taken = std::mem::take(&mut changed);
+            match self.scan_tx.try_send(ScanCommand::Rescan {
+                root: root.clone(),
+                changed: taken,
+                old_snap: Arc::clone(&snap),
+                limits: crate::app::scan_threads::ScanLimits {
+                    max_file_size_kb: self.state.settings.max_file_size_kb,
+                    max_parse_size_kb: self.state.settings.max_parse_size_kb,
+                    max_call_targets: self.state.settings.max_call_targets,
+                },
+                gen: next_gen,
+                cancel: self.scan_cancel.clone(),
+            }) {
+                Ok(()) => {
+                    self.scan_generation = next_gen;
+                    self.state.scanning = true;
+                    self.state.scan_pct = 0;
+                    self.state.scan_step = format!("Updating {} files...", changed_count);
+                    return;
+                }
+                Err(crossbeam_channel::TrySendError::Full(cmd)) => {
+                    if let ScanCommand::Rescan { changed: c, .. } = cmd {
+                        changed = c;
+                    }
+                    self.requeue_changes(changed);
+                    return;
+                }
+                Err(crossbeam_channel::TrySendError::Disconnected(cmd)) => {
+                    if let ScanCommand::Rescan { changed: c, .. } = cmd {
+                        changed = c;
+                    }
+                    // Loop around to respawn and try once more.
+                }
             }
         }
+
+        self.state.scan_step = "Error: scanner thread crashed".into();
+        self.requeue_changes(changed);
     }
 
     /// Start file watcher on current root. [ref:b9f45231]
