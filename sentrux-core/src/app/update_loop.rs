@@ -34,23 +34,22 @@ impl SentruxApp {
         setup_fonts(ctx, load_cjk);
         setup_style(ctx, state.settings.ui_scale, &state.theme_config);
 
-        let (scan_cmd_tx, scan_cmd_rx) = bounded::<ScanCommand>(1);
-        let (scan_msg_tx, scan_msg_rx) = bounded::<ScanMsg>(64);
-        let (layout_req_tx, layout_req_rx) = bounded::<LayoutRequest>(2);
-        let (layout_msg_tx, layout_msg_rx) = bounded::<LayoutMsg>(2);
+        // Placeholder channels; ensure_scanner_thread/ensure_layout_thread will
+        // replace these with real channels and spawned worker threads.
+        let (scan_tx, _) = bounded::<ScanCommand>(0);
+        let (_, scan_rx) = bounded::<ScanMsg>(0);
+        let (layout_tx, _) = bounded::<LayoutRequest>(0);
+        let (_, layout_rx) = bounded::<LayoutMsg>(0);
         let (watch_tx, watch_rx) = bounded::<FileEvent>(256);
 
         log_failed_languages();
 
-        let scanner_handle = spawn_scanner_thread(scan_cmd_rx, scan_msg_tx.clone());
-        let layout_handle = spawn_layout_thread(layout_req_rx, layout_msg_tx);
-
-        Self {
+        let mut app = Self {
             state,
-            scan_tx: scan_cmd_tx,
-            scan_rx: scan_msg_rx,
-            layout_tx: layout_req_tx,
-            layout_rx: layout_msg_rx,
+            scan_tx,
+            scan_rx,
+            layout_tx,
+            layout_rx,
             watch_rx,
             watch_tx,
             last_scanned_root: None,
@@ -58,10 +57,13 @@ impl SentruxApp {
             scan_generation: 0,
             scan_cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             watcher_setup_rx: None,
-            scanner_handle: Some(scanner_handle),
-            layout_handle: Some(layout_handle),
+            scanner_handle: None,
+            layout_handle: None,
             folder_picker_rx: None,
-        }
+        };
+        app.ensure_scanner_thread();
+        app.ensure_layout_thread();
+        app
     }
 }
 
@@ -71,32 +73,6 @@ fn log_failed_languages() {
     for err in failed {
         crate::debug_log!("[app] WARNING: plugin failed: {}", err);
     }
-}
-
-/// Spawn the scanner worker thread. [ref:13696c9c]
-fn spawn_scanner_thread(
-    cmd_rx: crossbeam_channel::Receiver<ScanCommand>,
-    msg_tx: crossbeam_channel::Sender<ScanMsg>,
-) -> std::thread::JoinHandle<()> {
-    std::thread::Builder::new()
-        .name("scanner".into())
-        .spawn(move || {
-            super::scan_threads::scanner_thread(cmd_rx, msg_tx);
-        })
-        .expect("failed to spawn scanner thread")
-}
-
-/// Spawn the layout worker thread.
-fn spawn_layout_thread(
-    req_rx: crossbeam_channel::Receiver<LayoutRequest>,
-    msg_tx: crossbeam_channel::Sender<LayoutMsg>,
-) -> std::thread::JoinHandle<()> {
-    std::thread::Builder::new()
-        .name("layout".into())
-        .spawn(move || {
-            super::scan_threads::layout_thread(req_rx, msg_tx);
-        })
-        .expect("failed to spawn layout thread")
 }
 
 impl eframe::App for SentruxApp {

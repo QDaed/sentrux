@@ -986,7 +986,8 @@ fn longest_path_dfs<'a>(
         on_stack.insert(start);
 
         while !stack.is_empty() {
-            let (node, idx, max_child) = stack.last_mut().unwrap();
+            let top = stack.len() - 1;
+            let (node, idx, max_child) = &mut stack[top];
             let neighbors = adj.get(*node).map(|v| v.as_slice()).unwrap_or(&[]);
 
             if *idx < neighbors.len() {
