@@ -7,31 +7,178 @@
 //!
 //! This provides a second opinion on the quality_signal from root_causes.
 //! If both agree, confidence is high. If they disagree, one sensor may be blind.
-//!
-//! Theory: Kolmogorov complexity K(x) is uncomputable, but compression ratio
-//! provides a computable upper bound. The gap between compressed and actual
-//! size approximates structural redundancy.
-//!
-//! STATUS: Skeleton — to be implemented.
 
-// TODO: Implement cross-validation
-//
-// Approach:
-//   1. Serialize the dependency graph adjacency list to bytes
-//   2. Compress with DEFLATE (available in flate2 crate)
-//   3. compression_ratio = compressed_size / original_size
-//   4. Lower ratio = more compressible = more redundant structure
-//   5. Cross-validate: compare with quality_signal from root causes
-//
-// Output:
-//   struct CrossValidation {
-//       compression_ratio: f64,      // [0, 1] — lower = more redundant
-//       agreement: f64,              // how closely this matches root cause signal
-//       confidence: f64,             // high if both agree, low if they diverge
-//   }
-//
-// Integration:
-//   - Computed alongside root causes in compute_health()
-//   - Returned in MCP health response as additional field
-//   - GUI shows confidence indicator next to quality signal
-//   - FREE tier — better signal benefits everyone
+use crate::core::types::ImportEdge;
+use std::io::Write;
+
+/// Independent quality estimate based on DEFLATE compression of the
+/// dependency graph.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CrossValidation {
+    /// compressed_size / original_size, clamped to `[0,1]`.
+    /// Lower = more compressible = more redundant = lower quality.
+    pub compression_ratio: f64,
+    /// How closely `compression_ratio` aligns with `quality_signal`, `[0,1]`.
+    pub agreement: f64,
+    /// Combined confidence in the quality signal, `[0,1]`.
+    pub confidence: f64,
+}
+
+/// Compute a compression-based cross-validation of the root-cause quality signal.
+///
+/// Returns `None` when there is no structural dependency data, because a
+/// compression estimate needs edges to be meaningful.
+pub fn compute(edges: &[ImportEdge], quality_signal: f64) -> Option<CrossValidation> {
+    if edges.is_empty() {
+        return None;
+    }
+
+    let mut pairs: Vec<(&str, &str)> = edges
+        .iter()
+        .filter(|e| !e.from_file.is_empty() && !e.to_file.is_empty())
+        .map(|e| (e.from_file.as_str(), e.to_file.as_str()))
+        .collect();
+    if pairs.is_empty() {
+        return None;
+    }
+
+    pairs.sort_unstable();
+
+    let mut original = Vec::new();
+    for (from, to) in pairs {
+        original.extend_from_slice(from.as_bytes());
+        original.push(0);
+        original.extend_from_slice(to.as_bytes());
+        original.push(0);
+    }
+
+    let original_len = original.len() as f64;
+    let mut encoder =
+        flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder.write_all(&original).ok()?;
+    let compressed = encoder.finish().ok()?;
+    let compressed_len = compressed.len() as f64;
+
+    // Clamp to [0, 1]. Values > 1 mean the data did not compress (overhead);
+    // we treat that as fully incompressible, i.e. high structural uniqueness.
+    let compression_ratio = (compressed_len / original_len).clamp(0.0, 1.0);
+    let expected = quality_signal.clamp(0.0, 1.0);
+    let agreement = (1.0 - (compression_ratio - expected).abs()).clamp(0.0, 1.0);
+    let confidence = agreement;
+
+    Some(CrossValidation {
+        compression_ratio,
+        agreement,
+        confidence,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn edge(from: &str, to: &str) -> ImportEdge {
+        ImportEdge {
+            from_file: from.into(),
+            to_file: to.into(),
+        }
+    }
+
+    /// Deterministic pseudo-random printable-ASCII string for incompressible edges.
+    fn random_name(seed: u64) -> String {
+        fn next(x: &mut u64) -> u64 {
+            *x = x.wrapping_add(0x9e3779b97f4a7c15);
+            let mut z = *x;
+            z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+            z ^ (z >> 31)
+        }
+
+        let mut x = seed;
+        let bytes: Vec<u8> = (0..8)
+            .flat_map(|_| {
+                let v = next(&mut x);
+                v.to_le_bytes().map(|b| b % 95 + 32)
+            })
+            .collect();
+        String::from_utf8(bytes).unwrap()
+    }
+
+    fn unique_edges(count: usize) -> Vec<ImportEdge> {
+        (0..count)
+            .map(|i| {
+                let base = i as u64 * 2;
+                edge(&random_name(base), &random_name(base + 1))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn empty_edges_returns_none() {
+        assert!(compute(&[], 0.5).is_none());
+    }
+
+    #[test]
+    fn compressible_redundant_graph_agrees_with_low_quality() {
+        // 100 identical edges are highly compressible => low ratio => low quality agreement.
+        let edges: Vec<_> = (0..100).map(|_| edge("src/a.rs", "src/b.rs")).collect();
+        let cv = compute(&edges, 0.05).unwrap();
+        assert!(
+            cv.compression_ratio < 0.5,
+            "repeated edges should compress well"
+        );
+        assert!(
+            cv.agreement > 0.5,
+            "low quality should agree with low ratio"
+        );
+        assert!(cv.confidence > 0.0);
+    }
+
+    #[test]
+    fn incompressible_unique_graph_agrees_with_high_quality() {
+        // 100 unique pseudo-random edges are less compressible than a redundant graph
+        // and should agree with a high quality signal.
+        let unique = unique_edges(100);
+        let redundant: Vec<_> = (0..100).map(|_| edge("src/a.rs", "src/b.rs")).collect();
+        let cv_unique = compute(&unique, 0.95).unwrap();
+        let cv_redundant = compute(&redundant, 0.5).unwrap();
+        assert!(
+            cv_unique.compression_ratio > cv_redundant.compression_ratio,
+            "unique graph should be less compressible than redundant graph"
+        );
+        assert!(
+            cv_unique.agreement > 0.5,
+            "high quality should agree with high ratio"
+        );
+    }
+
+    #[test]
+    fn high_quality_with_compressible_graph_produces_low_agreement() {
+        // A high quality signal paired with a highly redundant graph is a mismatch.
+        let edges: Vec<_> = (0..100).map(|_| edge("src/a.rs", "src/b.rs")).collect();
+        let cv = compute(&edges, 0.95).unwrap();
+        assert!(cv.agreement < 0.5, "mismatch should produce low agreement");
+    }
+
+    #[test]
+    fn unique_graph_has_higher_ratio_than_redundant_graph() {
+        let redundant: Vec<_> = (0..100).map(|_| edge("src/a.rs", "src/b.rs")).collect();
+        let unique = unique_edges(100);
+        let cv_redundant = compute(&redundant, 0.5).unwrap();
+        let cv_unique = compute(&unique, 0.5).unwrap();
+        assert!(
+            cv_unique.compression_ratio > cv_redundant.compression_ratio,
+            "unique graph should be less compressible than redundant graph"
+        );
+    }
+
+    #[test]
+    fn clamps_quality_signal_and_ratio() {
+        // A single edge is too small to compress; ratio clamps to 1.
+        let edges = vec![edge("a.rs", "b.rs")];
+        let cv = compute(&edges, -0.5).unwrap();
+        assert!(cv.compression_ratio >= 0.0 && cv.compression_ratio <= 1.0);
+        assert!(cv.agreement >= 0.0 && cv.agreement <= 1.0);
+        assert!(cv.confidence >= 0.0 && cv.confidence <= 1.0);
+    }
+}

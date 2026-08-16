@@ -75,13 +75,20 @@ fn handle_scan(args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value
 
     let (snapshot, health, arch_report) = do_scan(&root)?;
 
-    let result = json!({
+    let mut result = json!({
         "scanned": path,
         "quality_signal": (health.quality_signal * 10000.0).round() as u32,
         "files": snapshot.total_files,
         "lines": snapshot.total_lines,
         "import_edges": snapshot.import_graph.len()
     });
+    if let Some(cv) = &health.cross_validation {
+        result["cross_validation"] = json!({
+            "compression_ratio": cv.compression_ratio,
+            "agreement": cv.agreement,
+            "confidence": cv.confidence
+        });
+    }
 
     state.scan_root = Some(root);
     state.cached_snapshot = Some(Arc::new(snapshot));
@@ -98,7 +105,7 @@ fn handle_scan(args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Value
 pub fn health_def() -> ToolDef {
     ToolDef {
         name: "health",
-        description: "Get quality signal (0-1) with root cause breakdown (modularity, acyclicity, depth, equality, redundancy). Quality signal = geometric mean — maximize this ONE number.",
+        description: "Get quality signal (0-1) with root cause breakdown (modularity, acyclicity, depth, equality, redundancy) and an independent compression-based cross-validation. Quality signal = geometric mean — maximize this ONE number.",
         input_schema: json!({ "type": "object", "properties": {} }),
         min_tier: Tier::Free,
         handler: handle_health,
@@ -141,6 +148,13 @@ fn handle_health(_args: &Value, _tier: &Tier, state: &mut McpState) -> Result<Va
         "total_import_edges": h.total_import_edges,
         "cross_module_edges": h.cross_module_edges
     });
+    if let Some(cv) = &h.cross_validation {
+        result["cross_validation"] = json!({
+            "compression_ratio": cv.compression_ratio,
+            "agreement": cv.agreement,
+            "confidence": cv.confidence
+        });
+    }
 
     // Pro: root-cause-organized diagnostics. Tells AI WHERE to focus for each root cause.
     if crate::pro_registry::has(crate::pro_registry::ProFeature::McpDiagnostics) {

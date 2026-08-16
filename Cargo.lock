@@ -3494,6 +3494,7 @@ dependencies = [
  "ed25519-dalek",
  "eframe",
  "egui",
+ "flate2",
  "git2",
  "ignore",
  "libloading",

@@ -221,6 +221,7 @@ fn baseline_detects_degradation() {
         high_param_ratio: 0.0,
         cog_complex_ratio: 0.0,
         quality_signal: 0.5,
+        cross_validation: None,
         root_cause_raw: crate::metrics::root_causes::RootCauseRaw {
             modularity_q: 0.3,
             cycle_count: 2,
