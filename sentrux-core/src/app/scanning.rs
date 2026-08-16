@@ -472,6 +472,14 @@ impl SentruxApp {
         }
     }
 
+    /// Ensure the layout background thread is running, respawning it if it was
+    /// never successfully started (e.g. the initial spawn failed).
+    pub(crate) fn ensure_layout_thread(&mut self) {
+        if self.layout_handle.is_none() {
+            self.respawn_layout_thread();
+        }
+    }
+
     /// Respawn the layout background thread with fresh channels.
     /// Joins the old thread on a detached background thread to avoid blocking the UI.
     fn respawn_layout_thread(&mut self) {
@@ -515,7 +523,7 @@ impl SentruxApp {
 
     /// Ensure the scanner background thread is running, respawning it if it was
     /// never successfully started (e.g. the initial spawn failed).
-    fn ensure_scanner_thread(&mut self) {
+    pub(crate) fn ensure_scanner_thread(&mut self) {
         if self.scanner_handle.is_none() {
             self.respawn_scanner_thread();
         }

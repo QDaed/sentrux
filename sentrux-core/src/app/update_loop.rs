@@ -42,13 +42,13 @@ impl SentruxApp {
 
         log_failed_languages();
 
-        let scanner_handle = spawn_scanner_thread(scan_cmd_rx, scan_msg_tx.clone());
+        let scanner_handle = spawn_scanner_thread(scan_cmd_rx, scan_msg_tx);
         let layout_handle = spawn_layout_thread(layout_req_rx, layout_msg_tx);
         if scanner_handle.is_none() || layout_handle.is_none() {
             crate::debug_log!("[app] critical worker thread failed to spawn");
         }
 
-        Self {
+        let mut app = Self {
             state,
             scan_tx: scan_cmd_tx,
             scan_rx: scan_msg_rx,
@@ -64,7 +64,10 @@ impl SentruxApp {
             scanner_handle,
             layout_handle,
             folder_picker_rx: None,
-        }
+        };
+        app.ensure_scanner_thread();
+        app.ensure_layout_thread();
+        app
     }
 }
 
