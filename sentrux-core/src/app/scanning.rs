@@ -488,16 +488,15 @@ impl SentruxApp {
                 &mut self.layout_tx,
                 bounded::<LayoutRequest>(0).0,
             ));
-            // Join on a background thread to avoid blocking the UI event loop
-            std::thread::Builder::new()
+            // Join on a background thread to avoid blocking the UI event loop.
+            // If even the join thread can't be spawned, dropping old_handle here
+            // detaches it, so the app stays responsive.
+            let _ = std::thread::Builder::new()
                 .name("layout-join".into())
                 .spawn(move || {
                     let _ = old_handle.join();
                 })
-                .unwrap_or_else(|_| {
-                    // If we can't spawn, just detach (the old thread will exit on its own)
-                    std::thread::spawn(|| {})
-                });
+                .map_err(|e| crate::debug_log!("[app] failed to spawn layout-join thread: {}", e));
         }
         let (layout_req_tx, layout_req_rx) = bounded::<LayoutRequest>(2);
         let (layout_msg_tx, layout_msg_rx) = bounded::<LayoutMsg>(2);
@@ -537,13 +536,15 @@ impl SentruxApp {
                 &mut self.scan_tx,
                 bounded::<ScanCommand>(0).0,
             ));
-            // Join on a background thread to avoid blocking the UI event loop
-            std::thread::Builder::new()
+            // Join on a background thread to avoid blocking the UI event loop.
+            // If even the join thread can't be spawned, dropping old_handle here
+            // detaches it, so the app stays responsive.
+            let _ = std::thread::Builder::new()
                 .name("scanner-join".into())
                 .spawn(move || {
                     let _ = old_handle.join();
                 })
-                .unwrap_or_else(|_| std::thread::spawn(|| {}));
+                .map_err(|e| crate::debug_log!("[app] failed to spawn scanner-join thread: {}", e));
         }
         let (scan_cmd_tx, scan_cmd_rx) = bounded::<ScanCommand>(1);
         let (scan_msg_tx, scan_msg_rx) = bounded::<ScanMsg>(64);
