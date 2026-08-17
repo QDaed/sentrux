@@ -163,6 +163,10 @@ pub struct ArchDiff {
     pub god_files_before: usize,
     /// God file count from the current snapshot
     pub god_files_after: usize,
+    /// Cross-validation captured at baseline
+    pub cross_validation_before: Option<CrossValidation>,
+    /// Cross-validation from the current snapshot
+    pub cross_validation_after: Option<CrossValidation>,
     /// True if quality_signal dropped or any metric degraded
     pub degraded: bool,
     /// Human-readable violation descriptions
@@ -249,6 +253,18 @@ impl ArchBaseline {
             ));
         }
 
+        if let (Some(baseline_cv), Some(current_cv)) =
+            (self.cross_validation, current.cross_validation)
+        {
+            let confidence_delta = current_cv.confidence - baseline_cv.confidence;
+            if confidence_delta < -0.05 {
+                violations.push(format!(
+                    "Cross-validation confidence dropped: {:.2} → {:.2} ({:+.2})",
+                    baseline_cv.confidence, current_cv.confidence, confidence_delta
+                ));
+            }
+        }
+
         let degraded =
             current.quality_signal < self.quality_signal - 0.02 || !violations.is_empty();
 
@@ -261,6 +277,8 @@ impl ArchBaseline {
             cycles_after: current.circular_dep_count,
             god_files_before: self.god_file_count,
             god_files_after: current.god_files.len(),
+            cross_validation_before: self.cross_validation,
+            cross_validation_after: current.cross_validation,
             degraded,
             violations,
         }
