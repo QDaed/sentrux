@@ -492,57 +492,59 @@ class Bar:
     /// Comprehensive extraction test: for EVERY language that declares capabilities,
     /// parse real code and verify names AND imports are actually extracted.
     /// This is the REAL verification — not string matching on files.
+    // (lang, code, expected_func_or_class_name, expected_import_substring_or_empty)
+    const ALL_LANGS_CASES: &[(&str, &[u8], &str, &str)] = &[
+        // --- Original 11 languages with import_ast ---
+        ("python", b"import os\nfrom collections import defaultdict\ndef greet(name): pass\nclass Cat: pass\n", "greet", "os"),
+        ("rust", b"use std::collections::HashMap;\nfn hello() {}\nstruct Cat {}\n", "hello", "std/collections/HashMap"),
+        ("javascript", b"import React from 'react';\nfunction hello() {}\nclass Cat {}\n", "hello", "react"),
+        ("typescript", b"import { Component } from '@angular/core';\nfunction hello() {}\nclass Cat {}\n", "hello", "@angular/core"),
+        ("go", b"package main\nimport \"fmt\"\nfunc hello() {}\ntype Cat struct {}\n", "hello", "fmt"),
+        ("java", b"import java.util.List;\npublic class Cat {\n  public void hello() {}\n}\n", "hello", "java/util/List"),
+        ("c", b"#include \"mylib.h\"\nvoid hello() {}\n", "hello", "mylib.h"),
+        ("cpp", b"#include \"mylib.h\"\nvoid hello() {}\nclass Cat {};\n", "hello", "mylib.h"),
+        ("csharp", b"using System.Collections;\nclass Cat {\n  void Hello() {}\n}\n", "Hello", ""),
+        ("scala", b"import scala.collection.mutable\ndef greet(): Unit = {}\nclass Cat\n", "greet", ""),
+        ("elixir", b"alias Acme.Shared.V1\ndef greet(name), do: name\n", "greet", "acme/shared/v1"),
+
+        // --- 12 new languages ---
+        ("nim", b"proc hello(name: string) =\n  echo name\nimport strutils\n", "hello", "strutils"),
+        ("julia", b"function greet(name)\n  println(name)\nend\nimport LinearAlgebra\n", "greet", "LinearAlgebra"),
+        ("groovy", b"def hello(name) {\n  println name\n}\nimport groovy.json.JsonSlurper\n", "hello", "groovy.json.JsonSlurper"),
+        ("powershell", b"function Get-Hello {\n  param($Name)\n}\n", "Get-Hello", ""),
+        ("fsharp", b"let greet name = printfn name\nopen System\n", "greet", "System"),
+        ("solidity", b"pragma solidity ^0.8.0;\nimport \"./Ownable.sol\";\nfunction transfer() public {}\n", "transfer", "Ownable"),
+        ("dart", b"import 'dart:io';\nvoid greet(String name) {}\nclass Cat {}\n", "greet", "dart:io"),
+        ("ocaml", b"let greet name = print_string name\nopen List\n", "greet", "List"),
+        ("perl", b"use strict;\nsub hello { print \"hi\" }\n", "hello", "strict"),
+        ("erlang", b"-module(mymod).\n-import(lists, [map/2]).\nhello(Name) -> ok.\n", "hello", "lists"),
+        ("kotlin", b"import kotlin.collections.List\nfun greet(name: String) {}\nclass Cat\n", "greet", "kotlin/collections/List"),
+        ("protobuf", b"syntax = \"proto3\";\nimport \"other.proto\";\nmessage Person { string name = 1; }\n", "Person", "other.proto"),
+
+        // --- Languages fixed in this session ---
+        ("bash", b"#!/bin/bash\nmy_func() { echo hi; }\nsource ./utils.sh\n", "my_func", "utils"),
+        ("haskell", b"module Main where\nimport Data.List\ngreet name = name\n", "greet", "Data.List"),
+        ("html", b"<link rel=\"stylesheet\" href=\"/style.css\">\n<script src=\"/app.js\"></script>\n", "", "/style.css"),
+        ("zig", b"const std = @import(\"std\");\nfn hello() void {}\n", "hello", "std"),
+        ("nix", b"{ }:\nlet\n  utils = import ./utils.nix;\n  hello = x: x;\nin hello\n", "hello", "utils"),
+        ("objective-c", b"#import \"MyClass.h\"\nvoid hello() {}\n", "hello", "MyClass"),
+
+        // --- Svelte/Vue: functions only (no imports — grammar limitation) ---
+        ("cobol", b"       IDENTIFICATION DIVISION.\n       PROGRAM-ID. HELLO-WORLD.\n       PROCEDURE DIVISION.\n           DISPLAY \"Hello\".\n           STOP RUN.\n       COPY \"UTILS.CPY\".\n", "HELLO-WORLD", "UTILS"),
+        ("ruby", b"require 'json'\ndef hello; end\nclass Cat; end\n", "hello", "json"),
+        ("php", b"<?php\nuse App\\Models\\User;\nfunction hello() {}\nclass Cat {}\n", "hello", ""),
+        ("lua", b"local json = require('json')\nfunction hello() end\n", "hello", "json"),
+        ("swift", b"import Foundation\nfunc hello() {}\nclass Cat {}\n", "hello", "Foundation"),
+        ("r", b"library(ggplot2)\nhello <- function(x) { x }\n", "hello", "ggplot2"),
+    ];
+
     #[test]
     fn all_langs_extract_verified() {
-        // (lang, code, expected_func_or_class_name, expected_import_substring_or_empty)
-        let cases: &[(&str, &[u8], &str, &str)] = &[
-            // --- Original 11 languages with import_ast ---
-            ("python", b"import os\nfrom collections import defaultdict\ndef greet(name): pass\nclass Cat: pass\n", "greet", "os"),
-            ("rust", b"use std::collections::HashMap;\nfn hello() {}\nstruct Cat {}\n", "hello", "std/collections/HashMap"),
-            ("javascript", b"import React from 'react';\nfunction hello() {}\nclass Cat {}\n", "hello", "react"),
-            ("typescript", b"import { Component } from '@angular/core';\nfunction hello() {}\nclass Cat {}\n", "hello", "@angular/core"),
-            ("go", b"package main\nimport \"fmt\"\nfunc hello() {}\ntype Cat struct {}\n", "hello", "fmt"),
-            ("java", b"import java.util.List;\npublic class Cat {\n  public void hello() {}\n}\n", "hello", "java/util/List"),
-            ("c", b"#include \"mylib.h\"\nvoid hello() {}\n", "hello", "mylib.h"),
-            ("cpp", b"#include \"mylib.h\"\nvoid hello() {}\nclass Cat {};\n", "hello", "mylib.h"),
-            ("csharp", b"using System.Collections;\nclass Cat {\n  void Hello() {}\n}\n", "Hello", ""),
-            ("scala", b"import scala.collection.mutable\ndef greet(): Unit = {}\nclass Cat\n", "greet", ""),
-            ("elixir", b"alias Acme.Shared.V1\ndef greet(name), do: name\n", "greet", "acme/shared/v1"),
-
-            // --- 12 new languages ---
-            ("nim", b"proc hello(name: string) =\n  echo name\nimport strutils\n", "hello", "strutils"),
-            ("julia", b"function greet(name)\n  println(name)\nend\nimport LinearAlgebra\n", "greet", "LinearAlgebra"),
-            ("groovy", b"def hello(name) {\n  println name\n}\nimport groovy.json.JsonSlurper\n", "hello", "groovy.json.JsonSlurper"),
-            ("powershell", b"function Get-Hello {\n  param($Name)\n}\n", "Get-Hello", ""),
-            ("fsharp", b"let greet name = printfn name\nopen System\n", "greet", "System"),
-            ("solidity", b"pragma solidity ^0.8.0;\nimport \"./Ownable.sol\";\nfunction transfer() public {}\n", "transfer", "Ownable"),
-            ("dart", b"import 'dart:io';\nvoid greet(String name) {}\nclass Cat {}\n", "greet", "dart:io"),
-            ("ocaml", b"let greet name = print_string name\nopen List\n", "greet", "List"),
-            ("perl", b"use strict;\nsub hello { print \"hi\" }\n", "hello", "strict"),
-            ("erlang", b"-module(mymod).\n-import(lists, [map/2]).\nhello(Name) -> ok.\n", "hello", "lists"),
-            ("kotlin", b"import kotlin.collections.List\nfun greet(name: String) {}\nclass Cat\n", "greet", "kotlin/collections/List"),
-            ("protobuf", b"syntax = \"proto3\";\nimport \"other.proto\";\nmessage Person { string name = 1; }\n", "Person", "other.proto"),
-
-            // --- Languages fixed in this session ---
-            ("bash", b"#!/bin/bash\nmy_func() { echo hi; }\nsource ./utils.sh\n", "my_func", "utils"),
-            ("haskell", b"module Main where\nimport Data.List\ngreet name = name\n", "greet", "Data.List"),
-            ("html", b"<link rel=\"stylesheet\" href=\"/style.css\">\n<script src=\"/app.js\"></script>\n", "", "/style.css"),
-            ("zig", b"const std = @import(\"std\");\nfn hello() void {}\n", "hello", "std"),
-            ("nix", b"{ }:\nlet\n  utils = import ./utils.nix;\n  hello = x: x;\nin hello\n", "hello", "utils"),
-            ("objective-c", b"#import \"MyClass.h\"\nvoid hello() {}\n", "hello", "MyClass"),
-
-            // --- Svelte/Vue: functions only (no imports — grammar limitation) ---
-            ("cobol", b"       IDENTIFICATION DIVISION.\n       PROGRAM-ID. HELLO-WORLD.\n       PROCEDURE DIVISION.\n           DISPLAY \"Hello\".\n           STOP RUN.\n       COPY \"UTILS.CPY\".\n", "HELLO-WORLD", "UTILS"),
-            ("ruby", b"require 'json'\ndef hello; end\nclass Cat; end\n", "hello", "json"),
-            ("php", b"<?php\nuse App\\Models\\User;\nfunction hello() {}\nclass Cat {}\n", "hello", ""),
-            ("lua", b"local json = require('json')\nfunction hello() end\n", "hello", "json"),
-            ("swift", b"import Foundation\nfunc hello() {}\nclass Cat {}\n", "hello", "Foundation"),
-            ("r", b"library(ggplot2)\nhello <- function(x) { x }\n", "hello", "ggplot2"),
-        ];
+        // Test cases are in the module-level ALL_LANGS_CASES constant.
 
         let mut passed = 0;
         let mut failed = 0;
-        for &(lang, code, expected_name, expected_import) in cases {
+        for &(lang, code, expected_name, expected_import) in ALL_LANGS_CASES {
             let sa = match parse_bytes(code, lang) {
                 Some(sa) => sa,
                 None => {

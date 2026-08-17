@@ -56,66 +56,91 @@ pub fn compute(edges: &[ImportEdge], quality_signal: f64) -> Option<CrossValidat
     // Build label-to-index maps. Indices are only used to build adjacency; the
     // final metric depends on structural hashes, not on these indices or the
     // original path strings.
-    let mut name_to_idx = HashMap::with_capacity(edges.len() * 2);
-    let mut indexed_edges: Vec<(usize, usize)> = Vec::with_capacity(edges.len());
-    for e in edges
-        .iter()
-        .filter(|e| !e.from_file.is_empty() && !e.to_file.is_empty())
-    {
-        let from = match name_to_idx.get(e.from_file.as_str()) {
-            Some(&idx) => idx,
-            None => {
-                let idx = name_to_idx.len();
-                name_to_idx.insert(e.from_file.as_str(), idx);
-                idx
-            }
-        };
-        let to = match name_to_idx.get(e.to_file.as_str()) {
-            Some(&idx) => idx,
-            None => {
-                let idx = name_to_idx.len();
-                name_to_idx.insert(e.to_file.as_str(), idx);
-                idx
-            }
-        };
-        indexed_edges.push((from, to));
-    }
+    let (indexed_edges, node_count) = index_edges(edges);
     if indexed_edges.is_empty() {
         return None;
     }
 
-    let n = name_to_idx.len();
-    let mut out_edges: Vec<Vec<usize>> = vec![Vec::new(); n];
-    let mut in_edges: Vec<Vec<usize>> = vec![Vec::new(); n];
-    let mut out_deg = vec![0u64; n];
-    let mut in_deg = vec![0u64; n];
+    let (out_edges, in_edges, out_deg, in_deg) = build_adjacency(&indexed_edges, node_count);
+    let portraits = refine_colors(node_count, &out_edges, &in_edges, &out_deg, &in_deg);
+    encode_and_compress(&indexed_edges, &portraits, quality_signal)
+}
 
-    for (u, v) in &indexed_edges {
+/// Map each non-empty endpoint to a dense `usize` index and return the
+/// indexed edge list plus the number of unique nodes.
+fn index_edges(edges: &[ImportEdge]) -> (Vec<(usize, usize)>, usize) {
+    let mut name_to_idx = HashMap::with_capacity(edges.len() * 2);
+    let mut indexed_edges = Vec::with_capacity(edges.len());
+    for e in edges
+        .iter()
+        .filter(|e| !e.from_file.is_empty() && !e.to_file.is_empty())
+    {
+        let from = resolve_index(&mut name_to_idx, e.from_file.as_str());
+        let to = resolve_index(&mut name_to_idx, e.to_file.as_str());
+        indexed_edges.push((from, to));
+    }
+    (indexed_edges, name_to_idx.len())
+}
+
+fn resolve_index<'a>(map: &mut HashMap<&'a str, usize>, key: &'a str) -> usize {
+    match map.get(key) {
+        Some(&idx) => idx,
+        None => {
+            let idx = map.len();
+            map.insert(key, idx);
+            idx
+        }
+    }
+}
+
+/// Build directed adjacency lists and in/out degree vectors.
+#[allow(clippy::type_complexity)]
+fn build_adjacency(
+    indexed_edges: &[(usize, usize)],
+    node_count: usize,
+) -> (Vec<Vec<usize>>, Vec<Vec<usize>>, Vec<u64>, Vec<u64>) {
+    let mut out_edges: Vec<Vec<usize>> = vec![Vec::new(); node_count];
+    let mut in_edges: Vec<Vec<usize>> = vec![Vec::new(); node_count];
+    let mut out_deg = vec![0u64; node_count];
+    let mut in_deg = vec![0u64; node_count];
+
+    for (u, v) in indexed_edges {
         out_edges[*u].push(*v);
         in_edges[*v].push(*u);
         out_deg[*u] += 1;
         in_deg[*v] += 1;
     }
 
-    // Compute a label-independent color for each node via a few rounds of the
-    // Weisfeiler-Lehman color-refinement.  Each round hashes a node's in/out
-    // degrees together with the sorted colors of its outgoing and incoming
-    // neighbors.  This makes the encoding sensitive to local topology while
-    // remaining invariant under file renames and automorphic relabelings.
-    let mut colors: Vec<u64> = (0..n)
+    (out_edges, in_edges, out_deg, in_deg)
+}
+
+/// Compute a label-independent color for each node via a few rounds of the
+/// Weisfeiler-Lehman color-refinement.  Each round hashes a node's in/out
+/// degrees together with the sorted colors of its outgoing and incoming
+/// neighbors.  This makes the encoding sensitive to local topology while
+/// remaining invariant under file renames and automorphic relabelings.
+fn refine_colors(
+    node_count: usize,
+    out_edges: &[Vec<usize>],
+    in_edges: &[Vec<usize>],
+    out_deg: &[u64],
+    in_deg: &[u64],
+) -> Vec<u64> {
+    let mut colors: Vec<u64> = (0..node_count)
         .map(|i| fnv1a_hash_u64s(&[out_deg[i], in_deg[i]]))
         .collect();
+
+    let max_degree = out_edges
+        .iter()
+        .map(|v| v.len())
+        .max()
+        .unwrap_or(0)
+        .max(in_edges.iter().map(|v| v.len()).max().unwrap_or(0));
+
     for _ in 0..3 {
-        let mut next: Vec<u64> = Vec::with_capacity(n);
-        let mut scratch: Vec<u64> = Vec::with_capacity(
-            out_edges
-                .iter()
-                .map(|v| v.len())
-                .max()
-                .unwrap_or(0)
-                .max(in_edges.iter().map(|v| v.len()).max().unwrap_or(0)),
-        );
-        for i in 0..n {
+        let mut next: Vec<u64> = Vec::with_capacity(node_count);
+        let mut scratch: Vec<u64> = Vec::with_capacity(max_degree);
+        for i in 0..node_count {
             let mut parts: Vec<u64> =
                 Vec::with_capacity(2 + out_edges[i].len() + in_edges[i].len());
             parts.push(out_deg[i]);
@@ -139,16 +164,23 @@ pub fn compute(edges: &[ImportEdge], quality_signal: f64) -> Option<CrossValidat
         }
         colors = next;
     }
-    let portraits = colors;
 
-    // Encode each edge as a single canonical hash of its ordered endpoint
-    // portraits, then sort the hashes.  This gives a label-independent
-    // multiset representation of the edge set; sorting by the combined hash
-    // avoids long runs of repeated source bytes and makes the compression ratio
-    // reflect edge diversity rather than adjacency-list regularity.
+    colors
+}
+
+/// Encode each edge as a single canonical hash of its ordered endpoint
+/// portraits, then sort the hashes.  This gives a label-independent
+/// multiset representation of the edge set; sorting by the combined hash
+/// avoids long runs of repeated source bytes and makes the compression ratio
+/// reflect edge diversity rather than adjacency-list regularity.
+fn encode_and_compress(
+    indexed_edges: &[(usize, usize)],
+    portraits: &[u64],
+    quality_signal: f64,
+) -> Option<CrossValidation> {
     let mut edge_hashes: Vec<u64> = Vec::with_capacity(indexed_edges.len());
     for (u, v) in indexed_edges {
-        edge_hashes.push(fnv1a_hash_u64s(&[portraits[u], portraits[v]]));
+        edge_hashes.push(fnv1a_hash_u64s(&[portraits[*u], portraits[*v]]));
     }
     edge_hashes.sort_unstable();
 
