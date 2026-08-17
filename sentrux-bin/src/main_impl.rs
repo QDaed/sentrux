@@ -626,6 +626,10 @@ fn gate_compare(
         "God files:    {} → {}",
         diff.god_files_before, diff.god_files_after
     );
+    println!(
+        "Complex fn:   {} → {}",
+        diff.complex_functions_before, diff.complex_functions_after
+    );
 
     if !arch_report.distance_metrics.is_empty() {
         println!(

@@ -163,6 +163,10 @@ pub struct ArchDiff {
     pub god_files_before: usize,
     /// God file count from the current snapshot
     pub god_files_after: usize,
+    /// Complex function count from the baseline
+    pub complex_functions_before: usize,
+    /// Complex function count from the current snapshot
+    pub complex_functions_after: usize,
     /// Cross-validation captured at baseline
     pub cross_validation_before: Option<CrossValidation>,
     /// Cross-validation from the current snapshot
@@ -277,6 +281,8 @@ impl ArchBaseline {
             cycles_after: current.circular_dep_count,
             god_files_before: self.god_file_count,
             god_files_after: current.god_files.len(),
+            complex_functions_before: self.complex_fn_count,
+            complex_functions_after: current.complex_functions.len(),
             cross_validation_before: self.cross_validation,
             cross_validation_after: current.cross_validation,
             degraded,
