@@ -107,7 +107,12 @@ pub struct FuncInfo {
 }
 
 /// Information about a class, interface, or type definition.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// Marked `#[non_exhaustive]` so new optional fields (e.g. `src`) can be added
+/// without breaking downstream struct literals; use `..Default::default()`
+/// or `Default::default()` when constructing from outside this crate.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ClassInfo {
     /// Class/interface name
     pub n: String,

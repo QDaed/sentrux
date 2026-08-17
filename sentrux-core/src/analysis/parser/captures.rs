@@ -423,19 +423,74 @@ pub(super) fn process_class_def(
     }
 }
 
-/// Extract the class declaration header (up to the opening `{` or `:`) from the
-/// source text covered by `node`. This is stored on `ClassInfo.src` for later
-/// language-specific abstractness checks (e.g., Java/C# `abstract` keyword).
+/// Extract the class declaration header from the source text covered by `node`.
+///
+/// Stops at the class body's opening delimiter, which is the first `{` or `:`
+/// that is not nested inside parentheses, brackets, braces, angle brackets, or
+/// quoted strings. This prevents annotation arguments such as
+/// `@Anno({1, 2})` from truncating the header before the actual class body.
 fn class_header_text(node: tree_sitter::Node, content: &[u8]) -> Option<String> {
-    let text = String::from_utf8_lossy(&content[node.start_byte()..node.end_byte()]);
-    let header = if let Some(idx) = text.find('{') {
-        &text[..idx]
-    } else if let Some(idx) = text.find(':') {
-        &text[..idx]
-    } else {
-        text.as_ref()
-    };
-    let header = header.trim();
+    class_header_text_str(&String::from_utf8_lossy(
+        &content[node.start_byte()..node.end_byte()],
+    ))
+}
+
+/// String-based implementation so it can be unit-tested without a real syntax tree.
+///
+/// Stops at the first unnested `{` if one exists (C++/Java/C#/Rust style), or
+/// the first unnested `:` if it does not (Python style). This keeps inheritance
+/// clauses (`class Derived : public Base {`) in the header while still
+/// dropping the class body.
+fn class_header_text_str(text: &str) -> Option<String> {
+    let mut depth: i32 = 0;
+    let mut in_char = false;
+    let mut in_string = false;
+    let mut escape = false;
+    let mut first_brace: Option<usize> = None;
+    let mut first_colon: Option<usize> = None;
+
+    for (i, c) in text.char_indices() {
+        if in_string || in_char {
+            if escape {
+                escape = false;
+                continue;
+            }
+            match c {
+                '\\' => escape = true,
+                '"' => in_string = false,
+                '\'' => in_char = false,
+                _ => {}
+            }
+            continue;
+        }
+
+        match c {
+            '(' | '[' => depth += 1,
+            ')' | ']' => depth -= 1,
+            '{' => {
+                if depth == 0 && first_brace.is_none() {
+                    first_brace = Some(i);
+                }
+                depth += 1;
+            }
+            '}' => {
+                if depth > 0 {
+                    depth -= 1;
+                }
+            }
+            ':' => {
+                if depth == 0 && first_colon.is_none() {
+                    first_colon = Some(i);
+                }
+            }
+            '"' => in_string = true,
+            '\'' => in_char = true,
+            _ => {}
+        }
+    }
+
+    let stop = first_brace.or(first_colon);
+    let header = stop.map_or(text, |idx| &text[..idx]).trim();
     if header.is_empty() {
         None
     } else {
@@ -539,5 +594,47 @@ pub(super) fn process_import(
             imports,
             import_set,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::class_header_text_str;
+
+    #[test]
+    fn extracts_java_class_header_up_to_body_brace() {
+        let header = class_header_text_str("public abstract class Example {}").unwrap();
+        assert_eq!(header, "public abstract class Example");
+    }
+
+    #[test]
+    fn skips_braces_inside_annotation_arguments() {
+        let header = class_header_text_str("@Anno({1, 2}) abstract class Example {}").unwrap();
+        assert_eq!(header, "@Anno({1, 2}) abstract class Example");
+    }
+
+    #[test]
+    fn extracts_python_class_header_up_to_colon() {
+        let header = class_header_text_str("class Foo(Bar, Baz):\n    pass").unwrap();
+        assert_eq!(header, "class Foo(Bar, Baz)");
+    }
+
+    #[test]
+    fn extracts_c_style_class_header_with_inheritance() {
+        let header = class_header_text_str("class Derived : public Base { int x; };").unwrap();
+        assert_eq!(header, "class Derived : public Base");
+    }
+
+    #[test]
+    fn handles_generic_class_header() {
+        let header = class_header_text_str("class Container<T> where T : IComparable { }").unwrap();
+        assert_eq!(header, "class Container<T> where T : IComparable");
+    }
+
+    #[test]
+    fn handles_quoted_braces() {
+        let header =
+            class_header_text_str(r#"@Anno(name = "{") public class Example { }"#).unwrap();
+        assert_eq!(header, r#"@Anno(name = "{") public class Example"#);
     }
 }
