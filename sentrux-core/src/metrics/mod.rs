@@ -729,6 +729,7 @@ pub fn compute_health(snapshot: &Snapshot) -> HealthReport {
     };
     let (root_cause_scores, quality_signal) =
         root_causes::compute_root_cause_scores(&root_cause_raw);
+    let cross_validation = cross_validation::compute(&dep_edges, quality_signal);
 
     HealthReport {
         coupling_score: mm.coupling_score,
@@ -765,6 +766,7 @@ pub fn compute_health(snapshot: &Snapshot) -> HealthReport {
         high_param_ratio: fm.high_param_ratio,
         cog_complex_ratio: fm.cog_complex_ratio,
         quality_signal,
+        cross_validation,
         root_cause_raw,
         root_cause_scores,
     }

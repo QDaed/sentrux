@@ -6,6 +6,7 @@
 //! constants with literature references (McCabe 1976, Myers 1977, Martin).
 //! Key types: `HealthReport`, `GodFile`, `HotspotFile`, `ComplexFuncInfo`.
 
+use crate::metrics::cross_validation::CrossValidation;
 use std::collections::HashMap;
 
 // ── Thresholds are now per-language, read from LanguageProfile ──
@@ -102,6 +103,9 @@ pub struct HealthReport {
     /// Quality signal ∈ `[0,1]`: geometric mean of 6 root cause scores.
     /// THE one number AI agents maximize. Higher = better architecture.
     pub quality_signal: f64,
+    /// Independent compression-based cross-check of the quality signal.
+    /// `None` when the dependency graph is too small to produce a meaningful estimate.
+    pub cross_validation: Option<CrossValidation>,
     /// Raw root cause values (un-normalized, for display)
     pub root_cause_raw: super::root_causes::RootCauseRaw,
     /// Normalized root cause scores ∈ `[0,1]` (for signal computation)

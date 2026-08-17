@@ -65,6 +65,7 @@ fn baseline_stable_no_degradation() {
         high_param_ratio: 0.0,
         cog_complex_ratio: 0.0,
         quality_signal: 0.7,
+        cross_validation: None,
         root_cause_raw: crate::metrics::root_causes::RootCauseRaw {
             modularity_q: 0.4,
             cycle_count: 1,
