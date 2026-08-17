@@ -452,7 +452,12 @@ fn push_separator_space(out: &mut String) {
     }
 }
 
-const fn consume_string_literal(c: char, in_string: &mut bool, in_char: &mut bool, escape: &mut bool) {
+const fn consume_string_literal(
+    c: char,
+    in_string: &mut bool,
+    in_char: &mut bool,
+    escape: &mut bool,
+) {
     if *escape {
         *escape = false;
         return;
