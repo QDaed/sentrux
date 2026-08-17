@@ -11,8 +11,8 @@
 **The sensor that helps AI agents close the feedback loop.<br>Recursive self-improvement of code quality.**
 
 
-[![CI](https://github.com/sentrux/sentrux/actions/workflows/ci.yml/badge.svg)](https://github.com/sentrux/sentrux/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/sentrux/sentrux)](https://github.com/sentrux/sentrux/releases)
+[![CI](https://github.com/QDaed/sentrux/actions/workflows/ci.yml/badge.svg)](https://github.com/QDaed/sentrux/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/QDaed/sentrux)](https://github.com/QDaed/sentrux/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 
@@ -58,12 +58,12 @@ brew install sentrux/tap/sentrux
 
 **Linux**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sentrux/sentrux/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/QDaed/sentrux/main/install.sh | sh
 ```
 
-**Windows** — download from [Releases](https://github.com/sentrux/sentrux/releases), or:
+**Windows** — download from [Releases](https://github.com/QDaed/sentrux/releases), or:
 ```
-curl -L -o sentrux.exe https://github.com/sentrux/sentrux/releases/latest/download/sentrux-windows-x86_64.exe
+curl -L -o sentrux.exe https://github.com/QDaed/sentrux/releases/latest/download/sentrux-windows-x86_64.exe
 ```
 
 Pure Rust. Single binary. No runtime dependencies. **52 languages** via tree-sitter plugins. Runs on **macOS**, **Linux**, and **Windows**.
@@ -77,6 +77,8 @@ sentrux check .            # check rules (CI-friendly, exits 0 or 1)
 sentrux gate --save .      # save baseline before agent session
 sentrux gate .             # compare after — catches degradation
 ```
+
+`sentrux gate` prints Quality, Cross-validation confidence, Coupling, Cycles, God files, and Complex-function deltas so regressions are visible at a glance.
 
 **Connect to your AI agent (optional)**
 
@@ -106,7 +108,7 @@ Cursor / Windsurf / OpenCode / OpenClaw / any MCP client — add to your MCP con
 
 ```bash
 # Build from source
-git clone https://github.com/sentrux/sentrux.git
+git clone https://github.com/QDaed/sentrux.git
 cd sentrux
 
 # Bootstrap the tree-sitter grammar binaries required for tests and analysis.
@@ -269,7 +271,20 @@ reason = "App must not depend on core internals"
 
 ```bash
 sentrux check .
-# ✓ All rules pass — Quality: 7342
+# ✓ All rules pass — Quality: 7152
+# Cross-validation (current): compression=0.92, agreement=0.79, confidence=0.79
+```
+
+```bash
+sentrux gate .
+# Quality:      7152 → 7152
+# Cross-validation (baseline): compression=0.92, agreement=0.79, confidence=0.79
+# Cross-validation (current):  compression=0.92, agreement=0.79, confidence=0.79
+# Coupling:     0.03 → 0.03
+# Cycles:       0 → 0
+# God files:    0 → 0
+# Complex fn:   2 → 2
+# ✓ No degradation detected
 ```
 
 ## Supported languages

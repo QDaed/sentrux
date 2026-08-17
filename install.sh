@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="sentrux/sentrux"
+REPO="QDaed/sentrux"
 
 # Auto-detect latest version from GitHub releases API
 VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed 's/.*"tag_name": "//;s/".*//')
