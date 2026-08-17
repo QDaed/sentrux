@@ -109,7 +109,7 @@ enum Command {
         action: Option<AnalyticsAction>,
     },
 
-    /// Open browser to purchase / sign in for Sentrux Pro
+    /// Open browser / show how to get Sentrux
     Login,
 
     /// Manage Pro license and plugin
@@ -180,7 +180,7 @@ enum PluginAction {
 // ---------------------------------------------------------------------------
 
 pub fn run() -> eframe::Result<()> {
-    // Initialize license + Pro plugin (reads ~/.sentrux/license.key, loads pro.dylib if valid)
+    // Initialize license + built-in Pro features (optional license.key / pro.dylib)
     sentrux_core::license::init();
 
     // Step 1: Download missing grammar binaries (may overwrite configs with old versions)
@@ -252,33 +252,11 @@ fn analytics_opt_out_path() -> Option<std::path::PathBuf> {
 
 fn run_login() {
     println!();
-    println!("  Sentrux Pro — purchase at https://sentrux.dev/pro");
+    println!("  Sentrux Pro features are included in this build.");
+    println!("  No license key is required.");
     println!();
-    println!("  After purchase, activate with:");
-    println!("    sentrux pro activate <license-key>");
+    println!("  Docs and updates: https://github.com/sentrux/sentrux");
     println!();
-    println!("  Or paste your license key file:");
-    println!("    sentrux pro activate /path/to/license.key");
-    println!();
-    // Try to open the browser
-    open_url("https://sentrux.dev/pro");
-}
-
-fn open_url(url: &str) {
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open").arg(url).spawn();
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
-    }
-    #[cfg(target_os = "windows")]
-    {
-        let _ = std::process::Command::new("cmd")
-            .args(["/c", "start", url])
-            .spawn();
-    }
 }
 
 fn run_pro(action: ProAction) {
@@ -378,7 +356,7 @@ fn pro_status() {
     }
 
     if sentrux_core::pro_registry::is_loaded() {
-        println!("Status:  Pro features active");
+        println!("Status:  Pro features active (built-in)");
     } else {
         println!("Status:  Free");
     }

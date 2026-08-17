@@ -66,7 +66,7 @@ curl -fsSL https://raw.githubusercontent.com/QDaed/sentrux/main/install.sh | sh
 curl -L -o sentrux.exe https://github.com/QDaed/sentrux/releases/latest/download/sentrux-windows-x86_64.exe
 ```
 
-Pure Rust. Single binary. No runtime dependencies. **52 languages** via tree-sitter plugins. Runs on **macOS**, **Linux**, and **Windows**.
+Pure Rust. Single binary. No runtime dependencies. **52 languages** via tree-sitter plugins. Runs on **macOS**, **Linux**, and **Windows**. As of v0.5.8, Pro capabilities (extra color modes, file detail, evolution, what-if, MCP diagnostics) ship in this public binary.
 
 **Run it**
 

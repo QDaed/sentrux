@@ -1,18 +1,15 @@
 //! Pro plugin registry — runtime extension point for Pro features.
 //!
-//! The free binary ships with basic functionality. The Pro dylib
-//! registers additional capabilities at startup via this registry.
+//! With the default `pro` cargo feature, `license::init()` registers every
+//! built-in Pro capability so the public binary ships the full feature set.
+//! An optional external dylib can still register additional capabilities.
 //! All access is through the global REGISTRY singleton.
 //!
 //! ## Architecture
 //!
-//! The registry stores function pointers and data registered by pro.dylib.
 //! The free binary checks `pro_registry::has(Feature)` before showing
-//! Pro-gated UI or returning Pro-gated MCP data.
-//!
-//! This replaces the old `tier.is_pro()` pattern — Pro features are
-//! no longer gated by a flag in the free binary. They're either
-//! registered (dylib loaded) or not.
+//! Pro-gated UI or returning Pro-gated MCP data. Features are either
+//! registered (built-in `pro` feature and/or dylib loaded) or not.
 
 use std::sync::Mutex;
 
@@ -141,11 +138,11 @@ mod tests {
 
     #[test]
     fn plugin_info_roundtrip() {
-        set_plugin_info("sentrux-pro", "0.5.7");
+        set_plugin_info("sentrux", "0.5.8");
         let info = plugin_info();
         assert!(info.is_some());
         let (name, version) = info.unwrap();
-        assert_eq!(name, "sentrux-pro");
-        assert_eq!(version, "0.5.7");
+        assert_eq!(name, "sentrux");
+        assert_eq!(version, "0.5.8");
     }
 }
