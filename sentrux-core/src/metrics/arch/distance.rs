@@ -308,6 +308,18 @@ mod tests {
     }
 
     #[test]
+    fn detects_abstract_keyword_after_annotation_braces() {
+        let profile = profile_with(&["abstract"], &[]);
+        let cls = cls(
+            "Example",
+            "class",
+            "@Anno({1, 2}) abstract class Example",
+            None,
+        );
+        assert!(is_abstract_by_profile(&cls, &profile));
+    }
+
+    #[test]
     fn detects_abstract_base_class() {
         let profile = profile_with(&[], &["ABC"]);
         let cls = cls("Foo", "class", "class Foo(ABC)", Some(&["abc.ABC"]));

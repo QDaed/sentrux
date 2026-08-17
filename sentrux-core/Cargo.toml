@@ -1,6 +1,6 @@
 [package]
 name = "sentrux-core"
-version = "0.5.7"
+version = "0.6.0"
 edition = "2021"
 rust-version.workspace = true
 description = "Core library for sentrux — structural quality analysis engine"

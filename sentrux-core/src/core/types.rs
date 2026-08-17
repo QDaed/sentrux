@@ -108,11 +108,11 @@ pub struct FuncInfo {
 
 /// Information about a class, interface, or type definition.
 ///
-/// Marked `#[non_exhaustive]` so new optional fields (e.g. `src`) can be added
-/// without breaking downstream consumers. Downstream callers should use
-/// `ClassInfo::new(...)` or `Default::default()` followed by public field
-/// assignment; constructing with a struct literal is not allowed across crate
-/// boundaries for non-exhaustive structs.
+/// This type became non-exhaustive in the 0.6 API so future optional fields can
+/// be added without repeating a downstream construction break. Downstream
+/// callers should use `ClassInfo::new(...)` or `Default::default()` followed by
+/// public field assignment; constructing with a struct literal is not allowed
+/// across crate boundaries for non-exhaustive structs.
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ClassInfo {
