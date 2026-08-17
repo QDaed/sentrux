@@ -199,7 +199,7 @@ fn build_delta_parts(
 
 /// Draw delta labels right-aligned before the age string.
 fn draw_delta_labels(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     parts: &[(String, egui::Color32)],
     right_edge: f32,
     cy: f32,

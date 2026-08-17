@@ -190,10 +190,12 @@ impl ViewportRect {
     }
 }
 
-/// Recursive layout context — bundles the mutable output vectors and shared
-/// read-only config that every recursive layout call needs. Reduces parameter
-/// counts in blueprint.rs (place_children: 12→4, layout_dir: 11→4) and
-/// treemap_layout.rs (layout_node: 10→4, layout_dir_children: 10→4).
+/// Recursive layout context.
+///
+/// Bundles the mutable output vectors and shared read-only config that every
+/// recursive layout call needs. Reduces parameter counts in blueprint.rs
+/// (place_children: 12→4, layout_dir: 11→4) and treemap_layout.rs
+/// (layout_node: 10→4, layout_dir_children: 10→4).
 pub struct LayoutCtx<'a> {
     /// Pre-computed per-file weights
     pub weights: &'a std::collections::HashMap<String, f64>,

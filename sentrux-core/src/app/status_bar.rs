@@ -21,10 +21,10 @@ pub fn draw_status_bar(ui: &mut egui::Ui, state: &AppState) {
 fn draw_left_info(ui: &mut egui::Ui, state: &AppState) {
     // Helper: prepend root to get absolute path
     let abs = |rel: &str| -> String {
-        match &state.root_path {
-            Some(root) => format!("{}/{}", root, rel),
-            None => rel.to_string(),
-        }
+        state
+            .root_path
+            .as_ref()
+            .map_or_else(|| rel.to_string(), |root| format!("{}/{}", root, rel))
     };
 
     if let Some(path) = &state.hovered_path {

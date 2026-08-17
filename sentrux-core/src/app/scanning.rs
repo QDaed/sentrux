@@ -159,7 +159,7 @@ impl SentruxApp {
     }
 
     /// Compare current arch report against previous one and log regressions.
-    fn check_arch_degradation(&mut self, arch: &crate::metrics::arch::ArchReport) {
+    fn check_arch_degradation(&self, arch: &crate::metrics::arch::ArchReport) {
         let prev_arch = match &self.state.arch_report {
             Some(p) => p,
             None => return,

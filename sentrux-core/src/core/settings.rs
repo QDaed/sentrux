@@ -389,7 +389,7 @@ pub struct ThemeConfig {
 
 impl ThemeConfig {
     /// Construct a ThemeConfig from a Theme preset.
-    pub fn from_theme(theme: Theme) -> Self {
+    pub const fn from_theme(theme: Theme) -> Self {
         match theme {
             Theme::Calm => theme_calm(),
             Theme::Dark => theme_dark(),

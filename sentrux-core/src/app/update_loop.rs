@@ -254,7 +254,7 @@ impl SentruxApp {
     }
 
     /// Paint the treemap render frame and optional progress overlay.
-    fn paint_render_frame(&mut self, ui: &mut egui::Ui, canvas_rect: egui::Rect) {
+    fn paint_render_frame(&self, ui: &mut egui::Ui, canvas_rect: egui::Rect) {
         let painter = ui.painter_at(canvas_rect);
         let render_ctx = renderer::RenderContext {
             render_data: self.state.render_data.as_ref(),

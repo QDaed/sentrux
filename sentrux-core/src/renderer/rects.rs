@@ -487,18 +487,15 @@ fn color_by_age(ctx: &RenderContext, path: &str) -> Color32 {
         .get(path)
         .map(|e| e.mtime)
         .filter(|&m| m > 0.0);
-    match mtime {
-        Some(mt) => {
-            let now = ctx.frame_now_secs;
-            let age_days = ((now - mt) / 86400.0).max(0.0);
-            let t = (age_days / 365.0).min(1.0) as f32; // 0=new, 1=1yr+
-            let r = (1.0 - t).mul_add(155.0, 100.0) as u8;
-            let g = (180.0 * (1.0 - t)) as u8;
-            let b = (60.0 + t * 140.0) as u8;
-            Color32::from_rgb(r, g, b)
-        }
-        None => ctx.theme_config.text_muted,
-    }
+    mtime.map_or(ctx.theme_config.text_muted, |mt| {
+        let now = ctx.frame_now_secs;
+        let age_days = ((now - mt) / 86400.0).max(0.0);
+        let t = (age_days / 365.0).min(1.0) as f32; // 0=new, 1=1yr+
+        let r = (1.0 - t).mul_add(155.0, 100.0) as u8;
+        let g = (180.0 * (1.0 - t)) as u8;
+        let b = (60.0 + t * 140.0) as u8;
+        Color32::from_rgb(r, g, b)
+    })
 }
 
 /// Churn: estimate from git status + function count.

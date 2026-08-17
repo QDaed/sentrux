@@ -58,10 +58,10 @@ pub(crate) fn detect_lang(path: &Path) -> String {
             return lang;
         }
     }
-    match path.extension().and_then(|e| e.to_str()) {
-        Some(ext) => crate::analysis::lang_registry::detect_lang_from_ext(ext),
-        None => "unknown".into(),
-    }
+    path.extension().and_then(|e| e.to_str()).map_or_else(
+        || "unknown".into(),
+        crate::analysis::lang_registry::detect_lang_from_ext,
+    )
 }
 
 /// Global ignored dirs (OS/tool artifacts, not language-specific).

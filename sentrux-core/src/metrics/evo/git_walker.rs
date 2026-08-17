@@ -132,7 +132,7 @@ fn scan_root_prefix(root: &Path, workdir: &Path) -> String {
         .unwrap_or_else(|_| workdir.to_path_buf());
     root_canonical
         .strip_prefix(&workdir_canonical)
-        .unwrap_or(Path::new(""))
+        .unwrap_or_else(|_| Path::new(""))
         .to_string_lossy()
         .to_string()
 }
@@ -224,14 +224,10 @@ fn collect_diff_files(diff: &git2::Diff<'_>, prefix: &str) -> Vec<CommitFile> {
 
 /// Extract added/removed line counts from a diff patch for a specific delta index.
 fn get_patch_stats(diff: &git2::Diff, delta_idx: usize) -> (u32, u32) {
-    let mut added = 0u32;
-    let mut removed = 0u32;
-
     if let Ok(Some(patch)) = git2::Patch::from_diff(diff, delta_idx) {
         let (_, a, r) = patch.line_stats().unwrap_or((0, 0, 0));
-        added = a as u32;
-        removed = r as u32;
+        (a as u32, r as u32)
+    } else {
+        (0u32, 0u32)
     }
-
-    (added, removed)
 }

@@ -13,13 +13,15 @@ pub(crate) use crate::analysis::scanner::common::ScanLimits;
 
 /// Format a thread panic payload into a user-visible error string.
 pub(crate) fn format_panic(thread_name: &str, payload: &Box<dyn std::any::Any + Send>) -> String {
-    if let Some(s) = payload.downcast_ref::<&str>() {
-        format!("Error: {} thread panicked: {}", thread_name, s)
-    } else if let Some(s) = payload.downcast_ref::<String>() {
-        format!("Error: {} thread panicked: {}", thread_name, s)
-    } else {
-        format!("Error: {} thread panicked (unknown payload)", thread_name)
-    }
+    payload.downcast_ref::<&str>().map_or_else(
+        || {
+            payload.downcast_ref::<String>().map_or_else(
+                || format!("Error: {} thread panicked (unknown payload)", thread_name),
+                |s| format!("Error: {} thread panicked: {}", thread_name, s),
+            )
+        },
+        |s| format!("Error: {} thread panicked: {}", thread_name, s),
+    )
 }
 
 /// Scanner background thread — handles both full scan and incremental rescan.

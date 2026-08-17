@@ -677,7 +677,7 @@ fn plugin_list() {
     println!(
         "Plugin directory: {}",
         dir.as_ref()
-            .map_or("(none)".into(), |d| d.display().to_string())
+            .map_or_else(|| "(none)".into(), |d| d.display().to_string())
     );
     let (loaded, errors) = sentrux_core::analysis::plugin::load_all_plugins();
     if loaded.is_empty() && errors.is_empty() {

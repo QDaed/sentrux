@@ -11,7 +11,7 @@
 /// Returns (output_line, still_in_triple_quote).
 fn handle_triple_quote_line(trimmed: &str, tq_char: char) -> (Option<String>, bool) {
     let tq_pattern: String = std::iter::repeat_n(tq_char, 3).collect();
-    if let Some(close_pos) = trimmed.find(&tq_pattern) {
+    trimmed.find(&tq_pattern).map_or((None, true), |close_pos| {
         let after = &trimmed[close_pos + 3..];
         let after_trimmed = after.trim_start();
         if after_trimmed.is_empty() {
@@ -19,9 +19,7 @@ fn handle_triple_quote_line(trimmed: &str, tq_char: char) -> (Option<String>, bo
         } else {
             (Some(strip_string_literals(after)), false)
         }
-    } else {
-        (None, true) // still inside triple-quoted string
-    }
+    })
 }
 
 /// Handle a line while inside a block comment (with nesting support).

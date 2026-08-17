@@ -447,7 +447,7 @@ fn color_picker(ui: &mut egui::Ui, label: &str, color: &mut (u8, u8, u8)) -> boo
         ui.color_edit_button_srgb(&mut c);
     });
     if c != old {
-        *color = (c[0], c[1], c[2]);
+        *color = c.into();
         true
     } else {
         false

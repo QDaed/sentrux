@@ -197,7 +197,7 @@ mod tests {
                 },
             ],
         }];
-        let known: HashSet<String> = ["known.rs"].into_iter().map(String::from).collect();
+        let known: HashSet<String> = std::iter::once("known.rs").map(String::from).collect();
         let churn = compute_churn(&records, &known);
         assert!(churn.contains_key("known.rs"));
         assert!(!churn.contains_key("deleted.rs"));
@@ -342,9 +342,8 @@ mod tests {
             .into_iter()
             .map(String::from)
             .collect();
-        let complexity: HashMap<String, u32> = [("sentrux-core/src/lib.rs".to_string(), 5u32)]
-            .into_iter()
-            .collect();
+        let complexity: HashMap<String, u32> =
+            std::iter::once(("sentrux-core/src/lib.rs".to_string(), 5u32)).collect();
 
         let result = compute_evolution(root, &known, &complexity, Some(365));
         assert!(result.is_ok());

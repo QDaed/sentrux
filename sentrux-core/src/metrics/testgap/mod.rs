@@ -265,15 +265,11 @@ const UNIVERSAL_STEM_SUFFIXES: &[&str] = &["_test", "_tests", "_spec", ".test", 
 /// These catch tests in languages without specific profile patterns.
 fn is_test_filename_universal(path: &str, lower: &str) -> bool {
     let name = lower.rsplit('/').next().unwrap_or(lower);
-    let name_no_ext = match name.rfind('.') {
-        Some(dot) => &name[..dot],
-        None => name,
-    };
+    let name_no_ext = name.rfind('.').map_or(name, |dot| &name[..dot]);
     let orig_name = path.rsplit('/').next().unwrap_or(path);
-    let orig_no_ext = match orig_name.rfind('.') {
-        Some(dot) => &orig_name[..dot],
-        None => orig_name,
-    };
+    let orig_no_ext = orig_name
+        .rfind('.')
+        .map_or(orig_name, |dot| &orig_name[..dot]);
 
     // Stem-based detection
     if matches!(name_no_ext, "test" | "tests" | "spec") {

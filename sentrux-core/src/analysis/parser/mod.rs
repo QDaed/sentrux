@@ -267,7 +267,7 @@ impl ExtractionState {
 
     /// Post-processing for imports. No longer needed — all languages use
     /// @import/@import.module query captures or AST walker.
-    const fn post_process_imports(&mut self, _content: &[u8], _lang: &str) {}
+    const fn post_process_imports(&self, _content: &[u8], _lang: &str) {}
 
     /// Convert into a StructuralAnalysis, distributing calls to functions.
     fn into_structural_analysis(mut self) -> StructuralAnalysis {

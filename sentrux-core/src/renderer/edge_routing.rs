@@ -65,6 +65,8 @@ pub(crate) fn draw_dashed_polyline(
     let mut d = phase - cycle;
     let mut drawing = true;
 
+    // Float loop: each iteration advances by a fixed stride.
+    #[allow(clippy::while_float)]
     while d < total_len {
         let stride = if drawing { dash_len } else { gap_len };
         let d_end = (d + stride).min(total_len);

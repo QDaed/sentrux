@@ -1002,8 +1002,7 @@ fn longest_path_dfs<'a>(
                     if candidate > *max_child {
                         *max_child = candidate;
                     }
-                } else if !on_stack.contains(neighbor) {
-                    on_stack.insert(neighbor);
+                } else if on_stack.insert(neighbor) {
                     stack.push((neighbor, 0, 0));
                 }
             } else {

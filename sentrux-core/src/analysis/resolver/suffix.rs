@@ -195,7 +195,9 @@ fn resolve_tier2_imports(
                 exts,
                 directory_is_package: profile.semantics.project.directory_is_package,
             };
-            let file_dir = Path::new(&file.path).parent().unwrap_or(Path::new(""));
+            let file_dir = Path::new(&file.path)
+                .parent()
+                .unwrap_or_else(|| Path::new(""));
             let src_project = project_map
                 .get(&file.path)
                 .map(|s| s.as_str())
@@ -331,15 +333,13 @@ fn build_project_map(files: &[&FileNode], scan_root: &Path) -> HashMap<String, S
         }
         let dir = Path::new(&file.path)
             .parent()
-            .unwrap_or(Path::new(""))
+            .unwrap_or_else(|| Path::new(""))
             .to_string_lossy()
             .to_string();
-        let project_root = if let Some(cached) = dir_cache.get(&dir) {
-            cached.clone()
-        } else {
+        let project_root = dir_cache.get(&dir).cloned().unwrap_or_else(|| {
             cache_misses += 1;
             detect_project_root_cached(&file.path, scan_root, &mut dir_cache)
-        };
+        });
         project_map.insert(file.path.clone(), project_root);
     }
     eprintln!(

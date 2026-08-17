@@ -99,10 +99,7 @@ require_relative '../utils/parser'
             text.replace('\n', "\\n")
         };
 
-        let field_str = match field_name {
-            Some(f) => format!(" field:{}", f),
-            None => String::new(),
-        };
+        let field_str = field_name.map_or_else(String::new, |f| format!(" field:{}", f));
         let named_str = if is_named { "" } else { " [anon]" };
 
         println!(

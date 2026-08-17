@@ -351,16 +351,14 @@ fn is_self_or_this(
     } else if self_kinds.contains(&pk) {
         return true;
     }
-    if let Ok(text) = param.utf8_text(content) {
+    param.utf8_text(content).is_ok_and(|text| {
         let t = text.trim();
         if !sem.self_param_texts.is_empty() {
             sem.self_param_texts.iter().any(|s| s == t)
         } else {
             DEFAULT_SELF_PARAM_TEXTS.contains(&t)
         }
-    } else {
-        false
-    }
+    })
 }
 
 /// Check if a node kind represents a countable parameter.

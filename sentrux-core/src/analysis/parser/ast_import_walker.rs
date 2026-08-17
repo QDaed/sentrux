@@ -290,17 +290,17 @@ fn extract_scoped_path(
         })
     });
 
-    match arg_node {
-        Some(node) => collect_scoped_paths(node, content, config, 0),
-        None => {
+    arg_node.map_or_else(
+        || {
             // Last resort: read the whole node text (minus keywords)
             import_node
                 .utf8_text(content)
                 .ok()
                 .map(|t| vec![t.trim().to_string()])
                 .unwrap_or_default()
-        }
-    }
+        },
+        |node| collect_scoped_paths(node, content, config, 0),
+    )
 }
 
 /// Check whether the node kind matches one of the configured scoped_path_kinds.

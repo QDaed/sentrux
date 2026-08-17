@@ -66,10 +66,10 @@ impl RulesConfig {
     /// Get effective constraints for a specific language.
     /// Merges: language-specific overrides > global constraints.
     pub fn effective_constraints(&self, lang: &str) -> Constraints {
-        match self.language.get(lang) {
-            Some(lc) => self.constraints.merge(&lc.constraints),
-            None => self.constraints.clone(),
-        }
+        self.language.get(lang).map_or_else(
+            || self.constraints.clone(),
+            |lc| self.constraints.merge(&lc.constraints),
+        )
     }
 }
 

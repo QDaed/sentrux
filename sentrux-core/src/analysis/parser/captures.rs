@@ -211,11 +211,8 @@ fn is_test_attribute(sib: tree_sitter::Node, content: &[u8], patterns: &[String]
     if patterns.is_empty() {
         return false;
     }
-    if let Ok(text) = sib.utf8_text(content) {
-        patterns.iter().all(|p| text.contains(p.as_str()))
-    } else {
-        false
-    }
+    sib.utf8_text(content)
+        .is_ok_and(|text| patterns.iter().all(|p| text.contains(p.as_str())))
 }
 
 /// Check if a tree-sitter node is a test module declaration preceded by a test attribute.
