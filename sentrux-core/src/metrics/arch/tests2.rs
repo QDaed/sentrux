@@ -350,3 +350,167 @@ fn blast_grade_real_repo() {
         "blast_radius should have entries for real repo"
     );
 }
+
+// ── ArchBaseline threshold boundary tests ──
+
+fn baseline_fixture() -> ArchBaseline {
+    ArchBaseline {
+        timestamp: 0.0,
+        quality_signal: 0.70,
+        coupling_score: 0.30,
+        cycle_count: 1,
+        god_file_count: 1,
+        hotspot_count: 0,
+        complex_fn_count: 2,
+        max_depth: 4,
+        total_import_edges: 15,
+        cross_module_edges: 5,
+        cross_validation: None,
+    }
+}
+
+fn health_fixture(cross_validation: Option<CrossValidation>) -> crate::metrics::HealthReport {
+    crate::metrics::HealthReport {
+        coupling_score: 0.30,
+        circular_dep_count: 1,
+        circular_dep_files: vec![],
+        total_import_edges: 15,
+        cross_module_edges: 4,
+        entropy: 0.3,
+        entropy_bits: 1.0,
+        avg_cohesion: Some(0.5),
+        max_depth: 4,
+        god_files: vec![crate::metrics::FileMetric {
+            path: "app.rs".into(),
+            value: 16,
+        }],
+        hotspot_files: vec![],
+        most_unstable: vec![],
+        complex_functions: vec![
+            crate::metrics::FuncMetric {
+                file: "a.rs".into(),
+                func: "f".into(),
+                value: 16,
+            },
+            crate::metrics::FuncMetric {
+                file: "b.rs".into(),
+                func: "g".into(),
+                value: 16,
+            },
+        ],
+        long_functions: vec![],
+        cog_complex_functions: vec![],
+        high_param_functions: vec![],
+        duplicate_groups: vec![],
+        dead_functions: vec![],
+        long_files: vec![],
+        all_function_ccs: vec![],
+        all_function_lines: vec![],
+        all_file_lines: vec![],
+        god_file_ratio: 0.03,
+        hotspot_ratio: 0.0,
+        complex_fn_ratio: 0.05,
+        long_fn_ratio: 0.0,
+        comment_ratio: Some(0.12),
+        large_file_count: 0,
+        large_file_ratio: 0.0,
+        duplication_ratio: 0.0,
+        dead_code_ratio: 0.0,
+        high_param_ratio: 0.0,
+        cog_complex_ratio: 0.0,
+        quality_signal: 0.70,
+        cross_validation,
+        root_cause_raw: crate::metrics::root_causes::RootCauseRaw {
+            modularity_q: 0.4,
+            cycle_count: 1,
+            max_depth: 4,
+            complexity_gini: 0.25,
+            redundancy_ratio: 0.05,
+        },
+        root_cause_scores: crate::metrics::root_causes::RootCauseScores {
+            modularity: 0.6,
+            acyclicity: 0.5,
+            depth: 0.67,
+            equality: 0.75,
+            redundancy: 0.95,
+        },
+    }
+}
+
+#[test]
+fn diff_quality_signal_boundary() {
+    let baseline = baseline_fixture();
+    let mut current = health_fixture(None);
+
+    // Just at the threshold: current = baseline - 0.02 should NOT degrade.
+    current.quality_signal = 0.68;
+    let diff = baseline.diff(&current);
+    assert!(
+        !diff.degraded,
+        "exact -0.02 quality drop should not degrade"
+    );
+    assert!(diff.violations.is_empty());
+
+    // Slightly past the threshold should degrade.
+    current.quality_signal = 0.679_999_999_999;
+    let diff = baseline.diff(&current);
+    assert!(diff.degraded, "quality drop past -0.02 should degrade");
+    assert_eq!(diff.violations.len(), 1);
+}
+
+#[test]
+fn diff_coupling_boundary() {
+    let baseline = baseline_fixture();
+    let mut current = health_fixture(None);
+
+    // Exact +0.05 coupling increase should NOT degrade.
+    current.coupling_score = 0.35;
+    let diff = baseline.diff(&current);
+    assert!(
+        !diff.degraded,
+        "exact +0.05 coupling increase should not degrade"
+    );
+    assert!(diff.violations.is_empty());
+
+    // Slightly past +0.05 should degrade.
+    current.coupling_score = 0.350_000_000_001;
+    let diff = baseline.diff(&current);
+    assert!(diff.degraded, "coupling increase past +0.05 should degrade");
+    assert_eq!(diff.violations.len(), 1);
+}
+
+#[test]
+fn diff_cross_validation_boundary() {
+    let baseline_cv = CrossValidation {
+        compression_ratio: 0.5,
+        agreement: 0.9,
+        confidence: 0.80,
+    };
+    let baseline = ArchBaseline {
+        cross_validation: Some(baseline_cv),
+        ..baseline_fixture()
+    };
+
+    // Exact -0.05 confidence drop should NOT degrade (threshold is -0.05 - 1e-12).
+    let current_cv = CrossValidation {
+        confidence: 0.75,
+        ..baseline_cv
+    };
+    let mut current = health_fixture(Some(current_cv));
+    let diff = baseline.diff(&current);
+    assert!(!diff.degraded, "exact -0.05 cv drop should not degrade");
+    assert!(diff.violations.is_empty());
+
+    // Slightly past -0.05 should degrade.
+    let current_cv = CrossValidation {
+        confidence: 0.749_999_999_999,
+        ..baseline_cv
+    };
+    current.cross_validation = Some(current_cv);
+    let diff = baseline.diff(&current);
+    assert!(
+        diff.degraded,
+        "cv confidence drop past -0.05 should degrade"
+    );
+    assert_eq!(diff.violations.len(), 1);
+}

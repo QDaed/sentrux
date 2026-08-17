@@ -31,6 +31,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use serde::{Deserialize, Serialize};
+
 /// Stores the latest available version if newer than current.
 static LATEST_VERSION: Mutex<Option<String>> = Mutex::new(None);
 
@@ -62,7 +64,9 @@ fn set_latest_version(version: &str) {
         *guard = Some(version.to_string());
     }
     if let Some(path) = latest_version_cache_path() {
-        let _ = std::fs::write(&path, version);
+        if let Err(e) = write_file_atomic(&path, version.as_bytes()) {
+            crate::debug_log!("[update] failed to cache latest version: {e}");
+        }
     }
 }
 
@@ -93,6 +97,7 @@ const CHECK_INTERVAL: Duration = Duration::from_secs(86400);
 
 static TELEMETRY_LOCK: Mutex<TelemetryState> = Mutex::new(TelemetryState::new());
 
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 struct TelemetryState {
     scans: u32,
     mcp_calls: u32,
@@ -113,19 +118,22 @@ impl TelemetryState {
     }
 
     /// Persist current counters to disk so they survive process exit.
+    /// Writes atomically (temp file + rename) and logs failures when debug mode is on.
     fn persist(&self) {
         let path = match pending_path() {
             Some(p) => p,
             None => return,
         };
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+        let payload = match serde_json::to_vec(self) {
+            Ok(v) => v,
+            Err(e) => {
+                crate::debug_log!("[telemetry] failed to serialize pending state: {e}");
+                return;
+            }
+        };
+        if let Err(e) = write_file_atomic(&path, &payload) {
+            crate::debug_log!("[telemetry] failed to persist pending state: {e}");
         }
-        let json = format!(
-            "{{\"scans\":{},\"mcp_calls\":{},\"gate_runs\":{},\"files\":{},\"grade\":{}}}",
-            self.scans, self.mcp_calls, self.gate_runs, self.files, self.grade,
-        );
-        let _ = std::fs::write(&path, json);
     }
 
     /// Take a snapshot of all counters and reset to zero.
@@ -177,6 +185,7 @@ impl TelemetryState {
 }
 
 /// Immutable copy of counters for sending in the ping.
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 struct TelemetrySnapshot {
     scans: u32,
     mcp_calls: u32,
@@ -192,50 +201,81 @@ fn pending_path() -> Option<PathBuf> {
 }
 
 /// Raw disk load — does NOT touch the in-memory state.
+///
+/// First tries a full `serde_json` parse; if that fails (e.g., truncated or
+/// hand-rolled legacy file), it recovers as many individual numeric fields as
+/// possible so already-flushed counters are not silently discarded.
 fn load_pending_from_disk() -> TelemetrySnapshot {
     let path = match pending_path() {
         Some(p) => p,
-        None => {
-            return TelemetrySnapshot {
-                scans: 0,
-                mcp_calls: 0,
-                gate_runs: 0,
-                files: 0,
-                grade: 0,
-            }
+        None => return TelemetrySnapshot::default(),
+    };
+    let bytes = match std::fs::read(&path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return TelemetrySnapshot::default(),
+        Err(e) => {
+            crate::debug_log!("[telemetry] failed to read pending file: {e}");
+            return TelemetrySnapshot::default();
         }
     };
-    let content = match std::fs::read_to_string(&path) {
-        Ok(c) => c,
-        Err(_) => {
-            return TelemetrySnapshot {
-                scans: 0,
-                mcp_calls: 0,
-                gate_runs: 0,
-                files: 0,
-                grade: 0,
-            }
+    match serde_json::from_slice::<TelemetrySnapshot>(&bytes) {
+        Ok(snap) => snap,
+        Err(e) => {
+            crate::debug_log!("[telemetry] full parse failed ({e}); attempting partial recovery");
+            recover_telemetry_snapshot(&bytes)
         }
-    };
-    let get = |key: &str| -> u32 {
-        content
-            .split(key)
-            .nth(1)
-            .and_then(|s| {
-                s.trim_start_matches(['"', ':', ' '])
-                    .split([',', '}', '\n'])
-                    .next()
-            })
-            .and_then(|s| s.trim().parse().ok())
-            .unwrap_or(0)
-    };
-    TelemetrySnapshot {
-        scans: get("\"scans\""),
-        mcp_calls: get("\"mcp_calls\""),
-        gate_runs: get("\"gate_runs\""),
-        files: get("\"files\""),
-        grade: get("\"grade\""),
     }
+}
+
+/// Recover a `TelemetrySnapshot` from a malformed or truncated JSON payload by
+/// scanning for `"key":<digits>` pairs. Values that are not found are left at 0.
+fn recover_telemetry_snapshot(bytes: &[u8]) -> TelemetrySnapshot {
+    let text = String::from_utf8_lossy(bytes);
+    let mut snap = TelemetrySnapshot::default();
+    recover_u32(&text, "scans", &mut snap.scans);
+    recover_u32(&text, "mcp_calls", &mut snap.mcp_calls);
+    recover_u32(&text, "gate_runs", &mut snap.gate_runs);
+    recover_u32(&text, "files", &mut snap.files);
+    recover_u32(&text, "grade", &mut snap.grade);
+    snap
+}
+
+/// Find `"key":<integer>` in `text` and store the parsed value in `dest`.
+/// Tolerates whitespace around the colon and within the object.
+fn recover_u32(text: &str, key: &str, dest: &mut u32) {
+    let pattern = format!("\"{key}\":");
+    let Some(start) = text.find(&pattern) else {
+        return;
+    };
+    let rest = text[start + pattern.len()..].trim_start();
+    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+    if let Ok(v) = digits.parse::<u32>() {
+        *dest = v;
+    }
+}
+
+/// Write `content` to `path` atomically using a temp file in the same directory.
+///
+/// `std::fs::rename` replaces an existing destination on all supported platforms,
+/// so if it still fails we preserve the existing target and only clean up the
+/// temporary file. This avoids deleting a cache file written by a concurrent
+/// writer between the failed rename and the retry.
+fn write_file_atomic(path: &std::path::Path, content: &[u8]) -> Result<(), String> {
+    let dir = path.parent().ok_or("path has no parent directory")?;
+    std::fs::create_dir_all(dir).map_err(|e| format!("create dir: {e}"))?;
+
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let tmp = dir.join(format!(".sentrux_tmp_{}_{}", std::process::id(), nanos));
+
+    std::fs::write(&tmp, content).map_err(|e| format!("write temp file: {e}"))?;
+    if let Err(e) = std::fs::rename(&tmp, path) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(format!("rename temp to target failed: {e}"));
+    }
+    Ok(())
 }
 
 // ── Public recording API ──
@@ -299,14 +339,13 @@ fn should_check() -> bool {
 
 fn save_check_timestamp() {
     if let Some(path) = cache_path() {
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs_f64();
-        let _ = std::fs::write(&path, format!("{:.0}", now));
+        if let Err(e) = write_file_atomic(&path, format!("{:.0}", now).as_bytes()) {
+            crate::debug_log!("[update] failed to save check timestamp: {e}");
+        }
     }
 }
 
@@ -452,29 +491,33 @@ fn check_and_notify(current_version: &str) {
         }
     };
 
-    let body = String::from_utf8_lossy(&output.stdout);
-    let latest = body
-        .split("\"latest\"")
-        .nth(1)
-        .and_then(|s| s.split('"').nth(1));
+    let latest: Option<String> = serde_json::from_slice::<LatestResponse>(&output.stdout)
+        .ok()
+        .map(|r| r.latest);
 
     match latest {
-        Some(latest_version) => {
+        Some(latest_version) if !latest_version.is_empty() => {
             // ── Phase 3b: Ping succeeded — counters already zeroed in Phase 1 ──
             // Timestamp already saved before Phase 1 (dedup guard).
-            if is_newer(current_version, latest_version) {
-                set_latest_version(latest_version);
+            if is_newer(current_version, &latest_version) {
+                set_latest_version(&latest_version);
             } else {
                 clear_latest_version();
             }
         }
-        None => {
-            // Response was malformed — restore snapshot
+        _ => {
+            // Response was malformed or empty — restore snapshot
             if let Ok(mut state) = TELEMETRY_LOCK.lock() {
                 state.restore(&snapshot);
             }
         }
     }
+}
+
+/// Minimal shape of the update-check JSON response.
+#[derive(Deserialize)]
+struct LatestResponse {
+    latest: String,
 }
 
 #[cfg(test)]
@@ -523,35 +566,74 @@ mod tests {
 
     #[test]
     fn test_pending_counters_parse() {
-        // Test the JSON parsing logic directly using a temp file.
+        // Verify serde round-trip for the persisted telemetry snapshot.
+        let json = r#"{"scans":42,"mcp_calls":17,"gate_runs":9,"files":250,"grade":4}"#;
+        let snap: TelemetrySnapshot = serde_json::from_str(json).unwrap();
+        assert_eq!(snap.scans, 42);
+        assert_eq!(snap.mcp_calls, 17);
+        assert_eq!(snap.gate_runs, 9);
+        assert_eq!(snap.files, 250);
+        assert_eq!(snap.grade, 4);
+
+        let serialized = serde_json::to_string(&snap).unwrap();
+        let round: TelemetrySnapshot = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(snap, round);
+    }
+
+    #[test]
+    fn test_atomic_write_roundtrip() {
         let dir = std::env::temp_dir().join("sentrux_test_telemetry");
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("test_pending.json");
 
         let json = r#"{"scans":42,"mcp_calls":17,"gate_runs":9,"files":250,"grade":4}"#;
-        std::fs::write(&path, json).unwrap();
+        write_file_atomic(&path, json.as_bytes()).unwrap();
 
-        let content = std::fs::read_to_string(&path).unwrap();
-        let get = |key: &str| -> u32 {
-            content
-                .split(key)
-                .nth(1)
-                .and_then(|s| {
-                    s.trim_start_matches(['"', ':', ' '])
-                        .split([',', '}', '\n'])
-                        .next()
-                })
-                .and_then(|s| s.trim().parse().ok())
-                .unwrap_or(0)
-        };
-        assert_eq!(get("\"scans\""), 42);
-        assert_eq!(get("\"mcp_calls\""), 17);
-        assert_eq!(get("\"gate_runs\""), 9);
-        assert_eq!(get("\"files\""), 250);
-        assert_eq!(get("\"grade\""), 4);
+        let bytes = std::fs::read(&path).unwrap();
+        let snap: TelemetrySnapshot = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(snap.scans, 42);
 
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn test_atomic_write_overwrites_existing() {
+        let dir = std::env::temp_dir().join("sentrux_test_telemetry_overwrite");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("test_pending.json");
+
+        // Pre-existing file with different content.
+        std::fs::write(&path, b"legacy content").unwrap();
+
+        let json = r#"{"scans":7,"mcp_calls":0,"gate_runs":0,"files":0,"grade":0}"#;
+        write_file_atomic(&path, json.as_bytes()).unwrap();
+
+        let bytes = std::fs::read(&path).unwrap();
+        let snap: TelemetrySnapshot = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(snap.scans, 7);
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn test_partial_recovery_from_truncated_json() {
+        // Truncated legacy payload: `grade` is missing and the file is unclosed.
+        let truncated = r#"{"scans":42,"mcp_calls":17,"gate_runs":9,"files":250,"#;
+        let snap = recover_telemetry_snapshot(truncated.as_bytes());
+        assert_eq!(snap.scans, 42);
+        assert_eq!(snap.mcp_calls, 17);
+        assert_eq!(snap.gate_runs, 9);
+        assert_eq!(snap.files, 250);
+        assert_eq!(snap.grade, 0);
+
+        // Whitespace and field order tolerance.
+        let reordered = r#"{"mcp_calls": 8, "scans": 3}"#;
+        let snap = recover_telemetry_snapshot(reordered.as_bytes());
+        assert_eq!(snap.mcp_calls, 8);
+        assert_eq!(snap.scans, 3);
+        assert_eq!(snap.gate_runs, 0);
     }
 
     #[test]
