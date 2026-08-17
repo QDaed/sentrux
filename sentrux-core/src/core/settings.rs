@@ -275,22 +275,22 @@ pub enum Theme {
 
 impl Theme {
     /// All available themes in display order.
-    pub const ALL: &'static [Theme] = &[
-        Theme::Calm,
-        Theme::Dark,
-        Theme::Light,
-        Theme::Midnight,
-        Theme::Solarized,
+    pub const ALL: &'static [Self] = &[
+        Self::Calm,
+        Self::Dark,
+        Self::Light,
+        Self::Midnight,
+        Self::Solarized,
     ];
 
     /// Human-readable display label for this theme variant.
     pub fn label(self) -> &'static str {
         match self {
-            Theme::Calm => "Calm",
-            Theme::Dark => "Dark",
-            Theme::Light => "Light",
-            Theme::Midnight => "Midnight",
-            Theme::Solarized => "Solarized",
+            Self::Calm => "Calm",
+            Self::Dark => "Dark",
+            Self::Light => "Light",
+            Self::Midnight => "Midnight",
+            Self::Solarized => "Solarized",
         }
     }
 }
@@ -663,7 +663,10 @@ mod wcag_tests {
 
     fn luminance(color: Color32) -> f64 {
         let [r, g, b, _] = color.to_array();
-        0.2126 * srgb_to_linear(r) + 0.7152 * srgb_to_linear(g) + 0.0722 * srgb_to_linear(b)
+        0.0722f64.mul_add(
+            srgb_to_linear(b),
+            0.7152f64.mul_add(srgb_to_linear(g), 0.2126 * srgb_to_linear(r)),
+        )
     }
 
     fn contrast_ratio(fg: Color32, bg: Color32) -> f64 {

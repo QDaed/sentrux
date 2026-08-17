@@ -34,42 +34,38 @@ pub enum ColorMode {
 
 impl ColorMode {
     /// All supported color mode variants.
-    pub const ALL: &'static [ColorMode] = &[
-        ColorMode::Monochrome,
-        ColorMode::Language,
-        ColorMode::Heat,
-        ColorMode::Age,
-        ColorMode::Churn,
-        ColorMode::Risk,
-        ColorMode::Git,
-        ColorMode::ExecDepth,
-        ColorMode::BlastRadius,
+    pub const ALL: &'static [Self] = &[
+        Self::Monochrome,
+        Self::Language,
+        Self::Heat,
+        Self::Age,
+        Self::Churn,
+        Self::Risk,
+        Self::Git,
+        Self::ExecDepth,
+        Self::BlastRadius,
     ];
 
     /// Color modes available in the free tier.
-    pub const FREE: &'static [ColorMode] =
-        &[ColorMode::Monochrome, ColorMode::Language, ColorMode::Heat];
+    pub const FREE: &'static [Self] = &[Self::Monochrome, Self::Language, Self::Heat];
 
     /// Whether this mode requires Pro tier.
     pub fn is_pro(self) -> bool {
-        !matches!(
-            self,
-            ColorMode::Monochrome | ColorMode::Language | ColorMode::Heat
-        )
+        !matches!(self, Self::Monochrome | Self::Language | Self::Heat)
     }
 
     /// Human-readable display label for this color mode.
     pub fn label(self) -> &'static str {
         match self {
-            ColorMode::Monochrome => "Mono",
-            ColorMode::Language => "Language",
-            ColorMode::Heat => "Heat",
-            ColorMode::Age => "Age",
-            ColorMode::Churn => "Churn",
-            ColorMode::Risk => "Risk",
-            ColorMode::Git => "Git Status",
-            ColorMode::ExecDepth => "Exec Depth",
-            ColorMode::BlastRadius => "Blast Radius",
+            Self::Monochrome => "Mono",
+            Self::Language => "Language",
+            Self::Heat => "Heat",
+            Self::Age => "Age",
+            Self::Churn => "Churn",
+            Self::Risk => "Risk",
+            Self::Git => "Git Status",
+            Self::ExecDepth => "Exec Depth",
+            Self::BlastRadius => "Blast Radius",
         }
     }
 }
@@ -100,11 +96,11 @@ impl FocusMode {
     /// Human-readable display label for this focus mode.
     pub fn label(&self) -> &str {
         match self {
-            FocusMode::All => "All Files",
-            FocusMode::Directory(_) => "Directory",
-            FocusMode::Language(_) => "Language",
-            FocusMode::EntryPoints => "Entry Points",
-            FocusMode::ImpactRadius(_) => "Impact Radius",
+            Self::All => "All Files",
+            Self::Directory(_) => "Directory",
+            Self::Language(_) => "Language",
+            Self::EntryPoints => "Entry Points",
+            Self::ImpactRadius(_) => "Impact Radius",
         }
     }
 
@@ -118,15 +114,15 @@ impl FocusMode {
         impact_files: Option<&HashSet<String>>,
     ) -> bool {
         match self {
-            FocusMode::All => true,
-            FocusMode::Directory(prefix) => {
+            Self::All => true,
+            Self::Directory(prefix) => {
                 path == prefix.as_str()
                     || (path.starts_with(prefix.as_str())
                         && path.as_bytes().get(prefix.len()) == Some(&b'/'))
             }
-            FocusMode::Language(l) => lang == l.as_str(),
-            FocusMode::EntryPoints => is_entry,
-            FocusMode::ImpactRadius(center) => {
+            Self::Language(l) => lang == l.as_str(),
+            Self::EntryPoints => is_entry,
+            Self::ImpactRadius(center) => {
                 path == center.as_str() || impact_files.is_some_and(|s| s.contains(path))
             }
         }
@@ -149,30 +145,25 @@ pub enum EdgeFilter {
 
 impl EdgeFilter {
     /// All supported edge filter variants.
-    pub const ALL: &'static [EdgeFilter] = &[
-        EdgeFilter::All,
-        EdgeFilter::Imports,
-        EdgeFilter::Calls,
-        EdgeFilter::Inherit,
-    ];
+    pub const ALL: &'static [Self] = &[Self::All, Self::Imports, Self::Calls, Self::Inherit];
 
     /// Human-readable display label for this edge filter.
     pub fn label(self) -> &'static str {
         match self {
-            EdgeFilter::All => "All Edges",
-            EdgeFilter::Imports => "Imports",
-            EdgeFilter::Calls => "Calls",
-            EdgeFilter::Inherit => "Inherit",
+            Self::All => "All Edges",
+            Self::Imports => "Imports",
+            Self::Calls => "Calls",
+            Self::Inherit => "Inherit",
         }
     }
 
     /// Does this filter accept the given edge_type string?
     pub fn accepts(self, edge_type: &str) -> bool {
         match self {
-            EdgeFilter::All => true,
-            EdgeFilter::Imports => edge_type == "import",
-            EdgeFilter::Calls => edge_type == "call",
-            EdgeFilter::Inherit => edge_type == "inherit",
+            Self::All => true,
+            Self::Imports => edge_type == "import",
+            Self::Calls => edge_type == "call",
+            Self::Inherit => edge_type == "inherit",
         }
     }
 }
@@ -263,7 +254,7 @@ pub enum LayoutMode {
 impl LayoutMode {
     /// Whether this mode uses the blueprint engine (viewport-independent sizing)
     pub fn is_blueprint(self) -> bool {
-        matches!(self, LayoutMode::Blueprint)
+        matches!(self, Self::Blueprint)
     }
 }
 

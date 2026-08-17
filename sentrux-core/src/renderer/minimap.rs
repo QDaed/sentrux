@@ -34,8 +34,8 @@ fn minimap_transform(mm_w: f32, mm_h: f32, cw: f64, ch: f64) -> MinimapTransform
     let scale_x = mm_w as f64 / cw;
     let scale_y = mm_h as f64 / ch;
     let scale = scale_x.min(scale_y);
-    let offset_x = ((mm_w as f64 - cw * scale) / 2.0).max(0.0);
-    let offset_y = ((mm_h as f64 - ch * scale) / 2.0).max(0.0);
+    let offset_x = (cw.mul_add(-scale, mm_w as f64) / 2.0).max(0.0);
+    let offset_y = (ch.mul_add(-scale, mm_h as f64) / 2.0).max(0.0);
     MinimapTransform {
         scale,
         offset_x,

@@ -63,7 +63,7 @@ static REGISTRY: std::sync::LazyLock<LangRegistry> = std::sync::LazyLock::new(La
 
 impl LangRegistry {
     fn init() -> Self {
-        let mut registry = LangRegistry {
+        let mut registry = Self {
             by_name: HashMap::new(),
             by_ext: HashMap::new(),
             configs: Vec::new(),

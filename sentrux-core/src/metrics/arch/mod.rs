@@ -410,7 +410,7 @@ pub fn is_application(snapshot: &Snapshot) -> bool {
 
 /// Levelization score [0,1]: 1.0 = no upward violations.
 pub(crate) fn score_levelization(upward_ratio: f64) -> f64 {
-    (1.0 - upward_ratio * 10.0).clamp(0.0, 1.0)
+    upward_ratio.mul_add(-10.0, 1.0).clamp(0.0, 1.0)
 }
 
 // ── Main entry point ──

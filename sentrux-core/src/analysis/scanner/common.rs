@@ -55,7 +55,7 @@ pub(crate) fn detect_lang(path: &Path) -> String {
     // Check filename first for extensionless files (Dockerfile, Makefile, etc.)
     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
         if let Some(lang) = crate::analysis::lang_registry::detect_lang_from_filename(name) {
-            return lang.to_string();
+            return lang;
         }
     }
     match path.extension().and_then(|e| e.to_str()) {

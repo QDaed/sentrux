@@ -215,7 +215,7 @@ pub(crate) fn compute_shannon_entropy(
     for &count in pair_counts.values() {
         let p = count as f64 / n;
         if p > 0.0 {
-            h -= p * p.log2();
+            h = p.mul_add(-p.log2(), h);
         }
     }
 

@@ -51,7 +51,7 @@ pub(crate) fn draw_dashed_polyline(
         seg_starts[i] = cum;
         let dx = pts[i + 1].x - pts[i].x;
         let dy = pts[i + 1].y - pts[i].y;
-        cum += (dx * dx + dy * dy).sqrt();
+        cum += dx.hypot(dy);
     }
     let total_len = cum;
     if total_len < 0.5 {
@@ -164,12 +164,12 @@ fn point_at_distance(pts: &[Pos2], seg_starts: &[f32], dist: f32) -> Pos2 {
     let seg_start_d = seg_starts[seg];
     let dx = pts[seg + 1].x - pts[seg].x;
     let dy = pts[seg + 1].y - pts[seg].y;
-    let seg_len = (dx * dx + dy * dy).sqrt();
+    let seg_len = dx.hypot(dy);
     let t = if seg_len > 0.001 {
         (dist - seg_start_d) / seg_len
     } else {
         0.0
     };
     let t = t.clamp(0.0, 1.0);
-    egui::pos2(pts[seg].x + dx * t, pts[seg].y + dy * t)
+    egui::pos2(dx.mul_add(t, pts[seg].x), dy.mul_add(t, pts[seg].y))
 }

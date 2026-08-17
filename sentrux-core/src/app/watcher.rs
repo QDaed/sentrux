@@ -204,7 +204,7 @@ pub fn start_watcher(
     let shutdown = Arc::new(AtomicBool::new(false));
 
     let pending_w = Arc::clone(&pending);
-    let root_for_cb = root_path.clone();
+    let root_for_cb = root_path;
 
     // Raw notify watcher — feeds into pending map
     // Bug #9: preserve event kind (create/modify/remove) from notify

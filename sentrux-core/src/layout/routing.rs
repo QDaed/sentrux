@@ -42,8 +42,8 @@ fn clip_ray_to_border(outside: &Point, target: &Anchor, border_pad: f64) -> Poin
     // producing edges that visually pass through the entire rect. [ref:93cf32d4]
     //
     let s = s.min(1.0);
-    let bx = target.cx - dx * s;
-    let by = target.cy - dy * s;
+    let bx = dx.mul_add(-s, target.cx);
+    let by = dy.mul_add(-s, target.cy);
 
     // Nudge inward slightly so arrowhead doesn't overlap the edge
     let pad_x = if dx.abs() > 0.01 {
@@ -187,7 +187,7 @@ pub fn compute_edge_path(
     settings: &Settings,
 ) -> Option<(Vec<Point>, char)> {
     let border_pad = settings.edge_border_pad;
-    let dist = ((to.cx - from.cx).powi(2) + (to.cy - from.cy).powi(2)).sqrt();
+    let dist = (to.cx - from.cx).hypot(to.cy - from.cy);
     if dist < settings.min_edge_len {
         return None;
     }

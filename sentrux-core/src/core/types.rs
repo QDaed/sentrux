@@ -37,7 +37,7 @@ pub struct FileNode {
     pub sa: Option<StructuralAnalysis>,
     /// Child nodes (only present for directories)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub children: Option<Vec<FileNode>>,
+    pub children: Option<Vec<Self>>,
 }
 
 /// Structural analysis results for a single file.

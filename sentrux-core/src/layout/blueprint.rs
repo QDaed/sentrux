@@ -26,7 +26,9 @@ struct BpRect {
 /// Compute padding and header size for a blueprint section at a given depth.
 /// Deeper sections get progressively less chrome to avoid eating content area.
 fn bp_chrome_for_depth(w: f64, h: f64, depth: u32, s: &Settings) -> (f64, f64) {
-    let frac = (s.blueprint_max_chrome_frac - depth as f64 * 0.04).max(0.08);
+    let frac = (depth as f64)
+        .mul_add(-0.04, s.blueprint_max_chrome_frac)
+        .max(0.08);
     let pad = (s.blueprint_section_pad)
         .min(w * frac * 0.3)
         .min(h * frac * 0.15)
@@ -321,8 +323,8 @@ fn layout_dir(
     let inner = BpRect {
         x: r.x + pad,
         y: r.y + header + pad,
-        w: r.w - pad * 2.0,
-        h: r.h - header - pad * 2.0,
+        w: pad.mul_add(-2.0, r.w),
+        h: pad.mul_add(-2.0, r.h - header),
     };
     if inner.w < settings.blueprint_min_rect || inner.h < settings.blueprint_min_rect {
         return;

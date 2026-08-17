@@ -94,8 +94,8 @@ impl Constraints {
     }
 
     /// Merge language-specific overrides into this constraint set.
-    pub fn merge(&self, override_with: &Constraints) -> Constraints {
-        Constraints {
+    pub fn merge(&self, override_with: &Self) -> Self {
+        Self {
             min_quality: override_with.min_quality.or(self.min_quality),
             min_modularity: override_with.min_modularity.or(self.min_modularity),
             min_acyclicity: override_with.min_acyclicity.or(self.min_acyclicity),
@@ -140,7 +140,7 @@ pub struct RuleViolation {
 }
 
 /// Severity level for rule violations.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Severity {
     /// Hard failure — the gate should reject
     Error,

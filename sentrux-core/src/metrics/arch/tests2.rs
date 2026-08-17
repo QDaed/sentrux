@@ -163,7 +163,7 @@ fn make_snapshot_with_files(edges: Vec<ImportEdge>, files: Vec<FileNode>) -> Sna
         total_lines: 0,
         total_dirs: 0,
         call_graph: vec![],
-        import_graph: edges.clone(),
+        import_graph: edges,
         inherit_graph: vec![],
         entry_points: vec![],
         exec_depth: HashMap::new(),
