@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 /// Get the parent directory string for a file path.
-pub(crate) fn parent_dir_str(file_path: &str) -> String {
+pub fn parent_dir_str(file_path: &str) -> String {
     Path::new(file_path)
         .parent()
         .map(|p| crate::analysis::scanner::common::normalize_path(p.to_string_lossy()))
@@ -15,7 +15,7 @@ pub(crate) fn parent_dir_str(file_path: &str) -> String {
 }
 
 /// Group files by parent directory, returning the map and the set of direct parent dirs.
-pub(crate) fn group_files_by_parent(
+pub fn group_files_by_parent(
     files: Vec<FileNode>,
 ) -> (HashMap<String, Vec<FileNode>>, HashSet<String>) {
     let mut all_dirs_set: HashSet<String> = HashSet::new();
@@ -44,7 +44,7 @@ pub(crate) fn group_files_by_parent(
 /// added yet. Breaking early on set membership caused subtrees to become
 /// orphaned when a leaf parent dir was already in the set but its ancestors
 /// were not.
-pub(crate) fn expand_ancestor_dirs(
+pub fn expand_ancestor_dirs(
     file_children: &HashMap<String, Vec<FileNode>>,
     all_dirs_set: &mut HashSet<String>,
 ) {
@@ -75,9 +75,7 @@ pub(crate) fn expand_ancestor_dirs(
 }
 
 /// Build parent→child_dirs map for O(1) lookup from dir set. Sorted for determinism.
-pub(crate) fn build_dir_children_map(
-    all_dirs_set: &HashSet<String>,
-) -> HashMap<String, Vec<String>> {
+pub fn build_dir_children_map(all_dirs_set: &HashSet<String>) -> HashMap<String, Vec<String>> {
     let mut dir_children: HashMap<String, Vec<String>> = HashMap::new();
     for dir in all_dirs_set {
         if dir.is_empty() {
@@ -96,7 +94,7 @@ pub(crate) fn build_dir_children_map(
 }
 
 /// Create a directory FileNode by recursively assembling children.
-pub(crate) fn assemble_dir_node(
+pub fn assemble_dir_node(
     dir_path: &str,
     file_children: &mut HashMap<String, Vec<FileNode>>,
     dir_children: &HashMap<String, Vec<String>>,
@@ -158,7 +156,7 @@ pub(crate) fn assemble_dir_node(
 /// Build tree from flat list of FileNodes.
 /// Uses parent→children map for O(D) directory traversal instead of O(D²).
 /// Consumes the Vec to avoid cloning each FileNode. [ref:93cf32d4]
-pub(crate) fn build_tree(files: Vec<FileNode>, root_name: &str) -> (FileNode, u32) {
+pub fn build_tree(files: Vec<FileNode>, root_name: &str) -> (FileNode, u32) {
     let file_count = files.len();
     let (mut file_children, mut all_dirs_set) = group_files_by_parent(files);
     expand_ancestor_dirs(&file_children, &mut all_dirs_set);

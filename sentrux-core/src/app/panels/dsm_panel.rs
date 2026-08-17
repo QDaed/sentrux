@@ -269,7 +269,7 @@ struct DsmColors {
 }
 
 impl DsmColors {
-    fn from_theme(tc: &crate::core::settings::ThemeConfig) -> Self {
+    const fn from_theme(tc: &crate::core::settings::ThemeConfig) -> Self {
         Self {
             diag: tc.section_border,
             below: tc.status_success,
@@ -308,7 +308,7 @@ fn detect_hover(
 
 /// Pick the direction color based on row/col levels.
 #[inline]
-fn direction_color(rl: u32, cl: u32, c: &DsmColors) -> egui::Color32 {
+const fn direction_color(rl: u32, cl: u32, c: &DsmColors) -> egui::Color32 {
     if rl > cl {
         c.below
     } else if rl < cl {

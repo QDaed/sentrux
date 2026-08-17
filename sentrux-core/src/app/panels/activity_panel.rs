@@ -8,7 +8,7 @@ use egui::{CursorIcon, Sense};
 use std::collections::HashMap;
 
 /// Draw a horizontal separator line with configurable top spacing.
-pub(crate) fn draw_sep(ui: &mut egui::Ui, tc: &ThemeConfig, top: f32) {
+pub fn draw_sep(ui: &mut egui::Ui, tc: &ThemeConfig, top: f32) {
     ui.add_space(top);
     let r = ui.available_rect_before_wrap();
     ui.painter().line_segment(

@@ -166,6 +166,7 @@ fn kosaraju_assign_sccs<'a>(
 // Cycles get the same level (conservative: max of cycle members).
 
 /// Compute levels via Kahn's topological sort on the SCC DAG.
+///
 /// Level 0 = leaf nodes (no outgoing imports). Level N = imports up to level N-1.
 /// Cycles are handled by collapsing SCCs — all nodes in a cycle get the same
 /// level (max of their dependencies + 1). O(V+E), no re-enqueue. `[ref:4e8f1175]`

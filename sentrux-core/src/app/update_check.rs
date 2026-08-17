@@ -378,7 +378,7 @@ fn is_newer(current: &str, latest: &str) -> bool {
 
 // ── Platform ──
 
-fn platform_id() -> &'static str {
+const fn platform_id() -> &'static str {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
         "darwin-arm64"

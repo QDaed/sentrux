@@ -5,7 +5,7 @@
 //! code so panels reference only semantic ThemeConfig colors.
 
 /// Convert a language profile's color_rgb to an egui Color32.
-pub fn lang_profile_color(
+pub const fn lang_profile_color(
     profile: &crate::analysis::plugin::profile::LanguageProfile,
 ) -> egui::Color32 {
     egui::Color32::from_rgb(
@@ -16,10 +16,7 @@ pub fn lang_profile_color(
 }
 
 /// Theme-aware score color -- picks dark or light palette based on theme.
-pub fn score_color_for_theme(
-    score: f64,
-    tc: &crate::core::settings::ThemeConfig,
-) -> egui::Color32 {
+pub fn score_color_for_theme(score: f64, tc: &crate::core::settings::ThemeConfig) -> egui::Color32 {
     score_color_themed(score, tc.section_is_dark)
 }
 

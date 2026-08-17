@@ -7,7 +7,7 @@ use super::{AppState, Snapshot, ThemeConfig};
 use std::sync::Arc;
 
 /// Draw file detail section for the selected file.
-pub(crate) fn draw_file_detail(
+pub fn draw_file_detail(
     ui: &mut egui::Ui,
     state: &AppState,
     snap: &Arc<Snapshot>,

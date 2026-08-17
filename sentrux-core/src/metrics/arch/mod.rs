@@ -402,6 +402,7 @@ pub fn score_attack_surface(ratio: f64) -> f64 {
 }
 
 /// Check if a project is an application (has main entry points) vs a library.
+///
 /// Applications naturally have ~100% reachable code — grading attack surface
 /// penalizes correct architecture. Libraries benefit from encapsulation.
 pub fn is_application(snapshot: &Snapshot) -> bool {

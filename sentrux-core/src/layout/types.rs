@@ -50,12 +50,12 @@ impl ColorMode {
     pub const FREE: &'static [Self] = &[Self::Monochrome, Self::Language, Self::Heat];
 
     /// Whether this mode requires Pro tier.
-    pub fn is_pro(self) -> bool {
+    pub const fn is_pro(self) -> bool {
         !matches!(self, Self::Monochrome | Self::Language | Self::Heat)
     }
 
     /// Human-readable display label for this color mode.
-    pub fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
             Self::Monochrome => "Mono",
             Self::Language => "Language",
@@ -94,7 +94,7 @@ pub enum FocusMode {
 
 impl FocusMode {
     /// Human-readable display label for this focus mode.
-    pub fn label(&self) -> &str {
+    pub const fn label(&self) -> &str {
         match self {
             Self::All => "All Files",
             Self::Directory(_) => "Directory",
@@ -148,7 +148,7 @@ impl EdgeFilter {
     pub const ALL: &'static [Self] = &[Self::All, Self::Imports, Self::Calls, Self::Inherit];
 
     /// Human-readable display label for this edge filter.
-    pub fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
             Self::All => "All Edges",
             Self::Imports => "Imports",
@@ -185,7 +185,7 @@ pub struct ViewportRect {
 impl ViewportRect {
     /// Create a new viewport rectangle.
     #[inline]
-    pub fn new(x: f64, y: f64, w: f64, h: f64) -> Self {
+    pub const fn new(x: f64, y: f64, w: f64, h: f64) -> Self {
         Self { x, y, w, h }
     }
 }
@@ -253,7 +253,7 @@ pub enum LayoutMode {
 
 impl LayoutMode {
     /// Whether this mode uses the blueprint engine (viewport-independent sizing)
-    pub fn is_blueprint(self) -> bool {
+    pub const fn is_blueprint(self) -> bool {
         matches!(self, Self::Blueprint)
     }
 }
@@ -273,6 +273,7 @@ pub enum RectKind {
 }
 
 /// Slim layout rectangle — geometry + identity only.
+///
 /// Renderers look up file metadata via `file_index.get(path)` from the Snapshot.
 /// Keeps only what the layout engine computes; avoids duplicating FileNode data.
 #[derive(Debug, Clone, Serialize, Deserialize)]

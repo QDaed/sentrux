@@ -237,6 +237,7 @@ fn build_whatif_result(
 }
 
 /// Find the best edge to remove from a cycle to minimize architectural impact.
+///
 /// Uses fan-in heuristic: remove the edge whose target has the lowest fan-in
 /// (least depended-on file), breaking the cycle with minimal disruption.
 /// This avoids the previous O(E×V²) approach of computing full blast radius

@@ -26,6 +26,7 @@ const MIN_TYPES_FOR_DISTANCE: usize = 1;
 // ── Public types ──
 
 /// Robert C. Martin 2003: Distance from Main Sequence per module (directory).
+///
 /// D = |A + I - 1| where A = abstractness, I = instability.
 /// D close to 0 = good (on the main sequence).
 /// D close to 1 = bad (zone of pain or zone of uselessness).

@@ -272,19 +272,17 @@ fn file_display_color(
         let query_lower = ctx.search_query.to_lowercase();
         let matches = filename.to_lowercase().contains(&query_lower)
             || path.to_lowercase().contains(&query_lower);
+        let [r, g, b, _] = base_color.to_array();
         if matches {
             // Brighten matching files
-            let [r, g, b, _] = base_color.to_array();
             return Color32::from_rgb(
                 (255.0 - r as f32).mul_add(0.35, r as f32) as u8,
                 (255.0 - g as f32).mul_add(0.35, g as f32) as u8,
                 (255.0 - b as f32).mul_add(0.35, b as f32) as u8,
             );
-        } else {
-            // Heavily dim non-matching files
-            let [r, g, b, _] = base_color.to_array();
-            return Color32::from_rgb(r / 4, g / 4, b / 4);
         }
+        // Heavily dim non-matching files
+        return Color32::from_rgb(r / 4, g / 4, b / 4);
     }
 
     let has_spotlight = connected_files.is_some();

@@ -8,11 +8,7 @@ use super::ThemeConfig;
 use crate::metrics::evo::EvolutionReport;
 
 /// Draw the evolution section in the metrics panel.
-pub(crate) fn draw_evolution_section(
-    ui: &mut egui::Ui,
-    report: &EvolutionReport,
-    tc: &ThemeConfig,
-) {
+pub fn draw_evolution_section(ui: &mut egui::Ui, report: &EvolutionReport, tc: &ThemeConfig) {
     let row_h = 13.0;
     let font = egui::FontId::monospace(9.0);
 

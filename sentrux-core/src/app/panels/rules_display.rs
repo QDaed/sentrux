@@ -9,7 +9,7 @@ use super::ThemeConfig;
 use crate::metrics::rules::checks::{RuleCheckResult, Severity};
 
 /// Draw the rules check section in the metrics panel.
-pub(crate) fn draw_rules_section(ui: &mut egui::Ui, result: &RuleCheckResult, tc: &ThemeConfig) {
+pub fn draw_rules_section(ui: &mut egui::Ui, result: &RuleCheckResult, tc: &ThemeConfig) {
     let row_h = 13.0;
     let font = egui::FontId::monospace(9.0);
 

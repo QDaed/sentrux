@@ -74,7 +74,7 @@ fn build_gitignore(root: &Path) -> ignore::gitignore::Gitignore {
 }
 
 /// Map a `notify::EventKind` to a static event kind string.
-fn event_kind_str(kind: notify::EventKind) -> &'static str {
+const fn event_kind_str(kind: notify::EventKind) -> &'static str {
     match kind {
         notify::EventKind::Create(_) => "create",
         notify::EventKind::Remove(_) => "remove",

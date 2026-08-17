@@ -8,6 +8,7 @@ use crate::core::settings::Theme;
 use crate::layout::types::{ColorMode, EdgeFilter, FocusMode, LayoutMode, ScaleMode, SizeMode};
 
 /// Draw the toolbar panel. Returns (layout_changed, visual_changed).
+///
 /// layout_changed = size/scale/layout mode changed (needs re-layout).
 /// visual_changed = color/theme/edge/focus changed (needs repaint only).
 pub fn draw_toolbar(ui: &mut egui::Ui, state: &mut AppState) -> (bool, bool) {
@@ -113,7 +114,7 @@ fn draw_layout_mode_combo(ui: &mut egui::Ui, state: &mut AppState, layout_change
 }
 
 /// Map SizeMode to its display label.
-fn size_mode_label(mode: SizeMode) -> &'static str {
+const fn size_mode_label(mode: SizeMode) -> &'static str {
     match mode {
         SizeMode::Lines => "Lines",
         SizeMode::Logic => "Logic",
@@ -332,7 +333,7 @@ fn draw_edge_filter_combo(ui: &mut egui::Ui, state: &mut AppState, visual_change
 }
 
 /// Color for an active/inactive toggle state.
-fn toggle_color(
+const fn toggle_color(
     active: bool,
     active_color: egui::Color32,
     inactive_color: egui::Color32,

@@ -47,7 +47,7 @@ pub(crate) struct ResolutionStats {
 
 impl ResolutionStats {
     /// Create a new zeroed ResolutionStats.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             resolved_count: std::sync::atomic::AtomicUsize::new(0),
             unresolved_count: std::sync::atomic::AtomicUsize::new(0),

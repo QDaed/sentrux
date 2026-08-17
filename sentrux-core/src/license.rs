@@ -55,7 +55,7 @@ impl Tier {
     }
 
     /// Detail list limit for this tier (used by health, test_gaps, etc.)
-    pub fn detail_limit(self) -> usize {
+    pub const fn detail_limit(self) -> usize {
         match self {
             Self::Free => 0,
             Self::Pro | Self::Team => usize::MAX,
@@ -194,7 +194,7 @@ fn chrono_today() -> String {
     format!("{:04}-{:02}-{:02}", y, m + 1, remaining + 1)
 }
 
-fn is_leap(y: i64) -> bool {
+const fn is_leap(y: i64) -> bool {
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 }
 

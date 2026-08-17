@@ -49,7 +49,7 @@ pub struct Constraints {
 
 impl Constraints {
     /// Count how many constraint thresholds are actively set.
-    pub fn count_active(&self) -> usize {
+    pub const fn count_active(&self) -> usize {
         let mut n = 0;
         if self.min_quality.is_some() {
             n += 1;

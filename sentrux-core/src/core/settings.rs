@@ -239,7 +239,7 @@ impl Settings {
     }
 
     /// Create a HeatConfig from current settings
-    pub fn heat_config(&self) -> crate::core::heat::HeatConfig {
+    pub const fn heat_config(&self) -> crate::core::heat::HeatConfig {
         crate::core::heat::HeatConfig {
             half_life: self.heat_half_life,
             ripple_duration: self.ripple_duration,
@@ -284,7 +284,7 @@ impl Theme {
     ];
 
     /// Human-readable display label for this theme variant.
-    pub fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
             Self::Calm => "Calm",
             Self::Dark => "Dark",
@@ -418,7 +418,7 @@ impl ThemeConfig {
 
 // ── Theme palette constructors ──
 
-fn theme_calm() -> ThemeConfig {
+const fn theme_calm() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(22, 22, 30),
         section_base: 30,
@@ -464,7 +464,7 @@ fn theme_calm() -> ThemeConfig {
     }
 }
 
-fn theme_dark() -> ThemeConfig {
+const fn theme_dark() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(22, 22, 26),
         section_base: 30,
@@ -510,7 +510,7 @@ fn theme_dark() -> ThemeConfig {
     }
 }
 
-fn theme_light() -> ThemeConfig {
+const fn theme_light() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(240, 240, 244),
         section_base: 230,
@@ -556,7 +556,7 @@ fn theme_light() -> ThemeConfig {
     }
 }
 
-fn theme_midnight() -> ThemeConfig {
+const fn theme_midnight() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(10, 10, 18),
         section_base: 18,
@@ -602,7 +602,7 @@ fn theme_midnight() -> ThemeConfig {
     }
 }
 
-fn theme_solarized() -> ThemeConfig {
+const fn theme_solarized() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(0, 43, 54),
         section_base: 30,

@@ -11,7 +11,7 @@ use std::sync::Arc;
 /// Keyed by (selected_path, snapshot edge count + file count) to invalidate on change.
 /// Previously used Arc pointer identity which could give false cache hits if the
 /// allocator reuses the same address after an Arc is dropped.
-pub(crate) struct WhatIfCache {
+pub struct WhatIfCache {
     path: String,
     snap_fingerprint: u64,
     remove_result: WhatIfResult,
@@ -171,7 +171,7 @@ fn draw_level_changes(ui: &mut egui::Ui, r: &WhatIfResult, row_h: f32, tc: &Them
 
 /// Draw what-if section for the currently selected file.
 /// Returns true if the cache was updated (for repaint).
-pub(crate) fn draw_whatif_section(
+pub fn draw_whatif_section(
     ui: &mut egui::Ui,
     selected_path: &str,
     snapshot: &Arc<Snapshot>,

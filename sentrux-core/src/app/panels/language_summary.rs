@@ -17,7 +17,7 @@ pub struct LangStat {
 }
 
 /// Aggregate per-language stats from snapshot. Called once per scan, cached.
-pub(crate) fn compute_lang_stats(snap: &Snapshot) -> Vec<(String, LangStat)> {
+pub fn compute_lang_stats(snap: &Snapshot) -> Vec<(String, LangStat)> {
     let files = crate::core::snapshot::flatten_files_ref(&snap.root);
     let mut stats: HashMap<String, LangStat> = HashMap::new();
 
@@ -178,7 +178,7 @@ fn draw_lang_row(
 
 /// Draw the language & plugin summary section.
 /// `lang_stats` should be pre-computed and cached (call `compute_lang_stats` once per scan).
-pub(crate) fn draw_language_summary(
+pub fn draw_language_summary(
     ui: &mut egui::Ui,
     snap: &Arc<Snapshot>,
     lang_stats: &[(String, LangStat)],

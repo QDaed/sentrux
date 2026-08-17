@@ -31,7 +31,11 @@ pub(super) struct CaptureResult<'a> {
 }
 
 /// Set the result to a class definition with the given kind.
-fn set_class_def<'a>(r: &mut CaptureResult<'a>, node: tree_sitter::Node<'a>, kind: &'static str) {
+const fn set_class_def<'a>(
+    r: &mut CaptureResult<'a>,
+    node: tree_sitter::Node<'a>,
+    kind: &'static str,
+) {
     r.match_type = Some(MatchKind::ClassDef);
     r.match_node = Some(node);
     r.class_kind = Some(kind);

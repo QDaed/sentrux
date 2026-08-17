@@ -192,7 +192,7 @@ impl LangRegistry {
     }
 
     /// Number of loaded languages.
-    pub fn count(&self) -> usize {
+    pub const fn count(&self) -> usize {
         self.configs.len()
     }
 

@@ -28,7 +28,7 @@ impl Default for ViewportTransform {
 
 impl ViewportTransform {
     /// Create a default viewport (1x zoom, no offset, 800x600 canvas).
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             offset_x: 0.0,
             offset_y: 0.0,

@@ -10,7 +10,7 @@ pub use crate::app::color_utils::score_color_for_theme;
 
 #[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn draw_flagged_list<T, F, H>(
+pub fn draw_flagged_list<T, F, H>(
     ui: &mut egui::Ui,
     title: &str,
     items: &[T],
