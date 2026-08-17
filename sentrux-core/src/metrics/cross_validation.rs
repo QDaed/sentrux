@@ -1,14 +1,14 @@
 //! Cross-validation of quality signal via compression ratio (FREE).
 //!
 //! Computes an independent quality estimate by measuring the compressibility
-//! of the codebase's structural representation. High compressibility = high
-//! redundancy/pattern = lower quality. Low compressibility = unique structure
-//! = higher quality.
+//! of the dependency edge list. High compressibility = high redundancy/pattern
+//! = lower quality. Low compressibility = unique structure = higher quality.
 //!
 //! This provides a second opinion on the quality_signal from root_causes.
 //! If both agree, confidence is high. If they disagree, one sensor may be blind.
 
 use crate::core::types::ImportEdge;
+use std::collections::HashMap;
 use std::io::Write;
 
 /// Independent quality estimate based on DEFLATE compression of the
@@ -24,32 +24,52 @@ pub struct CrossValidation {
     pub confidence: f64,
 }
 
+/// Deterministic 64-bit FNV-1a hash used to assign label-independent node IDs.
+fn fnv1a_hash(s: &str) -> u64 {
+    const OFFSET: u64 = 0xcbf29ce484222325;
+    const PRIME: u64 = 0x00000100000001B3;
+    let mut h = OFFSET;
+    for b in s.as_bytes() {
+        h ^= *b as u64;
+        h = h.wrapping_mul(PRIME);
+    }
+    h
+}
+
 /// Compute a compression-based cross-validation of the root-cause quality signal.
 ///
 /// Returns `None` when there is no structural dependency data, because a
 /// compression estimate needs edges to be meaningful.
+///
+/// Edges are encoded as pairs of deterministic 64-bit node IDs derived from file
+/// paths, so the metric reflects edge-structure redundancy rather than the
+/// compressibility of the raw path strings.
 pub fn compute(edges: &[ImportEdge], quality_signal: f64) -> Option<CrossValidation> {
     if edges.is_empty() {
         return None;
     }
 
-    let mut pairs: Vec<(&str, &str)> = edges
-        .iter()
-        .filter(|e| !e.from_file.is_empty() && !e.to_file.is_empty())
-        .map(|e| (e.from_file.as_str(), e.to_file.as_str()))
-        .collect();
+    let mut ids = HashMap::with_capacity(edges.len() * 2);
+    let mut pairs: Vec<(u64, u64)> = Vec::with_capacity(edges.len());
+    for e in edges.iter().filter(|e| !e.from_file.is_empty() && !e.to_file.is_empty()) {
+        let from_id = *ids
+            .entry(&e.from_file)
+            .or_insert_with(|| fnv1a_hash(&e.from_file));
+        let to_id = *ids
+            .entry(&e.to_file)
+            .or_insert_with(|| fnv1a_hash(&e.to_file));
+        pairs.push((from_id, to_id));
+    }
     if pairs.is_empty() {
         return None;
     }
 
     pairs.sort_unstable();
 
-    let mut original = Vec::new();
+    let mut original = Vec::with_capacity(pairs.len() * 16);
     for (from, to) in pairs {
-        original.extend_from_slice(from.as_bytes());
-        original.push(0);
-        original.extend_from_slice(to.as_bytes());
-        original.push(0);
+        original.extend_from_slice(&from.to_le_bytes());
+        original.extend_from_slice(&to.to_le_bytes());
     }
 
     let original_len = original.len() as f64;
