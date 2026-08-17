@@ -413,13 +413,22 @@ pub(super) fn process_class_def(
         name_text.unwrap_or_else(|| match_node.map(|n| n.kind().to_string()).unwrap_or_default());
     if !name.is_empty() {
         let bases = match_node.and_then(|node| extract_base_classes(node, pctx.content, pctx.lang));
-        let src = match_node.and_then(|node| class_header_text(node, pctx.content));
+        let header = match_node.and_then(|node| class_header_text(node, pctx.content));
+        let kind = match (class_kind, header.as_deref()) {
+            (Some("class"), Some(header))
+                if crate::analysis::lang_registry::profile(pctx.lang)
+                    .has_abstract_keyword(header) =>
+            {
+                Some("abstract_class".to_string())
+            }
+            (Some(kind), _) => Some(kind.to_string()),
+            (None, _) => None,
+        };
         classes.push(ClassInfo {
             n: name,
             m: None,
             b: bases,
-            k: class_kind.map(|s| s.to_string()),
-            src,
+            k: kind,
         });
     }
 }

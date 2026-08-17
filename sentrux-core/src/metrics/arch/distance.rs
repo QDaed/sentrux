@@ -113,32 +113,22 @@ fn count_types_per_module(
     (module_abstract, module_total)
 }
 
-/// Check whether a class kind counts as abstract (interface or ADT).
+/// Check whether a class kind counts as abstract (interface, ADT, or abstract class).
 fn is_abstract_kind(kind: Option<&str>) -> bool {
-    matches!(kind, Some("interface") | Some("adt"))
+    matches!(
+        kind,
+        Some("interface") | Some("adt") | Some("abstract_class")
+    )
 }
 
 /// Check whether a class is abstract based on its language profile.
-/// Reads `abstract_base_classes` (e.g., Python: Protocol, ABC, ABCMeta)
-/// and `abstract_keywords` (e.g., Java/C#: abstract) from plugin.toml [semantics].
-/// The class declaration header is captured during parsing and matched against
-/// the configured keywords, so tree-sitter does not need a distinct abstract
-/// class node kind.
+/// Abstract declaration keywords are normalized to `k = "abstract_class"`
+/// during parsing; base-class markers remain profile-driven here.
 fn is_abstract_by_profile(
     cls: &crate::core::types::ClassInfo,
     profile: &crate::analysis::plugin::profile::LanguageProfile,
 ) -> bool {
-    // Check base classes (Python Protocol, ABC, ABCMeta)
-    if profile.has_abstract_base(cls.b.as_ref()) {
-        return true;
-    }
-    // Check abstract keywords in the class declaration header.
-    if let Some(src) = cls.src.as_deref() {
-        if profile.has_abstract_keyword(src) {
-            return true;
-        }
-    }
-    false
+    profile.has_abstract_base(cls.b.as_ref())
 }
 
 /// Count abstract and total types in a single file node's class list.
@@ -270,13 +260,12 @@ mod tests {
     use crate::analysis::plugin::profile::LanguageProfile;
     use crate::core::types::ClassInfo;
 
-    fn cls(name: &str, kind: &str, src: &str, bases: Option<&[&str]>) -> ClassInfo {
+    fn cls(name: &str, kind: &str, bases: Option<&[&str]>) -> ClassInfo {
         ClassInfo {
             n: name.into(),
             m: None,
             b: bases.map(|bs| bs.iter().map(|b| b.to_string()).collect()),
             k: Some(kind.into()),
-            src: Some(src.into()),
         }
     }
 
@@ -293,43 +282,26 @@ mod tests {
     }
 
     #[test]
-    fn detects_abstract_keyword_in_class_header() {
-        let profile = profile_with(&["abstract"], &[]);
-        let cls = cls("Foo", "class", "public abstract class Foo", None);
-        assert!(is_abstract_by_profile(&cls, &profile));
+    fn abstract_class_kind_counts_as_abstract() {
+        assert!(is_abstract_kind(Some("abstract_class")));
     }
 
     #[test]
-    fn ignores_concrete_class_with_keyword_in_method_body() {
-        let profile = profile_with(&["abstract"], &[]);
-        // Header only: the class is concrete, so the method body is excluded.
-        let cls = cls("Foo", "class", "public class Foo", None);
-        assert!(!is_abstract_by_profile(&cls, &profile));
-    }
-
-    #[test]
-    fn detects_abstract_keyword_after_annotation_braces() {
-        let profile = profile_with(&["abstract"], &[]);
-        let cls = cls(
-            "Example",
-            "class",
-            "@Anno({1, 2}) abstract class Example",
-            None,
-        );
-        assert!(is_abstract_by_profile(&cls, &profile));
+    fn concrete_class_kind_is_not_abstract() {
+        assert!(!is_abstract_kind(Some("class")));
     }
 
     #[test]
     fn detects_abstract_base_class() {
         let profile = profile_with(&[], &["ABC"]);
-        let cls = cls("Foo", "class", "class Foo(ABC)", Some(&["abc.ABC"]));
+        let cls = cls("Foo", "class", Some(&["abc.ABC"]));
         assert!(is_abstract_by_profile(&cls, &profile));
     }
 
     #[test]
     fn matches_whole_keyword_not_substring() {
         let profile = profile_with(&["abstract"], &[]);
-        let cls = cls("Foo", "class", "public class AbstractFactory", None);
-        assert!(!is_abstract_by_profile(&cls, &profile));
+        assert!(profile.has_abstract_keyword("public abstract class Foo"));
+        assert!(!profile.has_abstract_keyword("public class AbstractFactory"));
     }
 }
