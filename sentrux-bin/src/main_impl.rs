@@ -608,7 +608,7 @@ fn gate_compare(
 
     println!("sentrux gate — structural regression check\n");
     println!(
-        "Quality:      {} -> {}",
+        "Quality:      {} → {}",
         (diff.signal_before * 10000.0).round() as u32,
         (diff.signal_after * 10000.0).round() as u32
     );

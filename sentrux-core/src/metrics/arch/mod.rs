@@ -145,7 +145,11 @@ pub struct ArchBaseline {
 }
 
 /// Diff between two snapshots (baseline vs current).
-#[derive(Debug, Clone)]
+///
+/// Marked `#[non_exhaustive]` so future fields can be added without breaking
+/// downstream struct literals; use `..Default::default()` or `Default::default()`.
+#[non_exhaustive]
+#[derive(Debug, Clone, Default)]
 pub struct ArchDiff {
     /// Quality signal from the baseline
     pub signal_before: f64,
