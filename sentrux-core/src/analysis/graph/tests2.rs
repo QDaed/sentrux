@@ -378,15 +378,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
-    #[test]
-    fn rust_use_tree_resolves_to_module_files() {
-        let tmp = std::env::temp_dir().join("sentrux_test_rust_usetree");
-        let _ = std::fs::remove_dir_all(&tmp);
-        std::fs::create_dir_all(tmp.join("src/models")).unwrap();
-        std::fs::create_dir_all(tmp.join("src/store")).unwrap();
-        std::fs::write(tmp.join("Cargo.toml"), "[package]\nname = \"beemem\"").unwrap();
-
-        let files = [
+    fn rust_use_tree_fixture() -> [FileNode; 7] {
+        [
             make_file(
                 "db.rs",
                 "src/store/db.rs",
@@ -438,7 +431,18 @@ mod tests {
             make_file("primitive.rs", "src/models/primitive.rs", "rust", None),
             make_file("schema.rs", "src/store/schema.rs", "rust", None),
             make_file("vectors.rs", "src/store/vectors.rs", "rust", None),
-        ];
+        ]
+    }
+
+    #[test]
+    fn rust_use_tree_resolves_to_module_files() {
+        let tmp = std::env::temp_dir().join("sentrux_test_rust_usetree");
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join("src/models")).unwrap();
+        std::fs::create_dir_all(tmp.join("src/store")).unwrap();
+        std::fs::write(tmp.join("Cargo.toml"), "[package]\nname = \"beemem\"").unwrap();
+
+        let files = rust_use_tree_fixture();
 
         let refs: Vec<&FileNode> = files.iter().collect();
         let gr = build_graphs(&refs, Some(&tmp), 5);

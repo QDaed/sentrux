@@ -202,7 +202,20 @@ fn draw_viewport_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, 
 
 /// Animation, rect rendering, graph analysis, squarify, scanner, and timing sections.
 fn draw_misc_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool) {
-    let mut lc = false;
+    let (a_lc, a_vc) = draw_animation_heat(ui, settings);
+    let (r_lc, r_vc) = draw_rect_rendering(ui, settings);
+    let (g_lc, g_vc) = draw_graph_analysis(ui, settings);
+    let (s_lc, s_vc) = draw_squarify_chrome(ui, settings);
+    let (scan_lc, scan_vc) = draw_scanner_limits(ui, settings);
+    let (t_lc, t_vc) = draw_timing_debounce(ui, settings);
+
+    (
+        a_lc || r_lc || g_lc || s_lc || scan_lc || t_lc,
+        a_vc || r_vc || g_vc || s_vc || scan_vc || t_vc,
+    )
+}
+
+fn draw_animation_heat(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool) {
     let mut vc = false;
     ui.collapsing("Animation / Heat", |ui| {
         vc |= slider_f64(
@@ -230,6 +243,11 @@ fn draw_misc_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool
             1.0..=10.0,
         );
     });
+    (false, vc)
+}
+
+fn draw_rect_rendering(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool) {
+    let mut vc = false;
     ui.collapsing("Rect Rendering", |ui| {
         vc |= slider_f32(
             ui,
@@ -238,6 +256,11 @@ fn draw_misc_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool
             0.0..=5.0,
         );
     });
+    (false, vc)
+}
+
+fn draw_graph_analysis(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool) {
+    let mut lc = false;
     ui.collapsing("Graph Analysis", |ui| {
         lc |= slider_usize(
             ui,
@@ -252,6 +275,11 @@ fn draw_misc_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool
             1.0..=20.0,
         );
     });
+    (lc, false)
+}
+
+fn draw_squarify_chrome(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool) {
+    let mut lc = false;
     ui.collapsing("Squarify / Chrome", |ui| {
         lc |= slider_f64(
             ui,
@@ -272,6 +300,11 @@ fn draw_misc_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool
             0.05..=0.5,
         );
     });
+    (lc, false)
+}
+
+fn draw_scanner_limits(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool) {
+    let mut vc = false;
     ui.collapsing("Scanner Limits", |ui| {
         vc |= slider_u64(
             ui,
@@ -286,6 +319,11 @@ fn draw_misc_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool
             128..=2048,
         );
     });
+    (false, vc)
+}
+
+fn draw_timing_debounce(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool) {
+    let mut vc = false;
     ui.collapsing("Timing / Debounce", |ui| {
         vc |= slider_u64(
             ui,
@@ -306,7 +344,7 @@ fn draw_misc_sections(ui: &mut egui::Ui, settings: &mut Settings) -> (bool, bool
             16..=200,
         );
     });
-    (lc, vc)
+    (false, vc)
 }
 
 /// Privacy section — telemetry opt-out toggle.
