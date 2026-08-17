@@ -1,8 +1,14 @@
 # Sentrux Pro Architecture
 
+> **Status (v0.5.8+):** previously Pro-gated capabilities ship in the public
+> binary. `license::init()` registers every built-in `ProFeature` and promotes
+> the default tier to Pro. An optional `pro.dylib` remains an extension point
+> for additional private plugins; it is no longer required for extra color
+> modes, file detail, evolution, what-if, MCP diagnostics, or unlimited rules.
+
 ## Goal
 
-Split sentrux into a fully open, trustable free binary and a separately downloadable Pro plugin. Free users get a binary with zero private code. Pro users get additional features via a runtime-loaded dylib.
+The original design split sentrux into a fully open free binary and a separately downloadable Pro plugin. That split is no longer the shipping model: the public binary includes the built-in Pro feature set. The notes below document the license/dylib machinery that still exists for optional extensions.
 
 ## Principles
 

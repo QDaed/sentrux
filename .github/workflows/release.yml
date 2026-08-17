@@ -31,18 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect Pro token
-        id: pro
-        env:
-          PRO_REPO_TOKEN: ${{ secrets.PRO_REPO_TOKEN }}
-        shell: bash
-        run: |
-          if [ -n "$PRO_REPO_TOKEN" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -73,22 +61,6 @@ jobs:
               libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libvulkan-dev
           fi
 
-      - name: Checkout Pro crate (private)
-        if: steps.pro.outputs.enabled == 'true'
-        uses: actions/checkout@v4
-        with:
-          repository: sentrux/sentrux-pro
-          token: ${{ secrets.PRO_REPO_TOKEN }}
-          path: sentrux-pro-checkout
-
-      - name: Link Pro crate paths
-        if: steps.pro.outputs.enabled == 'true'
-        shell: bash
-        run: |
-          mv sentrux-pro-checkout ../sentrux-pro
-          # Patch paths: sentrux-pro references ../sentrux-fresh, CI uses ../sentrux
-          sed -i.bak 's|../sentrux-fresh|../sentrux|g' ../sentrux-pro/Cargo.toml
-
       - name: Set cross-compilation linker
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
@@ -101,12 +73,7 @@ jobs:
           echo "OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu" >> $GITHUB_ENV
           echo "OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
 
-      - name: Build release binary (with Pro)
-        if: steps.pro.outputs.enabled == 'true'
-        run: cargo build --release --manifest-path ../sentrux-pro/Cargo.toml --target-dir target --target ${{ matrix.target }}
-
-      - name: Build release binary (without Pro)
-        if: steps.pro.outputs.enabled != 'true'
+      - name: Build release binary
         run: cargo build --release -p sentrux --target-dir target --target ${{ matrix.target }}
 
       - name: Package binary

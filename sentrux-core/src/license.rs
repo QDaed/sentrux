@@ -370,12 +370,26 @@ fn read_watermark(path: &std::path::Path) -> Option<String> {
     }
 }
 
+/// Enable built-in Pro capabilities that ship in the public binary.
+/// Returns Pro, or the existing higher tier (Team) if already licensed.
+#[cfg(feature = "pro")]
+fn enable_builtin_pro(tier: Tier) -> Tier {
+    crate::pro_registry::register_all_features();
+    crate::pro_registry::set_plugin_info("sentrux", env!("CARGO_PKG_VERSION"));
+    if tier.is_pro() {
+        tier
+    } else {
+        Tier::Pro
+    }
+}
+
 /// Initialize the license system + Pro plugin. Call once at startup.
 ///
 /// 1. Reads license.key from disk (tries user home, sudo home, system-wide)
 /// 2. Validates Ed25519 signature + expiry
-/// 3. If valid Pro/Team: tries to load pro.dylib
-/// 4. Sets the global tier
+/// 3. If a valid license is present: tries to load an optional pro.dylib
+/// 4. With the default `pro` feature: registers built-in Pro capabilities
+/// 5. Sets the global tier (Free builds without the feature stay Free)
 pub fn init() {
     // Load and validate license
     let mut tier = Tier::Free;
@@ -399,15 +413,19 @@ pub fn init() {
         }
     }
 
-    // Try to load Pro plugin if licensed
-    if tier.is_pro() {
-        if let Some(ref lic) = license {
-            if try_load_pro_dylib(lic) {
-                crate::debug_log!("[pro] Pro plugin active");
-            } else {
-                crate::debug_log!("[pro] No pro plugin found — Pro license active but running with built-in features only");
-            }
+    // Optional external dylib for additional private extensions
+    if let Some(ref lic) = license {
+        if try_load_pro_dylib(lic) {
+            crate::debug_log!("[pro] Pro plugin active");
+        } else {
+            crate::debug_log!("[pro] No external pro plugin found");
         }
+    }
+
+    #[cfg(feature = "pro")]
+    {
+        tier = enable_builtin_pro(tier);
+        crate::debug_log!("[pro] Built-in Pro features enabled");
     }
 
     set_tier(tier);
@@ -449,6 +467,18 @@ mod tests {
     #[test]
     fn free_tier_default() {
         assert_eq!(current_tier(), Tier::Free);
+    }
+
+    #[cfg(feature = "pro")]
+    #[test]
+    fn builtin_pro_promotes_free_and_keeps_team() {
+        assert_eq!(enable_builtin_pro(Tier::Free), Tier::Pro);
+        assert_eq!(enable_builtin_pro(Tier::Pro), Tier::Pro);
+        assert_eq!(enable_builtin_pro(Tier::Team), Tier::Team);
+        assert!(crate::pro_registry::has(
+            crate::pro_registry::ProFeature::McpDiagnostics
+        ));
+        assert!(crate::pro_registry::is_loaded());
     }
 
     #[test]

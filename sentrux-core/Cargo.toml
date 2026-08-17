@@ -1,6 +1,6 @@
 [package]
 name = "sentrux-core"
-version = "0.5.7"
+version = "0.5.8"
 edition = "2021"
 rust-version.workspace = true
 description = "Core library for sentrux — structural quality analysis engine"
@@ -37,5 +37,8 @@ sha2 = "0.10"
 flate2 = "1.1.9"
 
 [features]
-default = []
-pro = []  # Activated by sentrux-pro crate via sentrux-bin
+default = ["pro"]
+# Built-in Pro capabilities (extra color modes, diagnostics, what-if, etc.).
+# Enabled by default so the public binary ships the full feature set.
+# `cargo build --no-default-features` restores the old gated-free build.
+pro = []
