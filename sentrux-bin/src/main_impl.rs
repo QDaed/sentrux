@@ -628,7 +628,8 @@ fn gate_compare(
     );
     println!(
         "Complex fn:   {} → {}",
-        diff.complex_functions_before, diff.complex_functions_after
+        baseline.complex_fn_count,
+        health.complex_functions.len()
     );
 
     if !arch_report.distance_metrics.is_empty() {
