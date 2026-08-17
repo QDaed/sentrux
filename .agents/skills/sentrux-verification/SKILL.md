@@ -67,6 +67,14 @@ EOF
 SENTRUX_SKIP_GRAMMAR_DOWNLOAD=1 /home/ubuntu/repos/sentrux/target/debug/sentrux check /tmp/sentrux_fixture
 ```
 
+## MCP cross-validation probe
+For PRs that add fields to MCP `scan`/`health` responses, run the MCP server over stdio and check the JSON:
+```bash
+printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"scan","arguments":{"path":"/tmp/sentrux_fixture"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"health","arguments":{}}}\n' \
+  | SENTRUX_SKIP_GRAMMAR_DOWNLOAD=1 /home/ubuntu/repos/sentrux/target/debug/sentrux mcp
+```
+A working run should print two JSON-RPC response lines. Each response's `result.content[0].text` JSON should contain the expected fields (e.g. `cross_validation` with `compression_ratio`, `agreement`, `confidence`).
+
 ## Common notes
 - `cargo doc` may emit a build-script notice (`Generated embedded.rs with 52 plugins`); that is a build-script message, not a rustdoc warning. Use `RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps` to enforce no rustdoc warnings.
 - The `sentrux` binary attempts to download grammar tarballs on first run; `SENTRUX_SKIP_GRAMMAR_DOWNLOAD=1` disables that so CI/verify runs remain offline.
