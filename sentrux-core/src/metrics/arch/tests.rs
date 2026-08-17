@@ -170,6 +170,7 @@ fn baseline_detects_degradation() {
         max_depth: 3,
         total_import_edges: 10,
         cross_module_edges: 1,
+        cross_validation: None,
     };
 
     let current = crate::metrics::HealthReport {
@@ -251,4 +252,24 @@ fn baseline_detects_degradation() {
         .violations
         .iter()
         .any(|v| v.contains("Complex functions")));
+}
+
+#[test]
+fn baseline_loads_legacy_format_without_cross_validation() {
+    // Old baseline JSON saved before the cross_validation field was added.
+    let legacy = r#"{
+        "timestamp": 123.0,
+        "quality_signal": 0.70,
+        "coupling_score": 0.30,
+        "cycle_count": 0,
+        "god_file_count": 0,
+        "hotspot_count": 0,
+        "complex_fn_count": 0,
+        "max_depth": 3,
+        "total_import_edges": 10,
+        "cross_module_edges": 1
+    }"#;
+    let baseline: ArchBaseline = serde_json::from_str(legacy).unwrap();
+    assert!((baseline.quality_signal - 0.70).abs() < f64::EPSILON);
+    assert_eq!(baseline.cross_validation, None);
 }

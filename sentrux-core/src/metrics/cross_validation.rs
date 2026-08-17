@@ -14,7 +14,7 @@ use std::io::Write;
 
 /// Independent quality estimate based on DEFLATE compression of the
 /// dependency graph.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CrossValidation {
     /// compressed_size / original_size, clamped to `[0,1]`.
     /// Lower = more compressible = more redundant = lower quality.
