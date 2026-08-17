@@ -436,13 +436,140 @@ pub(super) fn process_class_def(
 /// Extract the class declaration header from the source text covered by `node`.
 ///
 /// Stops at the class body's opening delimiter, which is the first `{` or `:`
-/// that is not nested inside parentheses, brackets, braces, angle brackets, or
-/// quoted strings. This prevents annotation arguments such as
-/// `@Anno({1, 2})` from truncating the header before the actual class body.
+/// that is not nested inside parentheses, brackets, braces, quoted strings, or
+/// comments. This prevents annotation arguments such as `@Anno({1, 2})` and
+/// stray braces inside comments from truncating the header before the actual
+/// class body.
 fn class_header_text(node: tree_sitter::Node, content: &[u8]) -> Option<String> {
     class_header_text_str(&String::from_utf8_lossy(
         &content[node.start_byte()..node.end_byte()],
     ))
+}
+
+fn push_separator_space(out: &mut String) {
+    if out.chars().next_back().is_some_and(|c| !c.is_whitespace()) {
+        out.push(' ');
+    }
+}
+
+const fn consume_string_literal(c: char, in_string: &mut bool, in_char: &mut bool, escape: &mut bool) {
+    if *escape {
+        *escape = false;
+        return;
+    }
+    match c {
+        '\\' => *escape = true,
+        '"' => *in_string = false,
+        '\'' => *in_char = false,
+        _ => {}
+    }
+}
+
+fn maybe_start_comment(
+    c: char,
+    chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
+    in_line_comment: &mut bool,
+    in_block_comment: &mut bool,
+) -> bool {
+    if c == '/' {
+        match chars.peek().map(|(_, ch)| *ch) {
+            Some('/') => {
+                chars.next();
+                *in_line_comment = true;
+                return true;
+            }
+            Some('*') => {
+                chars.next();
+                *in_block_comment = true;
+                return true;
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Remove line/block comments from a class declaration header while preserving
+/// string and character literal contents. This is intentionally conservative:
+/// it treats `#` as a line comment character because Python-style class headers
+/// use it, and it does not attempt to parse language-specific macro syntax.
+fn strip_header_comments(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut in_string = false;
+    let mut in_char = false;
+    let mut in_line_comment = false;
+    let mut in_block_comment = false;
+    let mut escape = false;
+
+    let mut chars = text.char_indices().peekable();
+    while let Some((_, c)) = chars.next() {
+        if in_line_comment {
+            if c == '\n' {
+                in_line_comment = false;
+                push_separator_space(&mut out);
+            }
+            continue;
+        }
+
+        if in_block_comment {
+            if c == '*' && chars.peek().map(|(_, ch)| *ch) == Some('/') {
+                chars.next();
+                in_block_comment = false;
+                push_separator_space(&mut out);
+            }
+            continue;
+        }
+
+        if in_string || in_char {
+            consume_string_literal(c, &mut in_string, &mut in_char, &mut escape);
+            out.push(c);
+            continue;
+        }
+
+        if c == '"' {
+            in_string = true;
+        } else if c == '\'' {
+            in_char = true;
+        } else if maybe_start_comment(c, &mut chars, &mut in_line_comment, &mut in_block_comment) {
+            continue;
+        } else if c == '#' {
+            in_line_comment = true;
+            continue;
+        }
+
+        out.push(c);
+    }
+
+    out
+}
+
+fn find_header_stop(cleaned: &str) -> Option<usize> {
+    let mut depth: i32 = 0;
+    let mut in_string = false;
+    let mut in_char = false;
+    let mut escape = false;
+    let mut first_colon: Option<usize> = None;
+
+    for (i, c) in cleaned.char_indices() {
+        if in_string || in_char {
+            consume_string_literal(c, &mut in_string, &mut in_char, &mut escape);
+            continue;
+        }
+
+        match c {
+            '"' => in_string = true,
+            '\'' => in_char = true,
+            '(' | '[' => depth += 1,
+            ')' | ']' => depth -= 1,
+            '{' if depth == 0 => return Some(i),
+            '{' => depth += 1,
+            '}' if depth > 0 => depth -= 1,
+            ':' if depth == 0 && first_colon.is_none() => first_colon = Some(i),
+            _ => {}
+        }
+    }
+
+    first_colon
 }
 
 /// String-based implementation so it can be unit-tested without a real syntax tree.
@@ -450,57 +577,12 @@ fn class_header_text(node: tree_sitter::Node, content: &[u8]) -> Option<String> 
 /// Stops at the first unnested `{` if one exists (C++/Java/C#/Rust style), or
 /// the first unnested `:` if it does not (Python style). This keeps inheritance
 /// clauses (`class Derived : public Base {`) in the header while still
-/// dropping the class body.
+/// dropping the class body. Line comments (`//`, `#`) and block comments
+/// (`/* */`) are skipped so their contents do not affect delimiter detection.
 fn class_header_text_str(text: &str) -> Option<String> {
-    let mut depth: i32 = 0;
-    let mut in_char = false;
-    let mut in_string = false;
-    let mut escape = false;
-    let mut first_brace: Option<usize> = None;
-    let mut first_colon: Option<usize> = None;
-
-    for (i, c) in text.char_indices() {
-        if in_string || in_char {
-            if escape {
-                escape = false;
-                continue;
-            }
-            match c {
-                '\\' => escape = true,
-                '"' => in_string = false,
-                '\'' => in_char = false,
-                _ => {}
-            }
-            continue;
-        }
-
-        match c {
-            '(' | '[' => depth += 1,
-            ')' | ']' => depth -= 1,
-            '{' => {
-                if depth == 0 && first_brace.is_none() {
-                    first_brace = Some(i);
-                }
-                depth += 1;
-            }
-            '}' => {
-                if depth > 0 {
-                    depth -= 1;
-                }
-            }
-            ':' => {
-                if depth == 0 && first_colon.is_none() {
-                    first_colon = Some(i);
-                }
-            }
-            '"' => in_string = true,
-            '\'' => in_char = true,
-            _ => {}
-        }
-    }
-
-    let stop = first_brace.or(first_colon);
-    let header = stop.map_or(text, |idx| &text[..idx]).trim();
+    let cleaned = strip_header_comments(text);
+    let stop = find_header_stop(&cleaned)?;
+    let header = cleaned[..stop].trim();
     if header.is_empty() {
         None
     } else {
@@ -646,5 +728,24 @@ mod tests {
         let header =
             class_header_text_str(r#"@Anno(name = "{") public class Example { }"#).unwrap();
         assert_eq!(header, r#"@Anno(name = "{") public class Example"#);
+    }
+
+    #[test]
+    fn skips_braces_inside_line_comments() {
+        let header = class_header_text_str("public abstract class Example // {\n{}").unwrap();
+        assert_eq!(header, "public abstract class Example");
+    }
+
+    #[test]
+    fn skips_braces_inside_block_comments() {
+        let header = class_header_text_str("public abstract class Example /* { */ {}").unwrap();
+        assert_eq!(header, "public abstract class Example");
+    }
+
+    #[test]
+    fn skips_quoted_strings_inside_comments() {
+        let header =
+            class_header_text_str("public abstract class Example /* 'not closed */ {}").unwrap();
+        assert_eq!(header, "public abstract class Example");
     }
 }
