@@ -255,7 +255,7 @@ fn run_login() {
     println!("  Sentrux Pro features are included in this build.");
     println!("  No license key is required.");
     println!();
-    println!("  Docs and updates: https://github.com/sentrux/sentrux");
+    println!("  Docs and updates: https://github.com/QDaed/sentrux");
     println!();
 }
 
@@ -1046,6 +1046,51 @@ fn cli_scan_limits() -> analysis::scanner::common::ScanLimits {
     }
 }
 
+/// GitHub repo that publishes binary and grammar-bundle releases.
+/// Override with SENTRUX_GITHUB_REPO (owner/name) if the fork differs.
+fn github_release_repo() -> String {
+    std::env::var("SENTRUX_GITHUB_REPO").unwrap_or_else(|_| "QDaed/sentrux".to_string())
+}
+
+/// Candidate grammar-bundle URLs: this version first, then known good tags.
+/// The fallbacks cover the tag-to-grammar race (binaries publish before the
+/// bundle) and the QDaed vs sentrux/sentrux repo mismatch.
+fn grammar_bundle_urls(repo: &str, version: &str, platform_key: &str) -> Vec<String> {
+    let mut urls = vec![format!(
+        "https://github.com/{repo}/releases/download/v{version}/grammars-{platform_key}.tar.gz"
+    )];
+    for tag in ["v0.5.8", "v0.5.7"] {
+        let url = format!(
+            "https://github.com/{repo}/releases/download/{tag}/grammars-{platform_key}.tar.gz"
+        );
+        if !urls.contains(&url) {
+            urls.push(url);
+        }
+    }
+    urls
+}
+
+fn curl_download(url: &str, dest: &std::path::Path) -> bool {
+    std::process::Command::new("curl")
+        .args(["-fsSL", "--progress-bar", url, "-o"])
+        .arg(dest)
+        .stderr(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
+fn extract_tarball(tarball: &std::path::Path, dest_dir: &std::path::Path) -> bool {
+    std::process::Command::new("tar")
+        .args(["xzf"])
+        .arg(tarball)
+        .current_dir(dest_dir)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 /// Ensure grammar binaries are installed for all embedded plugins.
 /// Downloads ONE tarball with ALL grammars — not 49 individual downloads.
 ///
@@ -1084,51 +1129,75 @@ fn ensure_grammars_installed() {
     }
 
     let version = env!("CARGO_PKG_VERSION");
-    let url = format!(
-        "https://github.com/sentrux/sentrux/releases/download/v{version}/grammars-{platform_key}.tar.gz"
-    );
+    let urls = grammar_bundle_urls(&github_release_repo(), version, platform_key);
     let tarball = dir.join("grammars.tar.gz");
 
     eprintln!();
     eprintln!("  Downloading language grammars for v{version}...");
     eprintln!("  (one-time download, ~30MB)");
-    eprint!("  [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   0%");
-    let _ = std::io::Write::flush(&mut std::io::stderr());
 
-    let ok = std::process::Command::new("curl")
-        .args(["-fsSL", "--progress-bar", &url, "-o"])
-        .arg(&tarball)
-        .stderr(std::process::Stdio::inherit()) // Show curl progress
-        .stdout(std::process::Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success());
-
-    if ok {
-        // Extract: tarball contains <lang>/grammars/<platform>.dylib for each language
-        let extracted = std::process::Command::new("tar")
-            .args(["xzf"])
-            .arg(&tarball)
-            .current_dir(&dir)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .is_ok_and(|s| s.success());
-        let _ = std::fs::remove_file(&tarball);
-
-        if extracted {
-            // Count how many grammars we now have
-            let count = sentrux_core::analysis::plugin::embedded::EMBEDDED_PLUGINS
-                .iter()
-                .filter(|&&(name, _, _)| dir.join(name).join("grammars").join(platform).exists())
-                .count();
-            eprintln!("  {count} language grammars ready.");
-        } else {
-            eprintln!("  Failed to extract grammars archive.");
+    let mut downloaded_from = None;
+    for url in &urls {
+        eprint!("  {url}");
+        let _ = std::io::Write::flush(&mut std::io::stderr());
+        eprintln!();
+        if curl_download(url, &tarball) {
+            downloaded_from = Some(url.as_str());
+            break;
         }
-    } else {
         let _ = std::fs::remove_file(&tarball);
-        eprintln!("  Download failed. Check your network and try again.");
-        eprintln!("  URL: {url}");
+    }
+
+    match downloaded_from {
+        Some(url) => {
+            let extracted = extract_tarball(&tarball, &dir);
+            let _ = std::fs::remove_file(&tarball);
+            if extracted {
+                let count = sentrux_core::analysis::plugin::embedded::EMBEDDED_PLUGINS
+                    .iter()
+                    .filter(|&&(name, _, _)| {
+                        dir.join(name).join("grammars").join(platform).exists()
+                    })
+                    .count();
+                eprintln!("  {count} language grammars ready ({url}).");
+            } else {
+                eprintln!("  Failed to extract grammars archive.");
+            }
+        }
+        None => {
+            let _ = std::fs::remove_file(&tarball);
+            eprintln!("  Download failed. Check your network and try again.");
+            if let Some(first) = urls.first() {
+                eprintln!("  URL: {first}");
+            }
+        }
     }
     eprintln!();
+}
+
+#[cfg(test)]
+mod grammar_download_tests {
+    use super::*;
+
+    #[test]
+    fn grammar_urls_use_qdaed_repo_not_sentrux_org() {
+        let urls = grammar_bundle_urls("QDaed/sentrux", "0.5.9", "windows-x86_64");
+        assert_eq!(
+            urls[0],
+            "https://github.com/QDaed/sentrux/releases/download/v0.5.9/grammars-windows-x86_64.tar.gz"
+        );
+        assert!(urls
+            .iter()
+            .any(|u| u.ends_with("/v0.5.8/grammars-windows-x86_64.tar.gz")));
+        assert!(urls
+            .iter()
+            .all(|u| !u.contains("github.com/sentrux/sentrux")));
+    }
+
+    #[test]
+    fn grammar_urls_do_not_duplicate_current_fallback_tag() {
+        let urls = grammar_bundle_urls("QDaed/sentrux", "0.5.8", "linux-x86_64");
+        let v58 = urls.iter().filter(|u| u.contains("/v0.5.8/")).count();
+        assert_eq!(v58, 1);
+    }
 }

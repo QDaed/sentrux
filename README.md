@@ -143,7 +143,7 @@ cargo run -- plugin add-standard
 #     ;;
 #   *) echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
 # esac
-# curl -fsSL "https://github.com/sentrux/sentrux/releases/latest/download/grammars-${PLATFORM}.tar.gz" \
+# curl -fsSL "https://github.com/QDaed/sentrux/releases/latest/download/grammars-${PLATFORM}.tar.gz" \
 #   | tar xz -C ~/.sentrux/plugins
 
 cargo build --release
