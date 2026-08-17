@@ -13,6 +13,7 @@
 use self::distance::{self as distance_mod, ModuleDistance};
 use crate::core::snapshot::Snapshot;
 use crate::core::types::ImportEdge;
+use crate::metrics::cross_validation::CrossValidation;
 use std::collections::{HashMap, HashSet};
 
 pub mod distance;
@@ -138,6 +139,9 @@ pub struct ArchBaseline {
     pub total_import_edges: usize,
     /// Cross-module import edges at baseline
     pub cross_module_edges: usize,
+    /// Optional compression-based cross-validation captured at baseline.
+    #[serde(default)]
+    pub cross_validation: Option<CrossValidation>,
 }
 
 /// Diff between two snapshots (baseline vs current).
@@ -184,6 +188,7 @@ impl ArchBaseline {
             max_depth: report.max_depth,
             total_import_edges: report.total_import_edges,
             cross_module_edges: report.cross_module_edges,
+            cross_validation: report.cross_validation,
         }
     }
 

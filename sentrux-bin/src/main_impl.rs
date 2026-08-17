@@ -12,6 +12,7 @@ use sentrux_core::analysis;
 use sentrux_core::app;
 use sentrux_core::core;
 use sentrux_core::metrics;
+use sentrux_core::metrics::cross_validation::CrossValidation;
 
 // ---------------------------------------------------------------------------
 // CLI definition
@@ -479,6 +480,17 @@ fn run_check(path: &str) -> i32 {
     print_check_results(&check, &health, &arch_report)
 }
 
+/// Print a cross-validation reading, if available.
+fn print_cross_validation(label: &str, cv: Option<&CrossValidation>) {
+    match cv {
+        Some(c) => println!(
+            "Cross-validation ({}): compression={:.2}, agreement={:.2}, confidence={:.2}",
+            label, c.compression_ratio, c.agreement, c.confidence
+        ),
+        None => println!("Cross-validation ({}): N/A", label),
+    }
+}
+
 /// Print check results and return exit code (0 = pass, 1 = violations).
 fn print_check_results(
     check: &metrics::rules::RuleCheckResult,
@@ -490,6 +502,7 @@ fn print_check_results(
         "Quality: {}\n",
         (health.quality_signal * 10000.0).round() as u32
     );
+    print_cross_validation("current", health.cross_validation.as_ref());
 
     if check.violations.is_empty() {
         println!("✓ All rules pass");
@@ -563,6 +576,7 @@ fn gate_save(
                 "Quality: {}",
                 (health.quality_signal * 10000.0).round() as u32
             );
+            print_cross_validation("current", health.cross_validation.as_ref());
             println!("\nRun `sentrux gate` after making changes to compare.");
             0
         }
@@ -598,6 +612,8 @@ fn gate_compare(
         (diff.signal_before * 10000.0).round() as u32,
         (diff.signal_after * 10000.0).round() as u32
     );
+    print_cross_validation("baseline", baseline.cross_validation.as_ref());
+    print_cross_validation("current", health.cross_validation.as_ref());
     println!(
         "Coupling:     {:.2} → {:.2}",
         diff.coupling_before, diff.coupling_after

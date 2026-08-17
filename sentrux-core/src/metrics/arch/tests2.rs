@@ -21,6 +21,7 @@ fn baseline_stable_no_degradation() {
         max_depth: 4,
         total_import_edges: 15,
         cross_module_edges: 5,
+        cross_validation: None,
     };
 
     let current = crate::metrics::HealthReport {
