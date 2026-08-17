@@ -5,8 +5,8 @@
 //! - `draw_flagged_list`: titled item list with hover tooltips and "+N more" overflow
 
 // Re-export color computation functions from color_utils
-pub(crate) use crate::app::color_utils::lang_profile_color;
-pub(crate) use crate::app::color_utils::score_color_for_theme;
+pub use crate::app::color_utils::lang_profile_color;
+pub use crate::app::color_utils::score_color_for_theme;
 
 #[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
