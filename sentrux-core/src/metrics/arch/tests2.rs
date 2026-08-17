@@ -176,6 +176,7 @@ fn cls(name: &str, kind: &str) -> ClassInfo {
         m: None,
         b: None,
         k: Some(kind.to_string()),
+        src: None,
     }
 }
 

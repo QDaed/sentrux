@@ -120,7 +120,9 @@ fn is_abstract_kind(kind: Option<&str>) -> bool {
 /// Check whether a class is abstract based on its language profile.
 /// Reads `abstract_base_classes` (e.g., Python: Protocol, ABC, ABCMeta)
 /// and `abstract_keywords` (e.g., Java/C#: abstract) from plugin.toml [semantics].
-/// This replaces the Python-only hardcoded check with a per-language mechanism.
+/// The class declaration header is captured during parsing and matched against
+/// the configured keywords, so tree-sitter does not need a distinct abstract
+/// class node kind.
 fn is_abstract_by_profile(
     cls: &crate::core::types::ClassInfo,
     profile: &crate::analysis::plugin::profile::LanguageProfile,
@@ -129,19 +131,10 @@ fn is_abstract_by_profile(
     if profile.has_abstract_base(cls.b.as_ref()) {
         return true;
     }
-    // Check abstract keywords in class name context (Java/C# abstract class)
-    // Note: this is a heuristic. The class kind from tree-sitter is checked
-    // separately via is_abstract_kind(). This catches cases where tree-sitter
-    // can't distinguish abstract from concrete (e.g., Java `abstract class`).
-    if !profile.semantics.abstract_keywords.is_empty() {
-        if let Some(kind) = cls.k.as_deref() {
-            if kind == "class" {
-                // For languages with abstract keywords, we'd need the source text
-                // to check. For now, the abstract_keywords mechanism works via
-                // tree-sitter query improvements (capturing abstract_class_declaration
-                // as @definition.interface). This is a future enhancement.
-                // TODO: pass source text context for keyword matching
-            }
+    // Check abstract keywords in the class declaration header.
+    if let Some(src) = cls.src.as_deref() {
+        if profile.has_abstract_keyword(src) {
+            return true;
         }
     }
     false
@@ -268,4 +261,62 @@ fn build_module_distances(
 /// `[ref:736ae249]`
 pub fn score_distance(avg_distance: f64) -> f64 {
     (1.0 - avg_distance).clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::analysis::plugin::profile::LanguageProfile;
+    use crate::core::types::ClassInfo;
+
+    fn cls(name: &str, kind: &str, src: &str, bases: Option<&[&str]>) -> ClassInfo {
+        ClassInfo {
+            n: name.into(),
+            m: None,
+            b: bases.map(|bs| bs.iter().map(|b| b.to_string()).collect()),
+            k: Some(kind.into()),
+            src: Some(src.into()),
+        }
+    }
+
+    fn profile_with(keywords: &[&str], bases: &[&str]) -> LanguageProfile {
+        crate::analysis::plugin::profile::LanguageProfile {
+            name: "test".into(),
+            semantics: crate::analysis::plugin::profile::LanguageSemantics {
+                abstract_keywords: keywords.iter().map(|s| s.to_string()).collect(),
+                abstract_base_classes: bases.iter().map(|s| s.to_string()).collect(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn detects_abstract_keyword_in_class_header() {
+        let profile = profile_with(&["abstract"], &[]);
+        let cls = cls("Foo", "class", "public abstract class Foo", None);
+        assert!(is_abstract_by_profile(&cls, &profile));
+    }
+
+    #[test]
+    fn ignores_concrete_class_with_keyword_in_method_body() {
+        let profile = profile_with(&["abstract"], &[]);
+        // Header only: the class is concrete, so the method body is excluded.
+        let cls = cls("Foo", "class", "public class Foo", None);
+        assert!(!is_abstract_by_profile(&cls, &profile));
+    }
+
+    #[test]
+    fn detects_abstract_base_class() {
+        let profile = profile_with(&[], &["ABC"]);
+        let cls = cls("Foo", "class", "class Foo(ABC)", Some(&["abc.ABC"]));
+        assert!(is_abstract_by_profile(&cls, &profile));
+    }
+
+    #[test]
+    fn matches_whole_keyword_not_substring() {
+        let profile = profile_with(&["abstract"], &[]);
+        let cls = cls("Foo", "class", "public class AbstractFactory", None);
+        assert!(!is_abstract_by_profile(&cls, &profile));
+    }
 }

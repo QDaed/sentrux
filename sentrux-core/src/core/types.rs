@@ -121,6 +121,11 @@ pub struct ClassInfo {
     /// (Martin 2003: Distance from Main Sequence).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub k: Option<String>,
+    /// Source text of the class declaration header (up to the opening brace
+    /// or colon). Used to detect language-specific abstract keywords (e.g.,
+    /// Java/C# `abstract`) that tree-sitter does not surface as a distinct kind.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub src: Option<String>,
 }
 
 /// Cached file info for O(1) lookup by path.

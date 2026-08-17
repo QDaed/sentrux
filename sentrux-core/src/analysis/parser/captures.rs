@@ -412,12 +412,34 @@ pub(super) fn process_class_def(
         name_text.unwrap_or_else(|| match_node.map(|n| n.kind().to_string()).unwrap_or_default());
     if !name.is_empty() {
         let bases = match_node.and_then(|node| extract_base_classes(node, pctx.content, pctx.lang));
+        let src = match_node.and_then(|node| class_header_text(node, pctx.content));
         classes.push(ClassInfo {
             n: name,
             m: None,
             b: bases,
             k: class_kind.map(|s| s.to_string()),
+            src,
         });
+    }
+}
+
+/// Extract the class declaration header (up to the opening `{` or `:`) from the
+/// source text covered by `node`. This is stored on `ClassInfo.src` for later
+/// language-specific abstractness checks (e.g., Java/C# `abstract` keyword).
+fn class_header_text(node: tree_sitter::Node, content: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(&content[node.start_byte()..node.end_byte()]);
+    let header = if let Some(idx) = text.find('{') {
+        &text[..idx]
+    } else if let Some(idx) = text.find(':') {
+        &text[..idx]
+    } else {
+        text.as_ref()
+    };
+    let header = header.trim();
+    if header.is_empty() {
+        None
+    } else {
+        Some(header.to_string())
     }
 }
 
