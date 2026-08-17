@@ -257,7 +257,7 @@ impl ArchBaseline {
             (self.cross_validation, current.cross_validation)
         {
             let confidence_delta = current_cv.confidence - baseline_cv.confidence;
-            if confidence_delta < -0.05 {
+            if confidence_delta < -0.05 - 1e-12 {
                 violations.push(format!(
                     "Cross-validation confidence dropped: {:.2} → {:.2} ({:+.2})",
                     baseline_cv.confidence, current_cv.confidence, confidence_delta

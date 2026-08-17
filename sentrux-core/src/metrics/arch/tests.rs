@@ -292,3 +292,53 @@ fn baseline_loads_legacy_format_without_cross_validation() {
     assert!((baseline.quality_signal - 0.70).abs() < f64::EPSILON);
     assert_eq!(baseline.cross_validation, None);
 }
+
+#[test]
+fn cross_validation_exact_threshold_not_degraded() {
+    // A drop of exactly 0.05 should sit at the boundary, not trigger a violation.
+    let baseline = ArchBaseline {
+        timestamp: 0.0,
+        quality_signal: 0.90,
+        coupling_score: 0.10,
+        cycle_count: 0,
+        god_file_count: 0,
+        hotspot_count: 0,
+        complex_fn_count: 0,
+        max_depth: 3,
+        total_import_edges: 10,
+        cross_module_edges: 1,
+        cross_validation: Some(CrossValidation {
+            compression_ratio: 0.5,
+            agreement: 0.9,
+            confidence: 0.20,
+        }),
+    };
+
+    let mut current = degraded_health_report(Some(CrossValidation {
+        compression_ratio: 0.5,
+        agreement: 0.9,
+        confidence: 0.15,
+    }));
+    // Keep every other metric flat so only the cross-validation delta matters.
+    current.quality_signal = 0.90;
+    current.coupling_score = 0.10;
+    current.circular_dep_count = 0;
+    current.circular_dep_files = vec![];
+    current.god_files = vec![];
+    current.complex_functions = vec![];
+    current.god_file_ratio = 0.0;
+    current.complex_fn_ratio = 0.0;
+
+    let diff = baseline.diff(&current);
+    assert!(
+        !diff.degraded,
+        "exact 0.05 confidence drop should not degrade"
+    );
+    assert!(
+        !diff
+            .violations
+            .iter()
+            .any(|v| v.contains("Cross-validation confidence")),
+        "exact 0.05 drop at float boundary should not be flagged"
+    );
+}
