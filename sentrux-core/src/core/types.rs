@@ -109,8 +109,10 @@ pub struct FuncInfo {
 /// Information about a class, interface, or type definition.
 ///
 /// Marked `#[non_exhaustive]` so new optional fields (e.g. `src`) can be added
-/// without breaking downstream struct literals; use `..Default::default()`
-/// or `Default::default()` when constructing from outside this crate.
+/// without breaking downstream consumers. Downstream callers should use
+/// `ClassInfo::new(...)` or `Default::default()` followed by public field
+/// assignment; constructing with a struct literal is not allowed across crate
+/// boundaries for non-exhaustive structs.
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ClassInfo {
@@ -131,6 +133,40 @@ pub struct ClassInfo {
     /// Java/C# `abstract`) that tree-sitter does not surface as a distinct kind.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub src: Option<String>,
+}
+
+impl ClassInfo {
+    /// Create a new `ClassInfo` with the given class/interface name.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            n: name.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Set the method names for this class.
+    pub fn with_methods(mut self, methods: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.m = Some(methods.into_iter().map(|s| s.into()).collect());
+        self
+    }
+
+    /// Set the base classes / parent types.
+    pub fn with_bases(mut self, bases: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.b = Some(bases.into_iter().map(|s| s.into()).collect());
+        self
+    }
+
+    /// Set the class kind (`"class"`, `"interface"`, or `"type"`).
+    pub fn with_kind(mut self, kind: impl Into<String>) -> Self {
+        self.k = Some(kind.into());
+        self
+    }
+
+    /// Set the source text of the class declaration header.
+    pub fn with_src(mut self, src: impl Into<String>) -> Self {
+        self.src = Some(src.into());
+        self
+    }
 }
 
 /// Cached file info for O(1) lookup by path.
