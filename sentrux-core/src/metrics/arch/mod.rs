@@ -163,6 +163,10 @@ pub struct ArchDiff {
     pub god_files_before: usize,
     /// God file count from the current snapshot
     pub god_files_after: usize,
+    /// Cross-validation captured at baseline
+    pub cross_validation_before: Option<CrossValidation>,
+    /// Cross-validation from the current snapshot
+    pub cross_validation_after: Option<CrossValidation>,
     /// True if quality_signal dropped or any metric degraded
     pub degraded: bool,
     /// Human-readable violation descriptions
@@ -273,6 +277,8 @@ impl ArchBaseline {
             cycles_after: current.circular_dep_count,
             god_files_before: self.god_file_count,
             god_files_after: current.god_files.len(),
+            cross_validation_before: self.cross_validation,
+            cross_validation_after: current.cross_validation,
             degraded,
             violations,
         }
