@@ -51,7 +51,10 @@ pub fn compute(edges: &[ImportEdge], quality_signal: f64) -> Option<CrossValidat
 
     let mut ids = HashMap::with_capacity(edges.len() * 2);
     let mut pairs: Vec<(u64, u64)> = Vec::with_capacity(edges.len());
-    for e in edges.iter().filter(|e| !e.from_file.is_empty() && !e.to_file.is_empty()) {
+    for e in edges
+        .iter()
+        .filter(|e| !e.from_file.is_empty() && !e.to_file.is_empty())
+    {
         let from_id = *ids
             .entry(&e.from_file)
             .or_insert_with(|| fnv1a_hash(&e.from_file));
