@@ -8,7 +8,7 @@ use super::ui_helpers::score_color_for_theme;
 use super::ThemeConfig;
 use crate::metrics::HealthReport;
 
-pub(crate) fn draw_health_section(ui: &mut egui::Ui, report: &HealthReport, tc: &ThemeConfig) {
+pub fn draw_health_section(ui: &mut egui::Ui, report: &HealthReport, tc: &ThemeConfig) {
     let row_h = 13.0;
     let font = egui::FontId::monospace(9.0);
 

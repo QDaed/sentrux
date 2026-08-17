@@ -40,25 +40,25 @@ pub enum Tier {
 impl Tier {
     /// Check if this tier grants access to features requiring `required` tier.
     #[inline]
-    pub fn can_access(self, required: Tier) -> bool {
+    pub fn can_access(self, required: Self) -> bool {
         self >= required
     }
 
     #[inline]
     pub fn is_pro(self) -> bool {
-        self >= Tier::Pro
+        self >= Self::Pro
     }
 
     #[inline]
     pub fn is_team(self) -> bool {
-        self >= Tier::Team
+        self >= Self::Team
     }
 
     /// Detail list limit for this tier (used by health, test_gaps, etc.)
-    pub fn detail_limit(self) -> usize {
+    pub const fn detail_limit(self) -> usize {
         match self {
-            Tier::Free => 0,
-            Tier::Pro | Tier::Team => usize::MAX,
+            Self::Free => 0,
+            Self::Pro | Self::Team => usize::MAX,
         }
     }
 }
@@ -66,9 +66,9 @@ impl Tier {
 impl std::fmt::Display for Tier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Tier::Free => write!(f, "Free"),
-            Tier::Pro => write!(f, "Pro"),
-            Tier::Team => write!(f, "Team"),
+            Self::Free => write!(f, "Free"),
+            Self::Pro => write!(f, "Pro"),
+            Self::Team => write!(f, "Team"),
         }
     }
 }
@@ -194,7 +194,7 @@ fn chrono_today() -> String {
     format!("{:04}-{:02}-{:02}", y, m + 1, remaining + 1)
 }
 
-fn is_leap(y: i64) -> bool {
+const fn is_leap(y: i64) -> bool {
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 }
 

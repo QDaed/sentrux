@@ -83,7 +83,7 @@ impl PluginManifest {
     }
 
     /// Get the expected grammar filename for the current platform.
-    pub fn grammar_filename() -> &'static str {
+    pub const fn grammar_filename() -> &'static str {
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         {
             "darwin-arm64.dylib"

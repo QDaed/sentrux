@@ -239,7 +239,7 @@ impl Settings {
     }
 
     /// Create a HeatConfig from current settings
-    pub fn heat_config(&self) -> crate::core::heat::HeatConfig {
+    pub const fn heat_config(&self) -> crate::core::heat::HeatConfig {
         crate::core::heat::HeatConfig {
             half_life: self.heat_half_life,
             ripple_duration: self.ripple_duration,
@@ -275,22 +275,22 @@ pub enum Theme {
 
 impl Theme {
     /// All available themes in display order.
-    pub const ALL: &'static [Theme] = &[
-        Theme::Calm,
-        Theme::Dark,
-        Theme::Light,
-        Theme::Midnight,
-        Theme::Solarized,
+    pub const ALL: &'static [Self] = &[
+        Self::Calm,
+        Self::Dark,
+        Self::Light,
+        Self::Midnight,
+        Self::Solarized,
     ];
 
     /// Human-readable display label for this theme variant.
-    pub fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
-            Theme::Calm => "Calm",
-            Theme::Dark => "Dark",
-            Theme::Light => "Light",
-            Theme::Midnight => "Midnight",
-            Theme::Solarized => "Solarized",
+            Self::Calm => "Calm",
+            Self::Dark => "Dark",
+            Self::Light => "Light",
+            Self::Midnight => "Midnight",
+            Self::Solarized => "Solarized",
         }
     }
 }
@@ -389,7 +389,7 @@ pub struct ThemeConfig {
 
 impl ThemeConfig {
     /// Construct a ThemeConfig from a Theme preset.
-    pub fn from_theme(theme: Theme) -> Self {
+    pub const fn from_theme(theme: Theme) -> Self {
         match theme {
             Theme::Calm => theme_calm(),
             Theme::Dark => theme_dark(),
@@ -418,7 +418,7 @@ impl ThemeConfig {
 
 // ── Theme palette constructors ──
 
-fn theme_calm() -> ThemeConfig {
+const fn theme_calm() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(22, 22, 30),
         section_base: 30,
@@ -464,7 +464,7 @@ fn theme_calm() -> ThemeConfig {
     }
 }
 
-fn theme_dark() -> ThemeConfig {
+const fn theme_dark() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(22, 22, 26),
         section_base: 30,
@@ -510,7 +510,7 @@ fn theme_dark() -> ThemeConfig {
     }
 }
 
-fn theme_light() -> ThemeConfig {
+const fn theme_light() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(240, 240, 244),
         section_base: 230,
@@ -556,7 +556,7 @@ fn theme_light() -> ThemeConfig {
     }
 }
 
-fn theme_midnight() -> ThemeConfig {
+const fn theme_midnight() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(10, 10, 18),
         section_base: 18,
@@ -602,7 +602,7 @@ fn theme_midnight() -> ThemeConfig {
     }
 }
 
-fn theme_solarized() -> ThemeConfig {
+const fn theme_solarized() -> ThemeConfig {
     ThemeConfig {
         canvas_bg: Color32::from_rgb(0, 43, 54),
         section_base: 30,
@@ -663,7 +663,10 @@ mod wcag_tests {
 
     fn luminance(color: Color32) -> f64 {
         let [r, g, b, _] = color.to_array();
-        0.2126 * srgb_to_linear(r) + 0.7152 * srgb_to_linear(g) + 0.0722 * srgb_to_linear(b)
+        0.0722f64.mul_add(
+            srgb_to_linear(b),
+            0.7152f64.mul_add(srgb_to_linear(g), 0.2126 * srgb_to_linear(r)),
+        )
     }
 
     fn contrast_ratio(fg: Color32, bg: Color32) -> f64 {

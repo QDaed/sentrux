@@ -680,6 +680,7 @@ fn compute_module_metrics(
 }
 
 /// Compute a comprehensive code health report from a scan snapshot.
+///
 /// Evaluates coupling, complexity, dead code, duplication, and more.
 /// Quality signal is derived from root causes (modularity, cycles, depth,
 /// complexity equality, redundancy).
@@ -1001,8 +1002,7 @@ fn longest_path_dfs<'a>(
                     if candidate > *max_child {
                         *max_child = candidate;
                     }
-                } else if !on_stack.contains(neighbor) {
-                    on_stack.insert(neighbor);
+                } else if on_stack.insert(neighbor) {
                     stack.push((neighbor, 0, 0));
                 }
             } else {

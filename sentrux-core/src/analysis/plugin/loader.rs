@@ -462,7 +462,10 @@ mod tests {
             }
             // Try loading with the plugin name, then with symbol_name from toml
             let symbol = if let Ok(manifest) = PluginManifest::load(&plugin_dir) {
-                manifest.grammar.symbol_name.unwrap_or(name.to_string())
+                manifest
+                    .grammar
+                    .symbol_name
+                    .unwrap_or_else(|| name.to_string())
             } else {
                 name.to_string()
             };

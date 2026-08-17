@@ -17,6 +17,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Commands sent to the scanner thread.
+///
 /// Each command carries its own `gen` (generation counter) so the scanner
 /// doesn't need a shared atomic — eliminates the send/bump race where
 /// the scanner could load a stale generation between try_send and fetch_add
@@ -67,6 +68,7 @@ pub struct ScanReports {
 }
 
 /// Messages from scanner thread → main thread.
+///
 /// TreeReady and Complete carry a generation counter so the main thread
 /// can reject stale results from a previous scan (e.g., after rapid
 /// directory switches). `[ref:93cf32d4]`

@@ -324,17 +324,14 @@ fn should_check() -> bool {
         Some(p) => p,
         None => return true,
     };
-    match std::fs::read_to_string(&path) {
-        Ok(content) => {
-            let last_check: f64 = content.trim().parse().unwrap_or(0.0);
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs_f64();
-            (now - last_check) > CHECK_INTERVAL.as_secs_f64()
-        }
-        Err(_) => true,
-    }
+    std::fs::read_to_string(&path).map_or(true, |content| {
+        let last_check: f64 = content.trim().parse().unwrap_or(0.0);
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64();
+        (now - last_check) > CHECK_INTERVAL.as_secs_f64()
+    })
 }
 
 fn save_check_timestamp() {
@@ -378,7 +375,7 @@ fn is_newer(current: &str, latest: &str) -> bool {
 
 // ── Platform ──
 
-fn platform_id() -> &'static str {
+const fn platform_id() -> &'static str {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
         "darwin-arm64"
@@ -640,20 +637,25 @@ mod tests {
     fn test_snapshot_and_restore() {
         // Simulate: accumulate → snapshot → restore on failure
         // Use the real lock to verify no deadlocks.
-        {
+        let snap = {
             let mut state = TELEMETRY_LOCK.lock().unwrap();
             state.scans += 100;
             state.mcp_calls += 50;
             let snap = state.snapshot_and_reset();
-            assert!(snap.scans >= 100);
-            assert!(snap.mcp_calls >= 50);
-            // After reset, in-memory is zero
             assert_eq!(state.scans, 0);
             assert_eq!(state.mcp_calls, 0);
-            // Restore on "failure"
+            drop(state);
+            snap
+        };
+        assert!(snap.scans >= 100);
+        assert!(snap.mcp_calls >= 50);
+
+        {
+            let mut state = TELEMETRY_LOCK.lock().unwrap();
             state.restore(&snap);
             assert!(state.scans >= 100);
             assert!(state.mcp_calls >= 50);
+            drop(state);
         }
     }
 

@@ -106,18 +106,19 @@ fn try_suffix_resolve_inner(
 ) -> Option<String> {
     let dot = specifier.rfind('.');
     let stripped = dot.map(|i| &specifier[..i]);
-    let specs: Vec<&str> = if let Some(s) = stripped {
-        if specifier
-            .rfind('/')
-            .is_none_or(|slash| dot.is_some_and(|d| d > slash))
-        {
-            vec![specifier, s]
-        } else {
-            vec![specifier]
-        }
-    } else {
-        vec![specifier]
-    };
+    let specs: Vec<&str> = stripped.map_or_else(
+        || vec![specifier],
+        |s| {
+            if specifier
+                .rfind('/')
+                .is_none_or(|slash| dot.is_some_and(|d| d > slash))
+            {
+                vec![specifier, s]
+            } else {
+                vec![specifier]
+            }
+        },
+    );
 
     for &spec in &specs {
         let mut remainder = spec;

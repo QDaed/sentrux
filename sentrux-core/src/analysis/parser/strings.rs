@@ -11,7 +11,7 @@
 /// Returns (output_line, still_in_triple_quote).
 fn handle_triple_quote_line(trimmed: &str, tq_char: char) -> (Option<String>, bool) {
     let tq_pattern: String = std::iter::repeat_n(tq_char, 3).collect();
-    if let Some(close_pos) = trimmed.find(&tq_pattern) {
+    trimmed.find(&tq_pattern).map_or((None, true), |close_pos| {
         let after = &trimmed[close_pos + 3..];
         let after_trimmed = after.trim_start();
         if after_trimmed.is_empty() {
@@ -19,9 +19,7 @@ fn handle_triple_quote_line(trimmed: &str, tq_char: char) -> (Option<String>, bo
         } else {
             (Some(strip_string_literals(after)), false)
         }
-    } else {
-        (None, true) // still inside triple-quoted string
-    }
+    })
 }
 
 /// Handle a line while inside a block comment (with nesting support).
@@ -137,7 +135,7 @@ struct StripState {
 }
 
 impl StripState {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             block_comment_depth: 0,
             in_triple_quote: None,
@@ -194,7 +192,7 @@ impl StripState {
 /// Language-specific behavior is driven by the language profile (Layer 2):
 /// - `hash_is_comment`: from `profile.semantics.hash_is_comment`
 /// - `has_triple_quote_strings`: from `profile.semantics.has_triple_quote_strings`
-pub(crate) fn strip_strings_and_comments(body: &str, lang: &str) -> String {
+pub fn strip_strings_and_comments(body: &str, lang: &str) -> String {
     let profile = crate::analysis::lang_registry::profile(lang);
     let hash_is_comment = profile.semantics.hash_is_comment;
     let has_triple_quote_strings = profile.semantics.has_triple_quote_strings;
@@ -407,7 +405,7 @@ fn consume_regular_string(chars: &[char], mut i: usize, quote: char, result: &mu
 /// Strip content of string literals (single/double/backtick quoted) to prevent
 /// keywords inside strings from inflating complexity counts.
 /// Preserves the quotes themselves so line structure is maintained.
-pub(crate) fn strip_string_literals(line: &str) -> String {
+pub fn strip_string_literals(line: &str) -> String {
     let mut result = String::with_capacity(line.len());
     // For ASCII-only lines (most source code), convert bytes directly to chars
     // avoiding UTF-8 decode overhead. Both paths still need Vec<char> for helper functions.
@@ -446,13 +444,12 @@ pub(crate) fn strip_string_literals(line: &str) -> String {
 
         // Handle single/double quotes (including triple-quotes)
         if c == '"' || c == '\'' {
+            result.push(c);
             if i + 2 < len && chars[i + 1] == c && chars[i + 2] == c {
-                result.push(c);
                 result.push(c);
                 result.push(c);
                 i = consume_triple_quote(&chars, i + 3, c, &mut result);
             } else {
-                result.push(c);
                 i = consume_regular_string(&chars, i + 1, c, &mut result);
             }
             continue;

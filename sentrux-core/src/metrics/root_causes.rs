@@ -165,7 +165,7 @@ fn shannon_entropy_normalized(values: &[f64]) -> f64 {
     for &v in values {
         if v > 0.0 {
             let p = v / total;
-            h -= p * p.log2();
+            h = p.mul_add(-p.log2(), h);
         }
     }
 
@@ -282,7 +282,7 @@ fn gini_coefficient(values: &mut [f64]) -> f64 {
 
     let mut numerator: f64 = 0.0;
     for (i, &v) in values.iter().enumerate() {
-        numerator += (2.0 * (i + 1) as f64 - n as f64 - 1.0) * v;
+        numerator = (2.0f64.mul_add((i + 1) as f64, -(n as f64)) - 1.0).mul_add(v, numerator);
     }
 
     (numerator / (n as f64 * total)).clamp(0.0, 1.0)

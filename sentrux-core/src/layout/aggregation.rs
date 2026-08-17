@@ -74,9 +74,13 @@ fn route_edges(
             Some(a) => a,
             None => continue,
         };
-        let alpha = (style.alpha_base + edge.count as f64 * style.alpha_step).min(style.alpha_max);
+        let alpha = (edge.count as f64)
+            .mul_add(style.alpha_step, style.alpha_base)
+            .min(style.alpha_max);
         // Quantize to 1.0 or 2.0 — terminal pixel style, no fractional widths
-        let raw_w = (style.lw_base + edge.count as f64 * style.lw_step).min(style.lw_max);
+        let raw_w = (edge.count as f64)
+            .mul_add(style.lw_step, style.lw_base)
+            .min(style.lw_max);
         let line_w = if raw_w >= 1.5 { 2.0 } else { 1.0 };
 
         if let Some((pts, from_side)) = compute_edge_path(from, to, 0.0, settings) {

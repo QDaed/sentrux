@@ -28,7 +28,7 @@ impl Default for ViewportTransform {
 
 impl ViewportTransform {
     /// Create a default viewport (1x zoom, no offset, 800x600 canvas).
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             offset_x: 0.0,
             offset_y: 0.0,
@@ -136,8 +136,8 @@ impl ViewportTransform {
         if content_w <= 0.0 || content_h <= 0.0 {
             return;
         }
-        let usable_w = (self.canvas_w - padding * 2.0).max(1.0);
-        let usable_h = (self.canvas_h - padding * 2.0).max(1.0);
+        let usable_w = padding.mul_add(-2.0, self.canvas_w).max(1.0);
+        let usable_h = padding.mul_add(-2.0, self.canvas_h).max(1.0);
         let scale_x = usable_w / content_w;
         let scale_y = usable_h / content_h;
         // Use a reasonable minimum; callers can adjust via zoom_at if needed

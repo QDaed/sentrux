@@ -267,7 +267,7 @@ impl ExtractionState {
 
     /// Post-processing for imports. No longer needed — all languages use
     /// @import/@import.module query captures or AST walker.
-    fn post_process_imports(&mut self, _content: &[u8], _lang: &str) {}
+    const fn post_process_imports(&self, _content: &[u8], _lang: &str) {}
 
     /// Convert into a StructuralAnalysis, distributing calls to functions.
     fn into_structural_analysis(mut self) -> StructuralAnalysis {
@@ -404,6 +404,7 @@ fn distribute_calls_to_functions(
 }
 
 /// Parse a file and extract structural analysis. Cached by content hash.
+///
 /// Uses thread-local Parser and registry-based query extraction.
 /// Cache uses a single `Mutex<ParseCache>` — no `CACHE`/`CACHE_ORDER` split race. `[ref:93cf32d4]`
 pub fn parse_file(path: &str, lang: &str, max_parse_size: usize) -> Option<StructuralAnalysis> {

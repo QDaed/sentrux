@@ -178,6 +178,7 @@ impl HeatTracker {
 }
 
 /// Heat value → color (cool blue → warm yellow → hot red).
+///
 /// BUG 12 fix: use 3-stop gradient across the full `[0,1]` range instead of
 /// saturating at t=0.5. Previously heat values > 2.5 all mapped to nearly
 /// the same red, compressing half the color space into identical output.

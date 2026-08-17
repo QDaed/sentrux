@@ -74,7 +74,7 @@ fn build_gitignore(root: &Path) -> ignore::gitignore::Gitignore {
 }
 
 /// Map a `notify::EventKind` to a static event kind string.
-fn event_kind_str(kind: notify::EventKind) -> &'static str {
+const fn event_kind_str(kind: notify::EventKind) -> &'static str {
     match kind {
         notify::EventKind::Create(_) => "create",
         notify::EventKind::Remove(_) => "remove",
@@ -204,7 +204,7 @@ pub fn start_watcher(
     let shutdown = Arc::new(AtomicBool::new(false));
 
     let pending_w = Arc::clone(&pending);
-    let root_for_cb = root_path.clone();
+    let root_for_cb = root_path;
 
     // Raw notify watcher — feeds into pending map
     // Bug #9: preserve event kind (create/modify/remove) from notify

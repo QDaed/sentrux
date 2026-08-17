@@ -37,7 +37,7 @@ pub struct FileNode {
     pub sa: Option<StructuralAnalysis>,
     /// Child nodes (only present for directories)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub children: Option<Vec<FileNode>>,
+    pub children: Option<Vec<Self>>,
 }
 
 /// Structural analysis results for a single file.
@@ -117,8 +117,8 @@ pub struct ClassInfo {
     /// Base classes / parent types (for inheritance graph)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub b: Option<Vec<String>>,
-    /// Kind: "class", "interface", or "type". Used for abstractness computation
-    /// (Martin 2003: Distance from Main Sequence).
+    /// Kind: "class", "interface", "type", or "abstract_class". Used for
+    /// abstractness computation (Martin 2003: Distance from Main Sequence).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub k: Option<String>,
 }

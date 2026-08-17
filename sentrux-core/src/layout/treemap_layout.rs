@@ -151,8 +151,8 @@ fn layout_dir_children(node: &FileNode, vp: &ViewportRect, depth: u32, lctx: &mu
     let inner = ViewportRect::new(
         vp.x + pad,
         vp.y + header + pad,
-        vp.w - pad * 2.0,
-        vp.h - header - pad * 2.0,
+        pad.mul_add(-2.0, vp.w),
+        pad.mul_add(-2.0, vp.h - header),
     );
     if inner.w < settings.treemap_min_rect || inner.h < settings.treemap_min_rect {
         return;

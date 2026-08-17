@@ -38,10 +38,9 @@
 /// Ensures the dot is after the last '/' to avoid stripping directory dots.
 fn strip_extension(path: &str) -> &str {
     let last_sep = path.rfind('/').map_or(0, |i| i + 1);
-    match path[last_sep..].rfind('.') {
-        Some(dot) => &path[..last_sep + dot],
-        None => path,
-    }
+    path[last_sep..]
+        .rfind('.')
+        .map_or(path, |dot| &path[..last_sep + dot])
 }
 
 /// Handle root-level files (no directory component).
@@ -53,10 +52,9 @@ fn module_of_root_file(path: &str) -> &str {
 /// Returns depth-3 module if 3+ levels, depth-2 module if exactly 2 levels.
 fn module_of_deep(path: &str, _first_slash: usize, depth2_end: usize) -> &str {
     let after_depth2 = &path[depth2_end + 1..];
-    match after_depth2.find('/') {
-        Some(j) => &path[..depth2_end + 1 + j],
-        None => &path[..depth2_end],
-    }
+    after_depth2
+        .find('/')
+        .map_or(&path[..depth2_end], |j| &path[..depth2_end + 1 + j])
 }
 
 /// Source dirs aggregated from all plugins. Cached at first access.
@@ -104,10 +102,10 @@ pub fn module_of(path: &str) -> &str {
     };
 
     let rest = &path[first_slash + 1..];
-    match rest.find('/') {
-        Some(i) => module_of_deep(path, first_slash, first_slash + 1 + i),
-        None => module_of_single_dir(path, first_slash),
-    }
+    rest.find('/').map_or_else(
+        || module_of_single_dir(path, first_slash),
+        |i| module_of_deep(path, first_slash, first_slash + 1 + i),
+    )
 }
 
 /// Check if two file paths belong to the same module boundary.

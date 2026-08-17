@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 
 /// Incremental rescan: patch an existing snapshot with changes to specific files.
+///
 /// Re-parses only changed files, rebuilds tree + graphs.
 /// Accepts `on_tree_ready` to emit partial snapshot before graph rebuild. `[ref:7f9a39c8]`
 pub fn rescan_changed(
@@ -204,13 +205,13 @@ fn build_file_node(
     sa_map: &HashMap<String, crate::core::types::StructuralAnalysis>,
     git_statuses: &HashMap<String, String>,
 ) -> FileNode {
-    let mtime = match fs::metadata(abs).and_then(|m| m.modified()) {
-        Ok(t) => t
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs_f64(),
-        Err(_) => 0.0,
-    };
+    let mtime = fs::metadata(abs)
+        .and_then(|m| m.modified())
+        .map_or(0.0, |t| {
+            t.duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64()
+        });
     let lang = detect_lang(abs);
     let sa = sa_map.get(rel).cloned();
 
@@ -371,7 +372,7 @@ mod tests {
 
         // Watcher reports "src/foo" as deleted (directory deletion on macOS
         // may only report the directory, not individual files within it).
-        let deleted: HashSet<String> = ["src/foo".to_string()].into_iter().collect();
+        let deleted: HashSet<String> = std::iter::once("src/foo".to_string()).collect();
         let deleted_dir_prefixes: Vec<String> = deleted.iter().map(|d| format!("{}/", d)).collect();
 
         files.retain(|f| {
@@ -390,7 +391,7 @@ mod tests {
     #[test]
     fn test_individual_file_deletion() {
         let mut files = vec![make_file("src/foo.rs"), make_file("src/bar.rs")];
-        let deleted: HashSet<String> = ["src/foo.rs".to_string()].into_iter().collect();
+        let deleted: HashSet<String> = std::iter::once("src/foo.rs".to_string()).collect();
         let deleted_dir_prefixes: Vec<String> = deleted.iter().map(|d| format!("{}/", d)).collect();
 
         files.retain(|f| {
@@ -410,7 +411,7 @@ mod tests {
     fn test_delete_all_files_produces_empty() {
         let mut files = vec![make_file("src/main.rs"), make_file("src/lib.rs")];
         // Root-level "src" deleted
-        let deleted: HashSet<String> = ["src".to_string()].into_iter().collect();
+        let deleted: HashSet<String> = std::iter::once("src".to_string()).collect();
         let deleted_dir_prefixes: Vec<String> = deleted.iter().map(|d| format!("{}/", d)).collect();
 
         files.retain(|f| {

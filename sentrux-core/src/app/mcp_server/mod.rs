@@ -112,7 +112,7 @@ fn dispatch_request(
         "initialized" => None,
         "tools/list" => Some(handle_tools_list(&id, registry)),
         "tools/call" => {
-            let params = request.get("params").cloned().unwrap_or(json!({}));
+            let params = request.get("params").cloned().unwrap_or_else(|| json!({}));
             Some(handle_tools_call(&id, &params, registry, state))
         }
         "ping" => Some(json!({
@@ -168,7 +168,10 @@ fn handle_tools_call(
     state: &mut McpState,
 ) -> Value {
     let tool_name = params.get("name").and_then(|n| n.as_str()).unwrap_or("");
-    let args = params.get("arguments").cloned().unwrap_or(json!({}));
+    let args = params
+        .get("arguments")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
 
     // Copy tier to avoid borrow conflict (&state.tier vs &mut state)
     let tier = state.tier;

@@ -132,8 +132,11 @@ pub struct FuncMetric {
     pub value: u32,
 }
 
-/// Robert C. Martin's Instability metric: I = Ce / (Ca + Ce)
-/// Ce = efferent coupling (fan-out), Ca = afferent coupling (fan-in).
+/// Robert C. Martin's Instability metric.
+///
+/// I = Ce / (Ca + Ce) where Ce = efferent coupling (fan-out) and
+/// Ca = afferent coupling (fan-in).
+///
 /// 0.0 = maximally stable (only depended on, never depends out).
 /// 1.0 = maximally unstable (depends on everything, nothing depends on it).
 #[derive(Debug, Clone)]

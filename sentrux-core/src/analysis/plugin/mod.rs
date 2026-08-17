@@ -35,6 +35,7 @@ pub fn all_embedded_source_dirs() -> std::collections::HashSet<String> {
 }
 
 /// Silently sync embedded plugin configs to ~/.sentrux/plugins/ at startup.
+///
 /// Overwrites plugin.toml and tags.scm if the binary version is newer.
 /// Preserves grammar .dylib files (expensive, platform-specific).
 /// Users never need to think about plugin versions.

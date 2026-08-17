@@ -377,6 +377,18 @@ public class App {
     }
 
     #[test]
+    fn abstract_java_class_after_annotation_is_marked() {
+        let code = br#"
+@Anno({1, 2})
+public abstract class Example {}
+"#;
+        let sa = parse_bytes(code, "java").expect("java parse failed");
+        let classes = sa.cls.as_ref().expect("no classes");
+        assert_eq!(classes.len(), 1, "expected one class");
+        assert_eq!(classes[0].k.as_deref(), Some("abstract_class"));
+    }
+
+    #[test]
     fn oracle_c() {
         let code = br#"
 #include <stdio.h>

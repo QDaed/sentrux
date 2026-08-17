@@ -26,6 +26,7 @@ const MIN_TYPES_FOR_DISTANCE: usize = 1;
 // ── Public types ──
 
 /// Robert C. Martin 2003: Distance from Main Sequence per module (directory).
+///
 /// D = |A + I - 1| where A = abstractness, I = instability.
 /// D close to 0 = good (on the main sequence).
 /// D close to 1 = bad (zone of pain or zone of uselessness).
@@ -112,39 +113,22 @@ fn count_types_per_module(
     (module_abstract, module_total)
 }
 
-/// Check whether a class kind counts as abstract (interface or ADT).
+/// Check whether a class kind counts as abstract (interface, ADT, or abstract class).
 fn is_abstract_kind(kind: Option<&str>) -> bool {
-    matches!(kind, Some("interface") | Some("adt"))
+    matches!(
+        kind,
+        Some("interface") | Some("adt") | Some("abstract_class")
+    )
 }
 
 /// Check whether a class is abstract based on its language profile.
-/// Reads `abstract_base_classes` (e.g., Python: Protocol, ABC, ABCMeta)
-/// and `abstract_keywords` (e.g., Java/C#: abstract) from plugin.toml [semantics].
-/// This replaces the Python-only hardcoded check with a per-language mechanism.
+/// Abstract declaration keywords are normalized to `k = "abstract_class"`
+/// during parsing; base-class markers remain profile-driven here.
 fn is_abstract_by_profile(
     cls: &crate::core::types::ClassInfo,
     profile: &crate::analysis::plugin::profile::LanguageProfile,
 ) -> bool {
-    // Check base classes (Python Protocol, ABC, ABCMeta)
-    if profile.has_abstract_base(cls.b.as_ref()) {
-        return true;
-    }
-    // Check abstract keywords in class name context (Java/C# abstract class)
-    // Note: this is a heuristic. The class kind from tree-sitter is checked
-    // separately via is_abstract_kind(). This catches cases where tree-sitter
-    // can't distinguish abstract from concrete (e.g., Java `abstract class`).
-    if !profile.semantics.abstract_keywords.is_empty() {
-        if let Some(kind) = cls.k.as_deref() {
-            if kind == "class" {
-                // For languages with abstract keywords, we'd need the source text
-                // to check. For now, the abstract_keywords mechanism works via
-                // tree-sitter query improvements (capturing abstract_class_declaration
-                // as @definition.interface). This is a future enhancement.
-                // TODO: pass source text context for keyword matching
-            }
-        }
-    }
-    false
+    profile.has_abstract_base(cls.b.as_ref())
 }
 
 /// Count abstract and total types in a single file node's class list.
@@ -268,4 +252,56 @@ fn build_module_distances(
 /// `[ref:736ae249]`
 pub fn score_distance(avg_distance: f64) -> f64 {
     (1.0 - avg_distance).clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::analysis::plugin::profile::LanguageProfile;
+    use crate::core::types::ClassInfo;
+
+    fn cls(name: &str, kind: &str, bases: Option<&[&str]>) -> ClassInfo {
+        ClassInfo {
+            n: name.into(),
+            m: None,
+            b: bases.map(|bs| bs.iter().map(|b| b.to_string()).collect()),
+            k: Some(kind.into()),
+        }
+    }
+
+    fn profile_with(keywords: &[&str], bases: &[&str]) -> LanguageProfile {
+        crate::analysis::plugin::profile::LanguageProfile {
+            name: "test".into(),
+            semantics: crate::analysis::plugin::profile::LanguageSemantics {
+                abstract_keywords: keywords.iter().map(|s| s.to_string()).collect(),
+                abstract_base_classes: bases.iter().map(|s| s.to_string()).collect(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn abstract_class_kind_counts_as_abstract() {
+        assert!(is_abstract_kind(Some("abstract_class")));
+    }
+
+    #[test]
+    fn concrete_class_kind_is_not_abstract() {
+        assert!(!is_abstract_kind(Some("class")));
+    }
+
+    #[test]
+    fn detects_abstract_base_class() {
+        let profile = profile_with(&[], &["ABC"]);
+        let cls = cls("Foo", "class", Some(&["abc.ABC"]));
+        assert!(is_abstract_by_profile(&cls, &profile));
+    }
+
+    #[test]
+    fn matches_whole_keyword_not_substring() {
+        let profile = profile_with(&["abstract"], &[]);
+        assert!(profile.has_abstract_keyword("public abstract class Foo"));
+        assert!(!profile.has_abstract_keyword("public class AbstractFactory"));
+    }
 }

@@ -356,7 +356,7 @@ impl AppState {
     }
 
     /// Apply a new theme — updates theme_config.
-    pub fn set_theme(&mut self, theme: Theme) {
+    pub const fn set_theme(&mut self, theme: Theme) {
         self.theme = theme;
         self.theme_config = ThemeConfig::from_theme(theme);
     }

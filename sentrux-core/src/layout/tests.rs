@@ -98,7 +98,7 @@ fn test_conservation_child_area_le_parent() {
         let child_area: f64 = rd
             .rects
             .iter()
-            .filter(|r| r.section_id == sec.path && r.path != sec.path)
+            .filter(|r| r.section_id == sec.section_id && r.path != sec.path)
             .map(|r| r.w * r.h)
             .sum();
         assert!(

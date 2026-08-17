@@ -57,18 +57,14 @@ impl ProRegistry {
 
 /// Check if a Pro feature is available (registered by loaded dylib).
 pub fn has(feature: ProFeature) -> bool {
-    match REGISTRY.lock() {
-        Ok(reg) => reg.features & (1 << feature as u32) != 0,
-        Err(_) => false,
-    }
+    REGISTRY
+        .lock()
+        .is_ok_and(|reg| reg.features & (1 << feature as u32) != 0)
 }
 
 /// Check if ANY Pro plugin is loaded.
 pub fn is_loaded() -> bool {
-    match REGISTRY.lock() {
-        Ok(reg) => reg.features != 0,
-        Err(_) => false,
-    }
+    REGISTRY.lock().is_ok_and(|reg| reg.features != 0)
 }
 
 /// Get the loaded Pro plugin name and version.

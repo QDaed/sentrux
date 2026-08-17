@@ -200,19 +200,14 @@ fn test_edge_paths_routed() {
         0.0,
     );
 
-    let import_edges: Vec<_> = rd
-        .edge_paths
-        .iter()
-        .filter(|e| e.edge_type == "import")
-        .collect();
-    let call_edges: Vec<_> = rd
-        .edge_paths
-        .iter()
-        .filter(|e| e.edge_type == "call")
-        .collect();
-
-    assert!(!import_edges.is_empty(), "should have routed import edges");
-    assert!(!call_edges.is_empty(), "should have routed call edges");
+    assert!(
+        rd.edge_paths.iter().any(|e| e.edge_type == "import"),
+        "should have routed import edges"
+    );
+    assert!(
+        rd.edge_paths.iter().any(|e| e.edge_type == "call"),
+        "should have routed call edges"
+    );
 
     // Each edge path should have at least 2 points
     for e in &rd.edge_paths {

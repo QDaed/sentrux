@@ -83,6 +83,7 @@ pub struct Analysis {
 }
 
 /// Flatten a FileNode tree into a Vec of non-directory file references.
+///
 /// Pure utility — only depends on FileNode. Lives in core::snapshot (not graph.rs)
 /// to avoid pulling the entire analysis::graph dependency chain into callers.
 pub fn flatten_files_ref(node: &FileNode) -> Vec<&FileNode> {

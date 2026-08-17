@@ -379,7 +379,7 @@ mod tests {
             &items,
             &sc(0.0, 0.0, 200.0, 150.0, 0.0, 3.0),
             |_, _, _, w, h| {
-                total_child_area += w * h;
+                total_child_area = w.mul_add(h, total_child_area);
             },
         );
         assert!(
@@ -404,7 +404,7 @@ mod tests {
             &items,
             &sc(0.0, 0.0, 200.0, 150.0, 4.0, 3.0),
             |_, _, _, w, h| {
-                total_child_area += w * h;
+                total_child_area = w.mul_add(h, total_child_area);
             },
         );
         assert!(total_child_area <= parent_area);

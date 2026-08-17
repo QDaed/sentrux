@@ -247,13 +247,11 @@ order = 2
         let arch_report = arch::compute_arch(&snap);
 
         let result = check_rules(&config, &health, &arch_report, &edges);
-        let layer_violations: Vec<_> = result
-            .violations
-            .iter()
-            .filter(|v| v.rule == "layer_direction")
-            .collect();
         assert!(
-            layer_violations.is_empty(),
+            !result
+                .violations
+                .iter()
+                .any(|v| v.rule == "layer_direction"),
             "correct direction should not violate"
         );
     }
@@ -309,12 +307,7 @@ to = "src/scanner.rs"
         let arch_report = arch::compute_arch(&snap);
 
         let result = check_rules(&config, &health, &arch_report, &edges);
-        let boundary_violations: Vec<_> = result
-            .violations
-            .iter()
-            .filter(|v| v.rule == "boundary")
-            .collect();
-        assert!(boundary_violations.is_empty());
+        assert!(!result.violations.iter().any(|v| v.rule == "boundary"));
     }
 
     // ── Empty rules pass everything ──

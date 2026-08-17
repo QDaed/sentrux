@@ -269,7 +269,7 @@ struct DsmColors {
 }
 
 impl DsmColors {
-    fn from_theme(tc: &crate::core::settings::ThemeConfig) -> Self {
+    const fn from_theme(tc: &crate::core::settings::ThemeConfig) -> Self {
         Self {
             diag: tc.section_border,
             below: tc.status_success,
@@ -308,7 +308,7 @@ fn detect_hover(
 
 /// Pick the direction color based on row/col levels.
 #[inline]
-fn direction_color(rl: u32, cl: u32, c: &DsmColors) -> egui::Color32 {
+const fn direction_color(rl: u32, cl: u32, c: &DsmColors) -> egui::Color32 {
     if rl > cl {
         c.below
     } else if rl < cl {
@@ -362,10 +362,10 @@ fn draw_matrix_chrome(
     // Column index labels (abbreviated)
     for col in 0..display_size {
         if col % 5 == 0 {
-            let x = origin.x + label_width + (col as f32 * cell_size);
+            let x = (col as f32).mul_add(cell_size, origin.x + label_width);
             let y = origin.y;
             painter.text(
-                egui::pos2(x + cell_size * 0.5, y + cell_size * 0.5),
+                egui::pos2(cell_size.mul_add(0.5, x), cell_size.mul_add(0.5, y)),
                 egui::Align2::CENTER_CENTER,
                 format!("{col}"),
                 egui::FontId::monospace(6.0),
@@ -377,16 +377,16 @@ fn draw_matrix_chrome(
     // Level break lines
     for &brk in &matrix.level_breaks {
         if brk < display_size {
-            let x = origin.x + label_width + (brk as f32 * cell_size);
+            let x = (brk as f32).mul_add(cell_size, origin.x + label_width);
             let y_start = origin.y + cell_size;
-            let y_end = origin.y + cell_size + (display_size as f32 * cell_size);
+            let y_end = (display_size as f32).mul_add(cell_size, origin.y + cell_size);
             painter.line_segment(
                 [egui::pos2(x, y_start), egui::pos2(x, y_end)],
                 egui::Stroke::new(0.5_f32, dctx.colors.level_break),
             );
             let x_start = origin.x + label_width;
-            let x_end = origin.x + label_width + (display_size as f32 * cell_size);
-            let y = origin.y + cell_size + (brk as f32 * cell_size);
+            let x_end = (display_size as f32).mul_add(cell_size, origin.x + label_width);
+            let y = (brk as f32).mul_add(cell_size, origin.y + cell_size);
             painter.line_segment(
                 [egui::pos2(x_start, y), egui::pos2(x_end, y)],
                 egui::Stroke::new(0.5_f32, dctx.colors.level_break),
@@ -403,7 +403,7 @@ fn draw_row_label(
     label: &str,
     dctx: &DsmDrawCtx<'_>,
 ) {
-    let y = origin.y + dctx.cell_size + (row as f32 * dctx.cell_size);
+    let y = (row as f32).mul_add(dctx.cell_size, origin.y + dctx.cell_size);
     let short = if label.len() > 18 {
         let start = label.len() - 18;
         let start = label.ceil_char_boundary(start);
@@ -419,7 +419,10 @@ fn draw_row_label(
     };
 
     painter.text(
-        egui::pos2(origin.x + dctx.label_width - 4.0, y + dctx.cell_size * 0.5),
+        egui::pos2(
+            origin.x + dctx.label_width - 4.0,
+            dctx.cell_size.mul_add(0.5, y),
+        ),
         egui::Align2::RIGHT_CENTER,
         short,
         egui::FontId::monospace(7.0),
@@ -465,8 +468,8 @@ fn draw_matrix(
     let selected_row: Option<usize> =
         selected_path.and_then(|sp| matrix.files.iter().take(display_size).position(|f| f == sp));
 
-    let total_w = label_width + (display_size as f32 * cell_size) + 8.0;
-    let total_h = (display_size as f32 * cell_size) + cell_size + 8.0;
+    let total_w = (display_size as f32).mul_add(cell_size, label_width) + 8.0;
+    let total_h = (display_size as f32).mul_add(cell_size, cell_size) + 8.0;
 
     let (response, painter) =
         ui.allocate_painter(egui::vec2(total_w, total_h), egui::Sense::click());
@@ -546,10 +549,10 @@ fn draw_rows_and_cells(
         if !has_edge {
             continue;
         }
-        let y = origin.y + dctx.cell_size + (row as f32 * dctx.cell_size);
+        let y = (row as f32).mul_add(dctx.cell_size, origin.y + dctx.cell_size);
         for col in 0..dctx.display_size {
             if let Some(color) = cell_color(row, col, row_levels, matrix, dctx) {
-                let x = origin.x + dctx.label_width + (col as f32 * dctx.cell_size);
+                let x = (col as f32).mul_add(dctx.cell_size, origin.x + dctx.label_width);
                 let rect = egui::Rect::from_min_size(
                     egui::pos2(x, y),
                     egui::vec2(dctx.cell_size - 0.5, dctx.cell_size - 0.5),

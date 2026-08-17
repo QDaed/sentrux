@@ -307,7 +307,7 @@ pub struct ImportAstConfig {
 
 impl ImportAstConfig {
     /// Whether this profile has AST-based import extraction configured.
-    pub fn is_configured(&self) -> bool {
+    pub const fn is_configured(&self) -> bool {
         !self.strategy.is_empty()
     }
 }
@@ -522,7 +522,7 @@ pub struct LanguageProfile {
 impl ComplexityNodes {
     /// Whether this profile has AST-based complexity nodes configured.
     /// If false, the platform should fall back to legacy text-based counting.
-    pub fn is_configured(&self) -> bool {
+    pub const fn is_configured(&self) -> bool {
         !self.branch_nodes.is_empty()
     }
 }

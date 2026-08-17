@@ -166,6 +166,7 @@ fn kosaraju_assign_sccs<'a>(
 // Cycles get the same level (conservative: max of cycle members).
 
 /// Compute levels via Kahn's topological sort on the SCC DAG.
+///
 /// Level 0 = leaf nodes (no outgoing imports). Level N = imports up to level N-1.
 /// Cycles are handled by collapsing SCCs — all nodes in a cycle get the same
 /// level (max of their dependencies + 1). O(V+E), no re-enqueue. `[ref:4e8f1175]`
@@ -316,9 +317,10 @@ pub(crate) fn find_upward_violations_with_sccs(
 
 // ── Blast Radius ──
 
-/// For each file in the import graph, compute how many files are transitively
-/// reachable by REVERSE edges (i.e., if this file changes, how many files
-/// that directly or indirectly depend on it could be affected).
+/// Compute transitive reverse reachability for each file.
+///
+/// Counts how many files directly or indirectly depend on a given file
+/// through REVERSE import edges.
 ///
 /// Uses index-based BFS with a reusable `Vec<bool>` instead of per-node
 /// `HashSet<&str>` allocation. For V nodes: old approach allocated V HashSets

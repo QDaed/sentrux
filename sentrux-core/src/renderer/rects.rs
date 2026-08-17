@@ -25,7 +25,7 @@ fn lin(c: u8) -> f32 {
 /// Compute relative luminance (WCAG 2.0).
 #[inline]
 fn luminance(r: u8, g: u8, b: u8) -> f32 {
-    0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+    0.0722f32.mul_add(lin(b), 0.7152f32.mul_add(lin(g), 0.2126 * lin(r)))
 }
 
 /// Adaptive high-contrast text color for any background.
@@ -235,7 +235,7 @@ fn draw_section_header(
         format!("./{}/", dirname)
     };
 
-    let max_chars = ((screen_rect.width() - dctx.px * 2.0) / dctx.cw).max(0.0) as usize;
+    let max_chars = (dctx.px.mul_add(-2.0, screen_rect.width()) / dctx.cw).max(0.0) as usize;
     let display = if max_chars < 3 {
         ""
     } else if label.chars().count() > max_chars {
@@ -272,19 +272,17 @@ fn file_display_color(
         let query_lower = ctx.search_query.to_lowercase();
         let matches = filename.to_lowercase().contains(&query_lower)
             || path.to_lowercase().contains(&query_lower);
+        let [r, g, b, _] = base_color.to_array();
         if matches {
             // Brighten matching files
-            let [r, g, b, _] = base_color.to_array();
             return Color32::from_rgb(
-                (r as f32 + (255.0 - r as f32) * 0.35) as u8,
-                (g as f32 + (255.0 - g as f32) * 0.35) as u8,
-                (b as f32 + (255.0 - b as f32) * 0.35) as u8,
+                (255.0 - r as f32).mul_add(0.35, r as f32) as u8,
+                (255.0 - g as f32).mul_add(0.35, g as f32) as u8,
+                (255.0 - b as f32).mul_add(0.35, b as f32) as u8,
             );
-        } else {
-            // Heavily dim non-matching files
-            let [r, g, b, _] = base_color.to_array();
-            return Color32::from_rgb(r / 4, g / 4, b / 4);
         }
+        // Heavily dim non-matching files
+        return Color32::from_rgb(r / 4, g / 4, b / 4);
     }
 
     let has_spotlight = connected_files.is_some();
@@ -296,9 +294,9 @@ fn file_display_color(
             let [r, g, b, _] = base_color.to_array();
             let factor = 0.25_f32;
             Color32::from_rgb(
-                (r as f32 + (255.0 - r as f32) * factor) as u8,
-                (g as f32 + (255.0 - g as f32) * factor) as u8,
-                (b as f32 + (255.0 - b as f32) * factor) as u8,
+                (255.0 - r as f32).mul_add(factor, r as f32) as u8,
+                (255.0 - g as f32).mul_add(factor, g as f32) as u8,
+                (255.0 - b as f32).mul_add(factor, b as f32) as u8,
             )
         }
     } else if has_spotlight {
@@ -327,7 +325,8 @@ fn draw_file_rect(
     if lod_full {
         draw_file_borders(dctx, screen_rect, inset_rect, r, ctx);
 
-        if inset_rect.width() > dctx.cw * 2.0 && inset_rect.height() > dctx.fs + dctx.py * 2.0 {
+        if inset_rect.width() > dctx.cw * 2.0 && inset_rect.height() > dctx.py.mul_add(2.0, dctx.fs)
+        {
             draw_file_text(dctx, inset_rect, r, ctx, color);
         }
     }
@@ -409,7 +408,7 @@ fn draw_file_text(
 /// Truncate a string to fit within `width` given padding and char width.
 /// Returns empty str if fewer than `min_chars` fit.
 fn truncate_to_fit(s: &str, width: f32, cw: f32, px: f32, min_chars: usize) -> &str {
-    let max_chars = ((width - px * 2.0) / cw).max(0.0) as usize;
+    let max_chars = (px.mul_add(-2.0, width) / cw).max(0.0) as usize;
     if max_chars < min_chars {
         ""
     } else if s.chars().count() > max_chars {
@@ -488,18 +487,15 @@ fn color_by_age(ctx: &RenderContext, path: &str) -> Color32 {
         .get(path)
         .map(|e| e.mtime)
         .filter(|&m| m > 0.0);
-    match mtime {
-        Some(mt) => {
-            let now = ctx.frame_now_secs;
-            let age_days = ((now - mt) / 86400.0).max(0.0);
-            let t = (age_days / 365.0).min(1.0) as f32; // 0=new, 1=1yr+
-            let r = (100.0 + (1.0 - t) * 155.0) as u8;
-            let g = (180.0 * (1.0 - t)) as u8;
-            let b = (60.0 + t * 140.0) as u8;
-            Color32::from_rgb(r, g, b)
-        }
-        None => ctx.theme_config.text_muted,
-    }
+    mtime.map_or(ctx.theme_config.text_muted, |mt| {
+        let now = ctx.frame_now_secs;
+        let age_days = ((now - mt) / 86400.0).max(0.0);
+        let t = (age_days / 365.0).min(1.0) as f32; // 0=new, 1=1yr+
+        let r = (1.0 - t).mul_add(155.0, 100.0) as u8;
+        let g = (180.0 * (1.0 - t)) as u8;
+        let b = (60.0 + t * 140.0) as u8;
+        Color32::from_rgb(r, g, b)
+    })
 }
 
 /// Churn: estimate from git status + function count.
@@ -525,7 +521,7 @@ fn color_by_risk(ctx: &RenderContext, path: &str) -> Color32 {
     let funcs = entry.map(|e| e.funcs).unwrap_or(0);
     let lines = entry.map(|e| e.lines).unwrap_or(0);
     let gs = entry.map(|e| e.gs.as_str()).unwrap_or("");
-    let complexity = (funcs as f64 * 0.1 + lines as f64 * 0.001).min(1.0);
+    let complexity = (lines as f64).mul_add(0.001, funcs as f64 * 0.1).min(1.0);
     let modified = if matches!(gs, "M" | "MM") { 0.5 } else { 0.0 };
     let risk = (complexity + modified).min(1.0);
     let t = risk as f32;

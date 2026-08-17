@@ -92,7 +92,9 @@ fn tested_files_direct() {
         edge("test_main.py", "utils.py"),
         edge("main.py", "db.py"),
     ];
-    let test_files: HashSet<String> = ["test_main.py"].iter().map(|s| s.to_string()).collect();
+    let test_files: HashSet<String> = std::iter::once("test_main.py")
+        .map(|s| s.to_string())
+        .collect();
     let source_files: HashSet<String> = ["main.py", "utils.py", "db.py"]
         .iter()
         .map(|s| s.to_string())
@@ -107,7 +109,9 @@ fn tested_files_direct() {
 #[test]
 fn untested_files_detected() {
     let edges = vec![edge("test_main.py", "main.py")];
-    let test_files: HashSet<String> = ["test_main.py"].iter().map(|s| s.to_string()).collect();
+    let test_files: HashSet<String> = std::iter::once("test_main.py")
+        .map(|s| s.to_string())
+        .collect();
     let source_files: HashSet<String> = ["main.py", "orphan.py"]
         .iter()
         .map(|s| s.to_string())
@@ -148,7 +152,9 @@ fn coverage_mapping() {
 fn coverage_score_equals_ratio() {
     // coverage_score is now identical to coverage_ratio
     let edges = vec![edge("test_a.py", "a.py")];
-    let test_files: HashSet<String> = ["test_a.py"].iter().map(|s| s.to_string()).collect();
+    let test_files: HashSet<String> = std::iter::once("test_a.py")
+        .map(|s| s.to_string())
+        .collect();
     let source_files: HashSet<String> = ["a.py", "b.py"].iter().map(|s| s.to_string()).collect();
     let tested = find_tested_files(&edges, &test_files, &source_files);
     let ratio = tested.len() as f64 / source_files.len() as f64;
